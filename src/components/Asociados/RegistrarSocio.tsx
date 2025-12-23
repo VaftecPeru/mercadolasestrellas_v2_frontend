@@ -1,0 +1,437 @@
+import React, { useState, useEffect } from "react";
+import {
+  TextField,
+  Grid,
+  Typography,
+  MenuItem,
+  Select,
+  InputLabel,
+  FormControl,
+  Autocomplete,
+} from "@mui/material";
+import {
+  AccountCircle,
+  Phone,
+  Email,
+  Home,
+  Person,
+  Event,
+  Badge,
+  Wc,
+  Business,
+  Abc,
+} from "@mui/icons-material";
+import { SelectChangeEvent } from "@mui/material/Select";
+import { manejarError, mostrarAlerta, mostrarAlertaConfirmacion } from "../Alerts/Registrar";
+import BotonesModal from "../Shared/BotonesModal";
+import ContenedorModal from "../Shared/ContenedorModal";
+import { AvisoFormulario, SeparadorBloque, TxtFormulario } from "../Shared/ElementosFormulario";
+import { reFormatDate } from "../../Utils/dateUtils";
+import apiClient from "../../Utils/apliClient";
+import { Api_Global_Socios } from "../../service/SocioApi";
+import { Bloque, Puesto } from "../../interface/Puestos";
+import { AgregarProps } from "../../interface/Socios";
+
+const Agregar: React.FC<AgregarProps> = ({ open, handleClose, socio }) => {
+
+  // Para los select
+  const [bloques, setBloques] = useState<Bloque[]>([]);
+  const [puestos, setPuestos] = useState<Puesto[]>([]);
+  const [bloqueSeleccionado, setBloqueSeleccionado] = useState<number | "">("");
+
+  const [activeTab] = useState(0)
+
+  const [loading, setLoading] = useState(false); // Estado de loading
+
+  const [formData, setFormData] = useState({
+    nombre: "",
+    apellido_paterno: "",
+    apellido_materno: "",
+    dni: "",
+    correo: "",
+    telefono: "",
+    direccion: "",
+    sexo: "",
+    estado: "1",
+    fecha_registro: "",
+    id_block: 0,
+    id_puesto: 0,
+  });
+
+  // Llenar campos con los datos del socio seleccionado
+  useEffect(() => {
+    if (socio) {
+      setFormData({
+        nombre: socio.nombre_socio || '',
+        apellido_paterno: socio.apellido_paterno || '',
+        apellido_materno: socio.apellido_materno || '',
+        dni: (socio.dni === 'No' ? '' : socio.dni) || '',
+        sexo: socio.sexo || '',
+        direccion: (socio.direccion === 'No' ? '' : socio.direccion) || '',
+        telefono: (socio.telefono === 'No' ? '' : socio.telefono) || '',
+        correo: (socio.correo === 'No' ? '' : socio.correo) || '',
+        id_puesto: 0,
+        id_block: 0,
+        estado: socio.estado || '1',
+        fecha_registro: reFormatDate(socio.fecha_registro) || '',
+      });
+      setBloqueSeleccionado(0);
+    }
+  }, [socio]);
+
+  const limpiarCamposSocio = () => {
+    setBloqueSeleccionado(0);
+    setPuestos([]);
+    setFormData({
+      nombre: "",
+      apellido_paterno: "",
+      apellido_materno: "",
+      dni: "",
+      correo: "",
+      telefono: "",
+      direccion: "",
+      sexo: "",
+      estado: "1",
+      fecha_registro: "",
+      id_block: 0,
+      id_puesto: 0,
+    });
+  };
+
+  // Obtener bloques
+  useEffect(() => {
+    const fetchBloques = async () => {
+      try {
+        const response = await apiClient.get(Api_Global_Socios.bloques.obtenerBloques());
+        setBloques(response.data.data);
+      } catch (error) {
+      }
+    };
+    fetchBloques();
+  }, []);
+
+  // Obtener puestos
+  const fetchPuestos = async (id_block: number) => {
+    try {
+      const response = await apiClient.get(Api_Global_Socios.puestos.obtenerPuestos(id_block)); // publico
+      setPuestos(response.data);
+    } catch (error) {
+    }
+  };
+
+  // Para manejar los cambios
+  const manejarCambio = (
+    e:
+      | React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+      | SelectChangeEvent<string>
+  ) => {
+    const { name, value } = e.target;
+    setFormData({
+      ...formData,
+      [name]: value,
+    });
+  };
+
+  // Registrar socio
+  const registrarSocio = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    setLoading(true);
+    const { id_block, ...dataToSend } = formData;
+    try {
+      const response = await apiClient.post(Api_Global_Socios.socios.registrar(), dataToSend);
+      if (response.status === 200) {
+        const mensaje = response.data.message;
+        mostrarAlerta("Registro exitoso", mensaje, "success").then(() => {
+          handleCloseModal();
+        });
+      } else {
+        mostrarAlerta(
+          "error"
+        );
+      }
+    } catch (error) {
+      manejarError(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Editar socio
+  const editarSocio = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    setLoading(true);
+    const { id_puesto, id_block, ...dataToSend } = formData;
+    try {
+      const response = await apiClient.put(Api_Global_Socios.socios.editar(socio?.id_socio), dataToSend);
+      if (response.status === 200) {
+        const mensaje = response.data.message || "El socio se actualizó correctamente";
+        mostrarAlerta("Actualización exitosa", mensaje, "success");
+        handleCloseModal();
+      } else {
+        mostrarAlerta("Error");
+      }
+    } catch (error) {
+      manejarError(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCloseModal = () => {
+    limpiarCamposSocio();
+    handleClose();
+  };
+
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 0: // REGISTRAR SOCIO
+        return (
+          <>
+            <AvisoFormulario />
+
+            {/* <pre>{JSON.stringify(formData, null, 2)}</pre> */}
+
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={6}>
+                <SeparadorBloque nombre="Datos personales" />
+
+                <TxtFormulario
+                  label="Nombre (*)"
+                  name="nombre"
+                  value={formData.nombre}
+                  onChange={manejarCambio}
+                  icono={<AccountCircle sx={{ mr: 1, color: "gray" }} />}
+                />
+
+                <TxtFormulario
+                  label="Apellido Paterno (*)"
+                  name="apellido_paterno"
+                  value={formData.apellido_paterno}
+                  onChange={manejarCambio}
+                  icono={<AccountCircle sx={{ mr: 1, color: "gray" }} />}
+                />
+
+                <TxtFormulario
+                  label="Apellido Materno (*)"
+                  name="apellido_materno"
+                  value={formData.apellido_materno}
+                  onChange={manejarCambio}
+                  icono={<AccountCircle sx={{ mr: 1, color: "gray" }} />}
+                />
+
+                {/* Sexo */}
+                <FormControl fullWidth required>
+                  <InputLabel id="sexo-label">Sexo</InputLabel>
+                  <Select
+                    labelId="sexo-label"
+                    fullWidth
+                    label="Sexo (*)"
+                    name="sexo"
+                    value={formData.sexo}
+                    onChange={manejarCambio}
+                    sx={{ mb: 2 }}
+                    startAdornment={<Wc sx={{ mr: 1, color: "gray" }} />}
+                  >
+                    <MenuItem value="Masculino">Masculino</MenuItem>
+                    <MenuItem value="Femenino">Femenino</MenuItem>
+                  </Select>
+                </FormControl>
+
+                <TxtFormulario
+                  label="DNI (*)"
+                  name="dni"
+                  value={formData.dni}
+                  onChange={manejarCambio}
+                  icono={<Badge sx={{ mr: 1, color: "gray" }} />}
+                />
+
+                <TxtFormulario
+                  label="Dirección (*)"
+                  name="direccion"
+                  value={formData.direccion}
+                  onChange={manejarCambio}
+                  icono={<Home sx={{ mr: 1, color: "gray" }} />}
+                />
+              </Grid>
+
+              <Grid item xs={12} sm={6}>
+                <Grid item xs={12} sm={12} sx={{ mb: 2 }}>
+                  <SeparadorBloque nombre="Contacto" />
+
+                  <TxtFormulario
+                    label="Nro. Telefono (*)"
+                    name="telefono"
+                    value={formData.telefono}
+                    onChange={manejarCambio}
+                    icono={<Phone sx={{ mr: 1, color: "gray" }} />}
+                  />
+
+                  <TxtFormulario
+                    label="Correo (*)"
+                    name="correo"
+                    value={formData.correo}
+                    onChange={manejarCambio}
+                    noMargin={true}
+                    icono={<Email sx={{ mr: 1, color: "gray" }} />}
+                  />
+                </Grid>
+
+                {!socio && (
+                  <Grid item xs={12} sm={12} sx={{ mb: 2 }}>
+                    <SeparadorBloque nombre="Asignar Puesto" />
+
+                    {/* Seleccionar bloque */}
+                    <FormControl fullWidth required>
+                      <InputLabel id="bloque-label">Bloque</InputLabel>
+                      <Select
+                        labelId="bloque-label"
+                        id="select-bloque"
+                        label="Bloque"
+                        value={bloqueSeleccionado}
+                        disabled={socio !== null}
+                        onChange={(e) => {
+                          const value = e.target.value as number;
+                          setBloqueSeleccionado(value);
+                          setFormData({
+                            ...formData,
+                            id_block: value,
+                          });
+                          fetchPuestos(value);
+                        }}
+                        startAdornment={
+                          <Business sx={{ mr: 1, color: "gray" }} />
+                        }
+                        sx={{ mb: 2 }}
+                        MenuProps={{
+                          PaperProps: {
+                            style: {
+                              maxHeight: 200,
+                              overflowY: "auto",
+                            },
+                          },
+                        }}
+                      >
+                        {bloques.map((bloque: Bloque) => (
+                          <MenuItem key={bloque.id_block} value={bloque.id_block}>
+                            {bloque.nombre}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+
+                    {/* Nro. Puesto */}
+                    <FormControl fullWidth required>
+                      <Autocomplete
+                        disabled={socio !== null}
+                        options={puestos}
+                        getOptionLabel={(puesto) =>
+                          puesto.numero_puesto
+                        }
+                        onChange={(event, newValue) => {
+                          if (newValue) {
+                            setFormData({
+                              ...formData,
+                              id_puesto: newValue.id_puesto,
+                            });
+                          }
+                        }}
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            label="Nro. Puesto"
+                            InputProps={{
+                              ...params.InputProps,
+                              startAdornment: (
+                                <>
+                                  <Abc sx={{ mr: 1, color: "gray" }} />
+                                  {params.InputProps.startAdornment}
+                                </>
+                              ),
+                            }}
+                          />
+                        )}
+                        ListboxProps={{
+                          style: {
+                            maxHeight: 200,
+                            overflow: "auto",
+                          },
+                        }}
+                        isOptionEqualToValue={(option, value) =>
+                          option.id_puesto === Number(value)
+                        } // Comparación de valores
+                      />
+                    </FormControl>
+                  </Grid>
+                )}
+
+                <Grid item xs={12} sm={12}>
+                  <SeparadorBloque nombre="Información de registro" />
+
+                  {/* Seleccionar estado */}
+                  <FormControl fullWidth required sx={{ mb: 2 }}>
+                    <InputLabel id="estado-label">Estado</InputLabel>
+                    <Select
+                      labelId="estado-label"
+                      label="Estado"
+                      name="estado"
+                      value={formData.estado}
+                      onChange={manejarCambio}
+                      startAdornment={<Person sx={{ mr: 1, color: "gray" }} />}
+                    >
+                      <MenuItem value="1">Activo</MenuItem>
+                      <MenuItem value="0">Inactivo</MenuItem>
+                    </Select>
+                  </FormControl>
+
+                  <TxtFormulario
+                    type="date"
+                    label="Fecha de Registro"
+                    name="fecha_registro"
+                    value={formData.fecha_registro}
+                    onChange={manejarCambio}
+                    icono={<Event sx={{ mr: 1, color: "gray" }} />}
+                  />
+                </Grid>
+              </Grid>
+            </Grid>
+          </>
+        );
+      default:
+        return <Typography>Seleccione una pestaña</Typography>;
+    }
+  };
+
+  return (
+    <ContenedorModal
+      ancho="740px"
+      alto="auto"
+      abrir={open}
+      cerrar={handleCloseModal}
+      titulo={socio ? "Editar socio" : "Registrar socio"}
+      loading={loading}
+      botones={
+        <BotonesModal
+          loading={loading}
+          obj={socio}
+          action={async (e) => {
+            const result = await mostrarAlertaConfirmacion(
+              "¿Está seguro de registrar un nuevo socio?"
+            );
+            if (result.isConfirmed) {
+              if (socio) {
+                editarSocio(e);
+              } else {
+                registrarSocio(e);
+              }
+            }
+          }}
+          close={handleCloseModal}
+        />
+      }
+    >
+      {renderTabContent()}
+    </ContenedorModal>
+  );
+};
+
+export default Agregar;

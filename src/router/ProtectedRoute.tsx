@@ -1,0 +1,63 @@
+import React, { ReactNode, useEffect, useState } from 'react'
+import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
+
+// Definimos la interfaz de las propiedades del componente
+interface ProtectedRouteProps {
+  children: ReactNode;
+  requiredRoles?: string[];
+}
+
+// Creamos el componente de ruta protegida
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRoles }) => {
+  const navigate = useNavigate();
+  // Obtenemos el estado de autenticación
+  const { autenticado, usuario, getDataSesion } = useAuth();
+  const [loading, setLoading] = useState(true);
+
+  const validar = () => {
+    if (!autenticado) {
+      navigate("/");
+    }
+
+    if (requiredRoles && !requiredRoles.includes(usuario ? usuario?.rol : "")) {
+      if (usuario?.rol === "Socio") {
+        navigate("/home/reporte-pagos");
+      }
+      navigate("/home");
+    }
+  };
+
+  useEffect(() => {
+    const cargarDatosSesion = async () => {
+      const token = Cookies.get("token");
+      if (token && !usuario) {
+        await getDataSesion();
+      }
+      setLoading(false);
+      validar();
+    };
+    cargarDatosSesion();
+  }, [getDataSesion, usuario]);
+
+  if (loading) {
+    return <div>Cargando...</div>;
+  }
+
+  // Si el usuario está autenticado, mostramos el contenido
+  // if (!autenticado) {
+  //   return <Navigate to="/" />;
+  // }
+
+  // if (requiredRoles && !requiredRoles.includes(usuario ? usuario?.rol : "")) {
+  //   if (usuario?.rol === "Socio") {
+  //     return <Navigate to="/home/reporte-pagos" />;
+  //   }
+  //   return <Navigate to="/home" />;
+  // }
+
+  return <>{children}</>;
+
+};
+
+export default ProtectedRoute;
