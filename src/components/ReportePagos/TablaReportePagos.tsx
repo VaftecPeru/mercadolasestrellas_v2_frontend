@@ -1,6 +1,5 @@
 import { Autocomplete, Box, FormControl, Pagination, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from '@mui/material';
-import axios from 'axios';
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react';
 import useResponsive from '../../hooks/Responsive/useResponsive';
 import { useSearchParams } from 'react-router-dom';
 import LoadingSpinner from '../PogressBar/ProgressBarV1';
@@ -10,305 +9,315 @@ import BotonAgregar from '../Shared/BotonAgregar';
 import ContenedorBotones from '../Shared/ContenedorBotones';
 import apiClient from "../../Utils/apliClient";
 import { Api_Global_Reportes } from '../../service/ReporteApi';
-import { Api_Global_Socios } from '../../service/SocioApi';
+import { Api_Global_Puestos } from '../../service/PuestoApi';
 import { handleExport } from '../../Utils/exportUtils';
-import { Column, Data, Socio } from '../../interface/ReportePagos/pagos';
+import { Column, Data, Puesto } from '../../interface/ReportePagos/pagos';
+import { nombreMes } from '../../Utils/dateUtils';
 import { useAuth } from '../../context/AuthContext';
 import { mostrarAlerta } from '../Alerts/Registrar';
 
-
-
 const columns: readonly Column[] = [
-  // { id: "numero", label: "N° Pago", minWidth: 50, align: "center" },
-  { id: "id_pago", label: "N° Pago", minWidth: 50, align: "center" },
-  // { id: "serie", label: "N° Serie", minWidth: 50, align: "center" },
-  { id: "serie_numero", label: "N° Serie", minWidth: 50, align: "center" },
-  { id: "fecha", label: "Fec. Pago", minWidth: 50, align: "center" },
-  { id: "aporte", label: "Aporte (S/)", minWidth: 50, align: "center" },
-  { id: "total", label: "Total (S/)", minWidth: 50, align: "center" },
-  { id: "detalle_pagos", label: "Detalle Pago", minWidth: 50, align: "center" },
-]
+  { id: "anio", label: "Año", minWidth: 80, align: "center" },
+  { id: "mes", label: "Mes", minWidth: 100, align: "center" },
+  { id: "fecha", label: "Fec. Pago", minWidth: 100, align: "center" },
+  { id: "servicios", label: "Servicios", minWidth: 150, align: "left" },
+  { id: "montos", label: "Monto (S/)", minWidth: 100, align: "right" },
+  { id: "total", label: "Pago (S/)", minWidth: 120, align: "right" },
+];
 
 const TablaReportePagos: React.FC = () => {
   const { isTablet, isMobile } = useResponsive();
+
+  const getAnio = (fecha: string) => {
+    return new Date(fecha).getUTCFullYear();
+  };
+
+  const getMesNombre = (fecha: string) => {
+    const mesIndex = new Date(fecha).getUTCMonth();
+    return nombreMes(mesIndex).toUpperCase();
+  };
+
   const [mostrarDetalles, setMostrarDetalles] = useState<string | null>(null);
-  const [socios, setSocios] = useState<Socio[]>([]);
-  const [socioSeleccionado, setSocioSeleccionado] = useState<number>(0);
+  const [puestos, setPuestos] = useState<Puesto[]>([]);
+  const [puestoSeleccionado, setPuestoSeleccionado] = useState<number | null>(null);
   const [pagos, setPagos] = useState<Data[]>([]);
   const [exportFormat, setExportFormat] = useState<string>("");
   const [searchParams] = useSearchParams();
-  const idSocio = searchParams.get("socio");
+  const idPuestoQuery = searchParams.get("puesto");
   const [isLoading, setIsLoading] = useState(false);
+  const [totalGeneral, setTotalGeneral] = useState<number>(0);
 
-  const { usuario } = useAuth(); 
+  const { usuario } = useAuth();
 
-  // Paginación
   const [paginaActual, setPaginaActual] = useState(1);
   const [totalPaginas, setTotalPaginas] = useState(1);
 
-  const cambiarPagina = (event: React.ChangeEvent<unknown>, value: number) => {
+  const cambiarPagina = (_event: React.ChangeEvent<unknown>, value: number) => {
     setPaginaActual(value);
-    fetchPagos(value, socioSeleccionado);
+    fetchPagos(value, puestoSeleccionado);
   };
 
-  // Si el parametro puesto existe, obtener las deudas del puesto
   useEffect(() => {
-    if (idSocio) {
-      setSocioSeleccionado(Number(idSocio));
-      fetchPagos(undefined, Number(idSocio));
-    }
-  }, [idSocio]);
-
-  // Metodo para obtener los socios
-  useEffect(() => {
-    if (usuario && usuario?.rol !== "Socio") {
-      const fetchSocios = async () => {
-        try {
-          const response = await apiClient.get(Api_Global_Socios.socios.buscar(1, 500));
-          setSocios(response.data.data);
-        } catch (error) {
-          console.log("Error:", error);
-        }
+    const fetchPuestos = async () => {
+      try {
+        const idSocioBusqueda = usuario?.rol === "Socio" ? usuario.id_usuario.toString() : "";
+        const response = await apiClient.get(Api_Global_Puestos.puestos.buscar(1, 1000, "", "", "", idSocioBusqueda));
+        setPuestos(response.data.data);
+      } catch (error) {
+        console.error("Error al cargar puestos:", error);
       }
-      fetchSocios();
-    }
+    };
+    if (usuario) fetchPuestos();
   }, [usuario]);
 
-  // Metodo para obtener los pagos realizados por un socio
-  const fetchPagos = async (pagina: number = 1, idSocio: number) => {
-    setIsLoading(true)
+  useEffect(() => {
+    if (idPuestoQuery) {
+      const id = Number(idPuestoQuery);
+      setPuestoSeleccionado(id);
+      fetchPagos(1, id);
+    }
+  }, [idPuestoQuery]);
+
+  const fetchPagos = async (pagina: number = 1, id: number | null) => {
+    if (!id) {
+      mostrarAlerta("Atención", "Por favor seleccione un puesto para generar el reporte.", "info");
+      return;
+    }
+    setIsLoading(true);
     try {
-      const response = await apiClient.get(Api_Global_Reportes.reportes.pagos(1, 15, idSocio));
+      const response = await apiClient.get(Api_Global_Reportes.reportes.pagos(pagina, 15, id));
       setPagos(response.data.data);
       setTotalPaginas(response.data.meta.last_page);
       setPaginaActual(response.data.meta.current_page);
+      setTotalGeneral(response.data.total_general || 0);
     } catch (error) {
-      console.log("Error:", error);
+      console.error("Error al obtener pagos:", error);
+      setPagos([]);
+      setTotalGeneral(0);
     } finally {
       setIsLoading(false);
     }
-  }
-
-  // Metodo para exportar el reporte de pagos
-  const handleExportReportePagos = async (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.preventDefault();
-    if (!socioSeleccionado) {
-      mostrarAlerta("Error", "Seleccione un socio para exportar el reporte.", "warning");
-      return;
-    }
-    const exportUrl = Api_Global_Reportes.reportes.exportarReportePagos(); // URL específica para servicios
-    const fileNamePrefix = "lista-reporte-pagos"; // Nombre del archivo
-    await handleExport(exportUrl, exportFormat, fileNamePrefix, setExportFormat, `id_socio=${socioSeleccionado}`);
   };
 
-  useEffect(() => {
-    if (usuario && usuario?.rol === "Socio") {
-      fetchPagos(undefined, usuario.id_usuario);
+  const handleExportReportePagos = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    if (!puestoSeleccionado) {
+      mostrarAlerta("Error", "Seleccione un puesto para exportar el reporte.", "warning");
+      return;
     }
-  }, [usuario]);
+    const exportUrl = Api_Global_Reportes.reportes.exportarReportePagos();
+    const fileNamePrefix = `reporte-pagos-puesto-${puestoSeleccionado}`;
+    await handleExport(exportUrl, exportFormat, fileNamePrefix, setExportFormat, `id_puesto=${puestoSeleccionado}`);
+  };
 
   return (
     <Contenedor>
       <ContenedorBotones reporte>
-        {usuario && usuario?.rol !== "Socio" && (
-          <Box
-            sx={{
-              width: isTablet || isMobile ? "100%" : "auto",
-              display: "flex",
-              flexDirection: { xs: "column", sm: "row" },
-              gap: 2,
-              alignItems: "center",
-              ml: isTablet || isMobile ? "0px" : "10px",
-              mr: isMobile ? "0px" : "auto",
-            }}
+        <Box
+          sx={{
+            width: isTablet || isMobile ? "100%" : "auto",
+            display: "flex",
+            flexDirection: { xs: "column", sm: "row" },
+            gap: 2,
+            alignItems: "center",
+            ml: isTablet || isMobile ? "0px" : "10px",
+            mr: isMobile ? "0px" : "auto",
+          }}
+        >
+          <FormControl
+            fullWidth
+            required
+            sx={{ width: isTablet ? "70%" : isMobile ? "100%" : "300px" }}
           >
-            {/* Seleccionar socio */}
-            <FormControl fullWidth required
-              sx={{
-                width: isTablet ? "70%" : isMobile ? "100%" : "300px"
+            <Autocomplete
+              options={puestos}
+              getOptionLabel={(option) => option.numero_puesto || ""}
+              value={puestos.find(p => Number(p.id_puesto) === puestoSeleccionado) || null}
+              onChange={(_event, value) => {
+                setPuestoSeleccionado(value ? Number(value.id_puesto) : null);
               }}
-            >
-              <Autocomplete
-                options={socios}
-                getOptionLabel={(socio) => socio.nombre_completo} // Mostrar el nombre completo del socio
-                onChange={(event, value) => { // Obtener el id del socio seleccionado
-                  if (value) { // Si se selecciona un socio
-                    setSocioSeleccionado(Number(value.id_socio)); // Guardar el id del socio
-                  }
-                }}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Seleccionar socio" // Etiqueta del input
-                    InputProps={{ ...params.InputProps }} // Propiedades del input
-                  />
-                )}
-                ListboxProps={{
-                  style: {
-                    maxHeight: 270, // Altura máxima de la lista de opciones
-                    overflow: 'auto', // Hacer scroll si hay muchos elementos
-                  },
-                }}
-                isOptionEqualToValue={(option, value) => option.id_socio === value.id_socio}
-              />
-            </FormControl>
-            {/* Botón "Generar Reporte" */}
-            <BotonAgregar
-              exportar
-              handleAction={() => fetchPagos(undefined, socioSeleccionado)}
-              texto="Generar"
+              renderInput={(params) => (
+                <TextField {...params} label="Seleccionar puesto" variant="outlined" />
+              )}
+              renderOption={(props, option) => (
+                <li {...props} key={option.id_puesto}>
+                  {option.numero_puesto}
+                </li>
+              )}
+              isOptionEqualToValue={(option, value) => option.id_puesto === value.id_puesto}
+              noOptionsText="No se encontraron puestos"
             />
-          </Box>
-        )}
+          </FormControl>
+
+          <BotonAgregar
+            exportar
+            handleAction={() => fetchPagos(1, puestoSeleccionado)}
+            texto="Generar"
+          />
+        </Box>
 
         <BotonExportar
           exportFormat={exportFormat}
           setExportFormat={setExportFormat}
           handleExport={handleExportReportePagos}
         />
-
       </ContenedorBotones>
+
       {isLoading ? (
-        <LoadingSpinner /> // Mostrar el loading mientras se están cargando los datos
+        <LoadingSpinner />
       ) : (
-        <>
-          {/* Tabla reporte pagos */}
-          <Paper sx={{ width: "100%", overflow: "hidden", boxShadow: "none" }}>
-            <TableContainer
-              sx={{ maxHeight: "100%", borderRadius: "5px", border: "none" }}
-            >
-              <Table stickyHeader aria-label="sticky table">
-                <TableHead>
-                  <TableRow>
-                    {isTablet || isMobile
-                      ? <Typography
-                        sx={{
-                          mt: 2,
-                          mb: 1,
-                          fontSize: "1.5rem",
-                          fontWeight: "bold",
-                          textTransform: "uppercase",
-                          textAlign: "center",
-                        }}
+        <Paper sx={{ width: "100%", overflow: "hidden", boxShadow: "none", mt: 2 }}>
+          <TableContainer sx={{ maxHeight: "calc(100vh - 350px)", borderRadius: "5px" }}>
+            <Table stickyHeader>
+              <TableHead>
+                <TableRow>
+                  {isTablet || isMobile ? (
+                    <TableCell align="center">
+                      <Typography sx={{ fontWeight: "bold", textTransform: "uppercase" }}>Lista de Pagos</Typography>
+                    </TableCell>
+                  ) : (
+                    columns.map((column) => (
+                      <TableCell
+                        key={column.id}
+                        align={column.align}
+                        sx={{ fontWeight: "bold", backgroundColor: "#f5f5f5", minWidth: column.minWidth }}
                       >
-                        Lista de Pagos
-                      </Typography>
-                      : columns.map((column) => (
-                        <TableCell
-                          key={column.id}
-                          align={column.align}
-                          style={{ minWidth: column.minWidth }}
+                        {column.label}
+                      </TableCell>
+                    ))
+                  )}
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {pagos.length > 0 ? (
+                  pagos.map((pago, pagoIdx) => (
+                    <React.Fragment key={pago.id_pago}>
+                      {pago.detalle_pagos.map((detalle, detIdx) => (
+                        <TableRow
+                          key={`${pago.id_pago}-${detIdx}`}
+                          hover
                           sx={{
-                            fontWeight: "bold",
+                            "& > td": {
+                              borderBottom: detIdx === pago.detalle_pagos.length - 1 ? "2px solid #e0e0e0" : "1px solid #f0f0f0"
+                            }
                           }}
                         >
-                          {column.label}
-                        </TableCell>
+                          {isTablet || isMobile ? (
+                            detIdx === 0 && (
+                              <TableCell>
+                                <Box
+                                  onClick={() => setMostrarDetalles(mostrarDetalles === String(pago.id_pago) ? null : String(pago.id_pago))}
+                                  sx={{ cursor: 'pointer', py: 1 }}
+                                >
+                                  <Typography variant="body2" sx={{ fontWeight: '500' }}>
+                                    Fecha: {pago.fecha}
+                                  </Typography>
+                                  <Typography variant="caption" color="textSecondary" sx={{ display: 'block' }}>
+                                    Periodo: {getMesNombre(pago.fecha)} {getAnio(pago.fecha)}
+                                  </Typography>
+                                  <Typography variant="caption" color="textSecondary" sx={{ display: 'block' }}>
+                                    Total Pago: S/ {Number(pago.total).toFixed(2)}
+                                  </Typography>
+
+                                  {mostrarDetalles === String(pago.id_pago) && (
+                                    <Box sx={{ mt: 1, pl: 2, borderLeft: '3px solid #1976d2', bgcolor: '#fafafa', p: 1 }}>
+                                      <Typography variant="caption" sx={{ fontWeight: 'bold' }}>Servicios:</Typography>
+                                      {pago.detalle_pagos.map((det, i) => (
+                                        <Box key={i} sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                                          <Typography variant="caption">• {det.descripcion}</Typography>
+                                          <Typography variant="caption" sx={{ fontWeight: 'bold' }}>S/ {det.importe}</Typography>
+                                        </Box>
+                                      ))}
+                                      <Box sx={{ borderTop: '1px solid #ddd', mt: 1, pt: 0.5, display: 'flex', justifyContent: 'space-between' }}>
+                                        <Typography variant="caption" sx={{ fontWeight: 'bold' }}>Total:</Typography>
+                                        <Typography variant="caption" sx={{ fontWeight: 'bold' }}>S/ {Number(pago.total).toFixed(2)}</Typography>
+                                      </Box>
+                                    </Box>
+                                  )}
+                                </Box>
+                              </TableCell>
+                            )
+                          ) : (
+                            <>
+                              {/* Año */}
+                              <TableCell align="center" sx={{ borderRight: '1px solid #f0f0f0' }}>
+                                {getAnio(pago.fecha)}
+                              </TableCell>
+
+                              {/* Mes */}
+                              <TableCell align="center" sx={{ borderRight: '1px solid #f0f0f0' }}>
+                                {getMesNombre(pago.fecha)}
+                              </TableCell>
+
+                              {/* Fecha */}
+                              <TableCell align="center" sx={{ borderRight: '1px solid #f0f0f0' }}>
+                                {pago.fecha}
+                              </TableCell>
+
+                              {/* Columna Servicio (Fila Individual) */}
+                              <TableCell>
+                                <Typography sx={{ fontSize: '0.85rem' }}>
+                                  {detalle.descripcion}
+                                </Typography>
+                              </TableCell>
+
+                              {/* Columna Monto Individual */}
+                              <TableCell align="right">
+                                <Typography sx={{ fontSize: '0.85rem', fontWeight: '500' }}>
+                                  {Number(detalle.importe).toFixed(2)}
+                                </Typography>
+                              </TableCell>
+
+                              {/* Pago */}
+                              <TableCell align="right" sx={{ fontWeight: 'bold', borderLeft: '1px solid #f0f0f0', backgroundColor: '#fafafa' }}>
+                                {detIdx === pago.detalle_pagos.length - 1 ? `S/ ${Number(pago.total).toFixed(2)}` : ""}
+                              </TableCell>
+                            </>
+                          )}
+                        </TableRow>
                       ))}
+                    </React.Fragment>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={isTablet || isMobile ? 1 : columns.length} align="center" sx={{ py: 8 }}>
+                      <Typography variant="body1" color="textSecondary">
+                        No hay pagos registrados para este puesto.
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+              {!isTablet && !isMobile && pagos.length > 0 && (
+                <TableHead>
+                  <TableRow>
+                    <TableCell colSpan={5} align="right" sx={{ fontWeight: "bold", backgroundColor: "#f0f0f0" }}>
+                      TOTAL A PAGAR:
+                    </TableCell>
+                    <TableCell align="right" sx={{ fontWeight: "bold", backgroundColor: "#e3f2fd", fontSize: '1rem', borderTop: '2px solid #1976d2' }}>
+                      S/ {Number(totalGeneral || 0).toFixed(2)}
+                    </TableCell>
                   </TableRow>
                 </TableHead>
-                <TableBody>
-                  {pagos.length > 0
-                    ? pagos
-                      .map((pago) => (
-                        <TableRow hover role="checkbox" tabIndex={-1}>
-                          {isTablet || isMobile
-                            ? <TableCell padding="checkbox" colSpan={columns.length}>
-                              <Box sx={{ display: "flex", flexDirection: "column" }}>
-                                <Typography
-                                  sx={{
-                                    p: 2,
-                                    // Seleccionar el pago y cambiar el color de fondo
-                                    bgcolor: mostrarDetalles === pago.numero ? "#f0f0f0" : "inherit",
-                                    "&:hover": {
-                                      cursor: "pointer",
-                                      bgcolor: "#f0f0f0",
-                                    }
-                                  }}
-                                  onClick={() => setMostrarDetalles(
-                                    mostrarDetalles === pago.numero ? null : pago.numero
-                                  )}
-                                >
-                                  N°{pago.numero} - {pago.fecha} - S/{pago.total}
-                                </Typography>
-                                {mostrarDetalles === pago.numero && (
-                                  <Box
-                                    sx={{
-                                      p: 2,
-                                      display: "flex",
-                                      flexDirection: "column",
-                                      gap: 1
-                                    }}
-                                  >
-                                    {columns.map((column) => {
-                                      const value = column.id === "accion" ? "" : (pago as any)[column.id];
-                                      return (
-                                        <Box>
-                                          {/* Mostrar titulo del campo */}
-                                          <Typography sx={{ fontWeight: "bold", mb: 1 }}>
-                                            {column.label}
-                                          </Typography>
-                                          {/* Mostrar los detalles del pago */}
-                                          {Array.isArray(value) // Si es un array de servicios
-                                            ? (value.map((detalle, index) => ( // Mostrar los servicios
-                                              <Typography key={index}>
-                                                {detalle.descripcion}: S/ {detalle.importe}
-                                              </Typography>
-                                            ))
-                                            ) : <Typography>
-                                              {value}
-                                            </Typography>
-                                          }
-                                        </Box>
-                                      )
-                                    })}
-                                  </Box>
-                                )}
-                              </Box>
-                            </TableCell>
-                            : columns.map((column) => {
-                              const value = column.id === "accion" ? "" : (pago as any)[column.id];
-                              return (
-                                <TableCell
-                                  key={column.id}
-                                  align={column.align}
-                                >
-                                  {Array.isArray(value) ? (value.map((detalle, index) => ( // Mostrar los servicios
-                                    <Typography textAlign="left" key={index}>
-                                      {detalle.descripcion}: S/ {detalle.importe}
-                                    </Typography>
-                                  ))
-                                  ) : (value)
-                                  }
-                                </TableCell>
-                              );
-                            })}
-                        </TableRow>
-                      ))
-                    : <TableRow>
-                      <TableCell colSpan={columns.length} align="center">
-                        No hay datos para mostrar. <br />
-                        Para generar el reporte, seleccione un socio y de clic en el botón "GENERAR".
-                      </TableCell>
-                    </TableRow>
-                  }
-                </TableBody>
-              </Table>
-            </TableContainer>
-            <Box sx={{ display: "flex", justifyContent: "center", marginTop: 3 }}>
+              )}
+            </Table>
+          </TableContainer>
+
+          {totalPaginas > 1 && (
+            <Box sx={{ display: "flex", justifyContent: "center", py: 3, borderTop: '1px solid #eee' }}>
               <Pagination
                 count={totalPaginas}
                 page={paginaActual}
                 onChange={cambiarPagina}
                 color="primary"
+                size={isMobile ? "small" : "medium"}
               />
             </Box>
-          </Paper>
-        </>
+          )}
+        </Paper>
       )}
     </Contenedor>
   );
-
-}
+};
 
 export default TablaReportePagos;

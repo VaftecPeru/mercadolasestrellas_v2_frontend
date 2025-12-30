@@ -76,7 +76,7 @@ const TablaServicios: React.FC = () => {
 
   const CambioDePagina = (event: React.ChangeEvent<unknown>, value: number) => {
     setPaginaActual(value);
-    fetchServicios(value); 
+    fetchServicios(value);
   };
 
   const buscarServicios = () => fetchServicios();
@@ -221,6 +221,7 @@ const TablaServicios: React.FC = () => {
                 <TableBody>
                   {servicios.map((servicio) => (
                     <TableRow
+                      key={servicio.id_servicio}
                       hover
                       role="checkbox"
                       tabIndex={-1}
@@ -277,7 +278,7 @@ const TablaServicios: React.FC = () => {
                                       ? ""
                                       : (servicio as any)[column.id];
                                   return (
-                                    <Box>
+                                    <Box key={column.id}>
                                       {/* Mostrar titulo del campo */}
                                       <Typography
                                         sx={{ fontWeight: "bold", mb: 1 }}
@@ -390,12 +391,12 @@ const TablaServicios: React.FC = () => {
                                     aria-label="delete"
                                     sx={{ color: "red" }}
                                     onClick={() => mostrarAlertaConfirmacion(
-                                        "Eliminar Servicio", "¿Estás seguro de eliminar este servicio?", "Eliminar", "Cancelar"
-                                      ).then((result) => {
-                                        if (result.isConfirmed) {
-                                          eliminarServicio(servicio);
-                                        }
-                                      })
+                                      "Eliminar Servicio", "¿Estás seguro de eliminar este servicio?", "Eliminar", "Cancelar"
+                                    ).then((result) => {
+                                      if (result.isConfirmed) {
+                                        eliminarServicio(servicio);
+                                      }
+                                    })
                                     }
                                   >
                                     <DeleteForever />

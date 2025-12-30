@@ -30,18 +30,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const token = Cookies.get("token");
     const nombreUsu = usuario?.nombre_usuario;
 
-    // Guardamos el nombre para el mensaje antes de limpiar el estado
+    
     const usuarioNombre = usuario?.nombre_usuario || "Usuario";
 
-    // Limpiamos la sesión local inmediatamente para evitar condiciones de carrera
     limpiarSesion();
 
     if (!token || !usuario) {
-      // Si no hay sesión, igual navegamos o mostramos alerta si fuera necesario
+
       return;
     }
 
-    // Intentamos notificar al servidor en segundo plano
+
     apiClient.post("/logout", { usuario: nombreUsu })
       .then((response) => {
         mostrarAlerta("Cierre de sesión", response.data.message || "Sesión cerrada correctamente", "info");
@@ -56,7 +55,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (!token) {
       return;
     }
-    return apiClient.get(`/validaciones?token=${token}`)
+    return apiClient.get(`/validaciones`)
       .then((response) => {
         const user = response.data;
         setUsuario(user);
@@ -88,7 +87,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUsuario(JSON.parse(usuarioGuardado));
         setAutenticado(true);
       } else {
-        await getDataSesion(); // Intentamos cargar la sesión
+        await getDataSesion(); 
       }
     };
 
@@ -102,7 +101,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   );
 };
 
-// Hook para consumir el contexto de autenticación
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {

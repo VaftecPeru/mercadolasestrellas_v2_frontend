@@ -62,10 +62,10 @@ const TablaReporteDeudas: React.FC = () => {
     const fetchPuestos = async () => {
       try {
         if (usuario?.rol !== "Socio") {
-          const response = await apiClient.get(Api_Global_Puestos.puestos.buscar(1, 500, "", "", "", ""));
+          const response = await apiClient.get(Api_Global_Puestos.puestos.buscar(1, 1000, "", "", "", ""));
           setPuestos(response.data.data);
         } else {
-          const response = await apiClient.get(Api_Global_Puestos.puestos.buscar(1, 500, "", "", "", usuario.id_usuario.toString()));
+          const response = await apiClient.get(Api_Global_Puestos.puestos.buscar(1, 1000, "", "", "", usuario.id_usuario.toString()));
           setPuestos(response.data.data);
         }
       } catch (error) {
@@ -136,6 +136,11 @@ const TablaReporteDeudas: React.FC = () => {
                   InputProps={{ ...params.InputProps }} // Propiedades del input
                 />
               )}
+              renderOption={(props, option) => (
+                <li {...props} key={option.id_puesto}>
+                  {option.numero_puesto}
+                </li>
+              )}
               ListboxProps={{
                 style: {
                   maxHeight: 270, // Altura máxima de la lista de opciones
@@ -203,7 +208,7 @@ const TablaReporteDeudas: React.FC = () => {
                   {deudas.length > 0
                     ? deudas
                       .map((deuda) => (
-                        <TableRow hover role="checkbox" tabIndex={-1}>
+                        <TableRow key={deuda.id_cuota} hover role="checkbox" tabIndex={-1}>
                           {isTablet || isMobile
                             ? <TableCell padding="checkbox" colSpan={columns.length}>
                               <Box sx={{ display: "flex", flexDirection: "column" }}>
@@ -235,7 +240,7 @@ const TablaReporteDeudas: React.FC = () => {
                                     {columns.map((column) => {
                                       const value = column.id === "accion" ? "" : (deuda as any)[column.id];
                                       return (
-                                        <Box>
+                                        <Box key={column.id}>
                                           {/* Mostrar titulo del campo */}
                                           <Typography sx={{ fontWeight: "bold", mb: 1 }}>
                                             {column.label}

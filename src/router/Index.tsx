@@ -28,7 +28,7 @@ export const router = createBrowserRouter([
   {
     path: "/home",
     element: (
-      // Usamos el componente de ruta protegida
+    
       <ProtectedRoute>
         <Principal />
       </ProtectedRoute>
@@ -119,7 +119,6 @@ export const router = createBrowserRouter([
 ]);
 
 const App = () => {
-  // Envolver la aplicación con el proveedor de autenticación
   <AuthProvider>
     <RouterProvider router={router} />
   </AuthProvider>

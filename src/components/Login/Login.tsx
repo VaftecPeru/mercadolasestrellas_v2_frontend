@@ -8,28 +8,37 @@ import Cookies from 'js-cookie';
 import apiClient from "../../Utils/apliClient";
 
 const Login: React.FC = () => {
-
   const [nomUsuario, setNomUsuario] = useState<string>("");
   const [password, setPassword] = useState<string>("");
 
-  const { login, usuario } = useAuth();
+  const { login } = useAuth();
   const navigate = useNavigate();
-
   const { isLaptop, isTablet, isMobile, isSmallMobile } = useResponsive();
 
   const IniciarSesion = async () => {
     const dataToSend = { usuario: nomUsuario, password };
+
     apiClient.post("/login", dataToSend)
       .then((response) => {
-        const { token, usuario: userResponse } = response.data;
-        Cookies.set('token', token, { path: '/' });
+      
+        if (response?.data) {
+          const { token, usuario: userResponse } = response.data;
 
-        login(userResponse);
-        mostrarAlerta('Inicio de sesión', `Bienvenido ${nomUsuario}.`, 'success');
-        navigate("/home");
+          Cookies.set('token', token, { path: '/' });
+          login(userResponse);
+
+          mostrarAlerta('Inicio de sesión', `Bienvenido ${nomUsuario}.`, 'success');
+          navigate("/home");
+        }
       })
       .catch((error) => {
-        manejarError(error.response.data);
+      
+        if (error.response?.data) {
+          manejarError(error.response.data);
+        } else {
+
+          mostrarAlerta('Error', 'No se pudo conectar con el servidor. Verifique su conexión.', 'error');
+        }
       });
   };
 
@@ -51,7 +60,6 @@ const Login: React.FC = () => {
           justifyContent: "center",
         }}
       >
-
         <Box sx={{
           boxSizing: isSmallMobile || isLaptop ? "border-box" : "content-box",
           width: isSmallMobile ? "100%" : isMobile ? "280px" : isTablet ? "50%" : isLaptop ? "35%" : "400px",
@@ -77,7 +85,6 @@ const Login: React.FC = () => {
           </Typography>
 
           <Box component="form">
-
             <Box sx={{ mb: 2 }}>
               <Typography
                 sx={{
@@ -94,9 +101,9 @@ const Login: React.FC = () => {
                 required
                 id="usuario"
                 name="usuario"
+                autoComplete="username"
                 placeholder="Ingrese su nombre completo"
                 InputProps={{ style: { height: "3rem" } }}
-                InputLabelProps={{ style: { color: "#0AB544" } }}
                 value={nomUsuario}
                 onChange={(e) => setNomUsuario(e.target.value)}
               />
@@ -119,9 +126,9 @@ const Login: React.FC = () => {
                 type="password"
                 id="password"
                 name="password"
+                autoComplete="current-password"
                 placeholder="Ingrese su contraseña"
                 InputProps={{ style: { height: "3rem" } }}
-                InputLabelProps={{ style: { color: "#0AB544" } }}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
@@ -146,11 +153,9 @@ const Login: React.FC = () => {
             >
               Iniciar sesión
             </Button>
-
           </Box>
 
           <Box sx={{ mt: "auto" }}>
-
             <Typography
               sx={{
                 mt: 3,
@@ -169,7 +174,7 @@ const Login: React.FC = () => {
 
             <Button
               variant="contained"
-              type="submit"
+              type="button"
               sx={{
                 width: isLaptop || isSmallMobile ? "100%" : "215px",
                 mt: isLaptop || isSmallMobile ? 2 : 4,
@@ -186,13 +191,9 @@ const Login: React.FC = () => {
             >
               Buscar puesto
             </Button>
-
           </Box>
-
         </Box>
-
       </Box>
-
     </Container>
   )
 }

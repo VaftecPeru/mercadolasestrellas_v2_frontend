@@ -142,6 +142,11 @@ const TablaReporteCuotasMetrado: React.FC = () => {
                   overflow: 'auto',
                 },
               }}
+              renderOption={(props, option) => (
+                <li {...props} key={option.id_cuota}>
+                  {`${option.id_cuota} - ${formatDate(option.fecha_emision)}`}
+                </li>
+              )}
               isOptionEqualToValue={(option, value) => option.id_cuota === value.id_cuota}
             />
           </FormControl>
@@ -172,18 +177,20 @@ const TablaReporteCuotasMetrado: React.FC = () => {
                 <TableHead>
                   <TableRow>
                     {isTablet || isMobile
-                      ? <Typography
-                        sx={{
-                          mt: 2,
-                          mb: 1,
-                          fontSize: "1.5rem",
-                          fontWeight: "bold",
-                          textTransform: "uppercase",
-                          textAlign: "center",
-                        }}
-                      >
-                        Lista de cuotas
-                      </Typography>
+                      ? <TableCell colSpan={columns.length} align="center">
+                        <Typography
+                          sx={{
+                            mt: 2,
+                            mb: 1,
+                            fontSize: "1.5rem",
+                            fontWeight: "bold",
+                            textTransform: "uppercase",
+                            textAlign: "center",
+                          }}
+                        >
+                          Lista de cuotas
+                        </Typography>
+                      </TableCell>
                       : columns.map((column) => (
                         <TableCell
                           key={column.id}
@@ -201,8 +208,8 @@ const TablaReporteCuotasMetrado: React.FC = () => {
                 <TableBody>
                   {cuotas.length > 0
                     ? cuotas
-                      .map((cuota) => (
-                        <TableRow hover role="checkbox" tabIndex={-1}>
+                      .map((cuota, index) => (
+                        <TableRow key={`${cuota.numero_puesto}-${index}`} hover role="checkbox" tabIndex={-1}>
                           {isTablet || isMobile
                             ? <TableCell padding="checkbox" colSpan={columns.length}>
                               <Box sx={{ display: "flex", flexDirection: "column" }}>
@@ -234,7 +241,7 @@ const TablaReporteCuotasMetrado: React.FC = () => {
                                     {columns.map((column) => {
                                       const value = column.id === "accion" ? "" : (cuota as any)[column.id];
                                       return (
-                                        <Box>
+                                        <Box key={column.id}>
                                           {/* Mostrar titulo del campo */}
                                           <Typography sx={{ fontWeight: "bold", mb: 1 }}>
                                             {column.label}

@@ -94,7 +94,7 @@ const TablaPuestos: React.FC = () => {
 
   // Eliminar puesto
   const eliminarPuesto = async (item: any) => {
-    
+
     try {
       const response = await apiClient.delete(Api_Global_Puestos.puestos.eliminar(item.id_puesto));
 
@@ -306,18 +306,20 @@ const TablaPuestos: React.FC = () => {
                 <TableHead>
                   <TableRow>
                     {isTablet || isMobile ? (
-                      <Typography
-                        sx={{
-                          mt: 2,
-                          mb: 1,
-                          fontSize: "1.5rem",
-                          fontWeight: "bold",
-                          textTransform: "uppercase",
-                          textAlign: "center",
-                        }}
-                      >
-                        Lista de Puestos
-                      </Typography>
+                      <TableCell colSpan={columns.length} align="center">
+                        <Typography
+                          sx={{
+                            mt: 2,
+                            mb: 1,
+                            fontSize: "1.5rem",
+                            fontWeight: "bold",
+                            textTransform: "uppercase",
+                            textAlign: "center",
+                          }}
+                        >
+                          Lista de Puestos
+                        </Typography>
+                      </TableCell>
                     ) : (
                       columns.map((column) => (
                         <TableCell
@@ -339,6 +341,7 @@ const TablaPuestos: React.FC = () => {
                 <TableBody>
                   {puestos.map((puesto) => (
                     <TableRow
+                      key={puesto.id_puesto}
                       hover
                       role="checkbox"
                       tabIndex={-1}
@@ -391,7 +394,7 @@ const TablaPuestos: React.FC = () => {
                                       ? ""
                                       : (puesto as any)[column.id];
                                   return (
-                                    <Box>
+                                    <Box key={column.id}>
                                       {/* Mostrar titulo del campo */}
                                       <Typography
                                         sx={{ fontWeight: "bold", mb: 1 }}
@@ -432,12 +435,12 @@ const TablaPuestos: React.FC = () => {
                                                 color: "#fff",
                                               }}
                                               onClick={() => mostrarAlertaConfirmacion(
-                                                  "Eliminar puesto", "¿Está seguro de eliminar el puesto?", "Eliminar", "Cancelar"
-                                                ).then((result) => {
-                                                  if(result.isConfirmed){
-                                                    eliminarPuesto(puesto);
-                                                  }
-                                                })
+                                                "Eliminar puesto", "¿Está seguro de eliminar el puesto?", "Eliminar", "Cancelar"
+                                              ).then((result) => {
+                                                if (result.isConfirmed) {
+                                                  eliminarPuesto(puesto);
+                                                }
+                                              })
                                               }
                                             >
                                               <DeleteForever sx={{ mr: 1 }} />
@@ -472,9 +475,9 @@ const TablaPuestos: React.FC = () => {
                               ) : column.id === "block" ? (
                                 puesto.block.nombre
                               ) : column.id === "inquilino" ? (
-                                puesto.inquilino.nombre 
-                                ? `${puesto.inquilino.nombre} ${puesto.inquilino.apellido_paterno} ${puesto.inquilino.apellido_materno}` 
-                                : "No asignado"
+                                puesto.inquilino.nombre
+                                  ? `${puesto.inquilino.nombre} ${puesto.inquilino.apellido_paterno} ${puesto.inquilino.apellido_materno}`
+                                  : "No asignado"
                               ) : column.id === "estado" ? (
                                 parseInt(value) === 2 ? "Ocupado" : "Libre"
                               ) : column.id === "accion" ? (
@@ -496,12 +499,12 @@ const TablaPuestos: React.FC = () => {
                                     aria-label="delete"
                                     sx={{ color: "red" }}
                                     onClick={() => mostrarAlertaConfirmacion(
-                                        "Eliminar puesto", "¿Está seguro de eliminar el puesto?", "Eliminar", "Cancelar"
-                                      ).then((result) => {
-                                        if(result.isConfirmed){
-                                          eliminarPuesto(puesto);
-                                        }
-                                      })
+                                      "Eliminar puesto", "¿Está seguro de eliminar el puesto?", "Eliminar", "Cancelar"
+                                    ).then((result) => {
+                                      if (result.isConfirmed) {
+                                        eliminarPuesto(puesto);
+                                      }
+                                    })
                                     }
                                   >
                                     <DeleteForever />

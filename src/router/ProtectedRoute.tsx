@@ -1,17 +1,17 @@
 import React, { ReactNode, useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import Cookies from "js-cookie";
 
-// Definimos la interfaz de las propiedades del componente
+
 interface ProtectedRouteProps {
   children: ReactNode;
   requiredRoles?: string[];
 }
 
-// Creamos el componente de ruta protegida
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRoles }) => {
   const navigate = useNavigate();
-  // Obtenemos el estado de autenticación
+ 
   const { autenticado, usuario, getDataSesion } = useAuth();
   const [loading, setLoading] = useState(true);
 
