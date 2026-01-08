@@ -46,7 +46,7 @@ const columns: readonly Column[] = [
   { id: "accion", label: "", minWidth: 30, align: "center" },
 ];
 
-const RegistrarPago: React.FC<AgregarProps> = ({ open, handleClose }) => {
+const RegistrarPago: React.FC<AgregarProps> = ({ open, handleClose, pago }) => {
   const { isMobile } = useResponsive();
   const [socios, setSocios] = useState<Socio[]>([]);
   const [puestos, setPuestos] = useState<Puesto[]>([]);
@@ -58,8 +58,9 @@ const RegistrarPago: React.FC<AgregarProps> = ({ open, handleClose }) => {
   const [totalPagar, setTotalPagar] = useState(0);
   const [totalDeuda, setTotalDeuda] = useState(0);
   const [activeTab, setActiveTab] = useState(0);
-  const [loading, setLoading] = useState(false); 
-  const [valueAC, setValueAC] = React.useState(null);
+  const [loading, setLoading] = useState(false);
+  const [valueAC, setValueAC] = React.useState<Socio | null>(null);
+  const [fechaPago, setFechaPago] = useState(new Date().toISOString().split('T')[0]);
 
   // Para registrar el pago
   const [formData, setFormData] = useState({
@@ -87,9 +88,31 @@ const RegistrarPago: React.FC<AgregarProps> = ({ open, handleClose }) => {
       } catch (error) {
       }
     };
-  
+
     fetchSocios();
   }, []);
+
+  // Sincronizar con el pago cuando se recibe para edición
+  useEffect(() => {
+    if (pago && socios.length > 0) {
+      const idSocioNum = Number(pago.id_socio);
+      const socioEncontrado = socios.find(s => s.id_socio === idSocioNum);
+      if (socioEncontrado) {
+        setValueAC(socioEncontrado);
+        const socioId = String(socioEncontrado.id_socio);
+        setIdSocioSeleccionado(socioId);
+        setFormData(prev => ({
+          ...prev,
+          id_socio: socioId,
+          nombre_socio: socioEncontrado.nombre_completo
+        }));
+        fetchPuestos(socioId);
+      }
+      if (pago.fecha_registro) {
+        setFechaPago(pago.fecha_registro.split(' ')[0]);
+      }
+    }
+  }, [pago, socios]);
 
   // Obtener Lista Puestos
   const fetchPuestos = async (idSocio: string) => {
@@ -205,7 +228,7 @@ const RegistrarPago: React.FC<AgregarProps> = ({ open, handleClose }) => {
           { id_deuda_cuota: idDeudaCuota, importe: montoPagar, servicio: servicioDescripcion },
         ],
       }));
-    // }
+      // }
     } else {
       // Al deseleccionar, eliminamos la deuda correspondiente
       setFormData((prevFormData) => ({
@@ -321,19 +344,28 @@ const RegistrarPago: React.FC<AgregarProps> = ({ open, handleClose }) => {
     // Extraemos los datos necesarios para enviar
     const { nombre_socio, nombre_block, numero_puesto, deudas, ...rest } = formData;
     const filteredDeudas = deudas.map(({ servicio, ...deudaRest }) => deudaRest); // Filtramos el servicio de las deudas
-    const dataToSend: { 
+    const dataToSend: {
       id_socio: string;
       deudas: { id_deuda_cuota: number; importe: number; }[] // Solo enviamos el id_deuda y el importe
     } = { ...rest, deudas: filteredDeudas }; // Retornamos el id_socio y las deudas sin el servicio
 
     try {
-      const response = await apiClient.post(Api_Global_Pagos.pagos.registrar(), dataToSend);
+      let response;
+      if (pago) {
+        // En modo edición solo permitimos actualizar la fecha por ahora según backend
+        response = await apiClient.put(Api_Global_Pagos.pagos.editar(pago.id_pago), {
+          fecha_registro: fechaPago
+        });
+      } else {
+        response = await apiClient.post(Api_Global_Pagos.pagos.registrar(), dataToSend);
+      }
 
       if (response.status === 200) {
-        const mensaje = response.data.message || "El pago fue registrado correctamente";
-        generarTicketPDF(formData, response.data.data);
-        mostrarAlerta("Registro exitoso", mensaje, "success").then(() => {
-          // limpiarCampos();
+        const mensaje = response.data.message || (pago ? "El pago fue actualizado correctamente" : "El pago fue registrado correctamente");
+        if (!pago) {
+          generarTicketPDF(formData, response.data.data);
+        }
+        mostrarAlerta(pago ? "Actualización exitosa" : "Registro exitoso", mensaje, "success").then(() => {
           handleCloseModal();
         });
       } else {
@@ -459,13 +491,13 @@ const RegistrarPago: React.FC<AgregarProps> = ({ open, handleClose }) => {
 
             {/* <pre>{JSON.stringify(formData, null, 2)}</pre> */}
 
-            <Grid container spacing={2}>
+            <Grid container spacing={1}>
               <Grid item xs={12} sm={12} marginTop={1}
                 display="flex" flexDirection={isMobile ? "column" : "row"} gap={1}>
                 {/* Seleccionar socio */}
                 <FormControl
                   sx={{
-                    width: isMobile ? "100%" : "50%",
+                    width: isMobile ? "100%" : (pago ? "35%" : "50%"),
                     mb: isMobile ? "15px" : "0px",
                   }}
                 >
@@ -515,6 +547,18 @@ const RegistrarPago: React.FC<AgregarProps> = ({ open, handleClose }) => {
                   />
                 </FormControl>
 
+                {pago && (
+                  <TextField
+                    label="Fecha de Pago"
+                    type="date"
+                    value={fechaPago}
+                    onChange={(e) => setFechaPago(e.target.value)}
+                    sx={{ width: isMobile ? "100%" : "20%" }}
+                    InputLabelProps={{ shrink: true }}
+                    size="small"
+                  />
+                )}
+
                 {/* Seleccionar puesto */}
                 <FormControl
                   sx={{ width: isMobile ? "100%" : "50%" }}
@@ -563,7 +607,7 @@ const RegistrarPago: React.FC<AgregarProps> = ({ open, handleClose }) => {
                 >
                   <TableContainer
                     sx={{
-                      height: "250px",
+                      height: "130px",
                       borderRadius: "10px",
                       border: "1px solid #202123",
                     }}
@@ -684,7 +728,7 @@ const RegistrarPago: React.FC<AgregarProps> = ({ open, handleClose }) => {
               {/* Monto a pagar */}
               <Box
                 sx={{
-                  m: "25px 0 0 auto",
+                  m: "10px 0 0 auto",
                   pl: isMobile ? "16px" : "0px",
                 }}
               >
@@ -727,7 +771,7 @@ const RegistrarPago: React.FC<AgregarProps> = ({ open, handleClose }) => {
   return (
     <ContenedorMini>
       {renderTabContent()}
-      <div style={{ textAlign:"right", marginTop: "45px" }}>
+      <div style={{ textAlign: "right", marginTop: "15px" }}>
         <Button
           variant="contained"
           sx={{
@@ -742,7 +786,7 @@ const RegistrarPago: React.FC<AgregarProps> = ({ open, handleClose }) => {
           }}
           onClick={registrarPago}
         >
-          Registrar
+          {pago ? "Actualizar" : "Registrar"}
         </Button>
         <Button
           style={{ marginLeft: "auto", marginRight: "auto" }}

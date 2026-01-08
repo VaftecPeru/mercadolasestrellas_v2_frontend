@@ -190,18 +190,20 @@ const TablaServicios: React.FC = () => {
                 <TableHead>
                   <TableRow>
                     {isTablet || isMobile ? (
-                      <Typography
-                        sx={{
-                          mt: 2,
-                          mb: 1,
-                          fontSize: "1.5rem",
-                          fontWeight: "bold",
-                          textTransform: "uppercase",
-                          textAlign: "center",
-                        }}
-                      >
-                        Lista de Servicios
-                      </Typography>
+                      <TableCell colSpan={columns.length}>
+                        <Typography
+                          sx={{
+                            mt: 2,
+                            mb: 1,
+                            fontSize: "1.5rem",
+                            fontWeight: "bold",
+                            textTransform: "uppercase",
+                            textAlign: "center",
+                          }}
+                        >
+                          Lista de Servicios
+                        </Typography>
+                      </TableCell>
                     ) : (
                       columns.map((column) => (
                         <TableCell

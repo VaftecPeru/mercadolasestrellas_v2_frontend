@@ -54,7 +54,6 @@ const BusquedaRapida = () => {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
-  // Paginación
   const [paginaActual, setPaginaActual] = useState(1);
   const [totalPaginas, setTotalPaginas] = useState(1);
 
@@ -251,18 +250,20 @@ const BusquedaRapida = () => {
                     <TableHead>
                       <TableRow>
                         {isTablet || isMobile
-                          ? <Typography
-                            sx={{
-                              mt: 2,
-                              mb: 1,
-                              fontSize: "1.5rem",
-                              fontWeight: "bold",
-                              textTransform: "uppercase",
-                              textAlign: "center",
-                            }}
-                          >
-                            Lista de Deudas
-                          </Typography>
+                          ? <TableCell colSpan={columns.length}>
+                            <Typography
+                              sx={{
+                                mt: 2,
+                                mb: 1,
+                                fontSize: "1.5rem",
+                                fontWeight: "bold",
+                                textTransform: "uppercase",
+                                textAlign: "center",
+                              }}
+                            >
+                              Lista de Deudas
+                            </Typography>
+                          </TableCell>
                           : columns.map((column) => (
                             <TableCell
                               key={column.id}
@@ -281,7 +282,7 @@ const BusquedaRapida = () => {
                       {deudas.length > 0
                         ? deudas
                           .map((deuda) => (
-                            <TableRow hover role="checkbox" tabIndex={-1}>
+                            <TableRow key={deuda.id_cuota} hover role="checkbox" tabIndex={-1}>
                               {isTablet || isMobile
                                 ? <TableCell padding="checkbox" colSpan={columns.length}>
                                   <Box sx={{ display: "flex", flexDirection: "column" }}>
@@ -313,7 +314,7 @@ const BusquedaRapida = () => {
                                         {columns.map((column) => {
                                           const value = column.id === "accion" ? "" : (deuda as any)[column.id];
                                           return (
-                                            <Box>
+                                            <Box key={column.id}>
                                               {/* Mostrar titulo del campo */}
                                               <Typography sx={{ fontWeight: "bold", mb: 1 }}>
                                                 {column.label}

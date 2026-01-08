@@ -164,18 +164,20 @@ const TablaReporteResumen = () => {
                 <TableHead>
                   <TableRow>
                     {isTablet || isMobile ? (
-                      <Typography
-                        sx={{
-                          mt: 2,
-                          mb: 1,
-                          fontSize: "1.5rem",
-                          fontWeight: "bold",
-                          textTransform: "uppercase",
-                          textAlign: "center",
-                        }}
-                      >
-                        Lista de Pagos
-                      </Typography>
+                      <TableCell colSpan={columns.length}>
+                        <Typography
+                          sx={{
+                            mt: 2,
+                            mb: 1,
+                            fontSize: "1.5rem",
+                            fontWeight: "bold",
+                            textTransform: "uppercase",
+                            textAlign: "center",
+                          }}
+                        >
+                          Lista de Pagos
+                        </Typography>
+                      </TableCell>
                     ) : (
                       columns.map((column) => (
                         <TableCell
@@ -195,7 +197,7 @@ const TablaReporteResumen = () => {
                 <TableBody>
                   {resumen.length > 0 ? (
                     resumen.map((resum) => (
-                      <TableRow hover role="checkbox" tabIndex={-1}>
+                      <TableRow key={resum.serie_numero} hover role="checkbox" tabIndex={-1}>
                         {isTablet || isMobile ? (
                           <TableCell
                             padding="checkbox"
@@ -204,22 +206,22 @@ const TablaReporteResumen = () => {
                             <Box
                               sx={{ display: "flex", flexDirection: "column" }}
                             >
-                             <Typography
-                                  sx={{
-                                    p: 2,
-                                    // Al seleccionar la cuota se cambia el color de fondo
-                                    bgcolor: mostrarDetalles === resum.importe_multas_inasistencia? "#f0f0f0" : "inherit",
-                                    "&:hover": {
-                                      cursor: "pointer",
-                                      bgcolor: "#f0f0f0",
-                                    }
-                                  }}
-                                  onClick={() => setMostrarDetalles(
-                                    mostrarDetalles === resum.importe_multas_inasistencia ? null : resum.importe_multas_inasistencia
-                                  )}
-                                >
-                                  {resum.importe_multas_inasistencia}
-                                </Typography>
+                              <Typography
+                                sx={{
+                                  p: 2,
+                                  // Al seleccionar la cuota se cambia el color de fondo
+                                  bgcolor: mostrarDetalles === resum.importe_multas_inasistencia ? "#f0f0f0" : "inherit",
+                                  "&:hover": {
+                                    cursor: "pointer",
+                                    bgcolor: "#f0f0f0",
+                                  }
+                                }}
+                                onClick={() => setMostrarDetalles(
+                                  mostrarDetalles === resum.importe_multas_inasistencia ? null : resum.importe_multas_inasistencia
+                                )}
+                              >
+                                {resum.importe_multas_inasistencia}
+                              </Typography>
                               {mostrarDetalles === resum.importe_multas_inasistencia && (
                                 <Box
                                   sx={{
@@ -235,7 +237,7 @@ const TablaReporteResumen = () => {
                                         ? ""
                                         : (resum as any)[column.id];
                                     return (
-                                      <Box>
+                                      <Box key={column.id}>
                                         {/* Mostrar titulo del campo */}
                                         <Typography
                                           sx={{ fontWeight: "bold", mb: 1 }}
@@ -275,19 +277,19 @@ const TablaReporteResumen = () => {
                               <TableCell key={column.id} align={column.align}>
                                 {Array.isArray(value)
                                   ? value.map(
-                                      (
-                                        detalle,
-                                        index // Mostrar los servicios
-                                      ) => (
-                                        <Typography
-                                          textAlign="left"
-                                          key={index}
-                                        >
-                                          {detalle.descripcion}: S/{" "}
-                                          {detalle.importe}
-                                        </Typography>
-                                      )
+                                    (
+                                      detalle,
+                                      index // Mostrar los servicios
+                                    ) => (
+                                      <Typography
+                                        textAlign="left"
+                                        key={index}
+                                      >
+                                        {detalle.descripcion}: S/{" "}
+                                        {detalle.importe}
+                                      </Typography>
                                     )
+                                  )
                                   : value}
                               </TableCell>
                             );

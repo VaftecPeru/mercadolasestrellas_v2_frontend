@@ -25,7 +25,7 @@ function CustomTabPanel(props: TabPanelProps) {
       aria-labelledby={`simple-tab-${index}`}
       {...other}
     >
-      {value === index && <Box sx={{ p: 2 }}>{children}</Box>}
+      {value === index && <Box sx={{ p: 1 }}>{children}</Box>}
     </div>
   );
 }
@@ -37,7 +37,7 @@ function a11yProps(index: number) {
   };
 }
 
-const GenerarCuotaTabs: React.FC<AgregarProps> = ({ open, handleClose }) => {
+const GenerarCuotaTabs: React.FC<AgregarProps> = ({ open, handleClose, cuota }) => {
   const [activeTab, setActiveTab] = useState(0);
   const [loading, setLoading] = useState(false);
 
@@ -54,12 +54,12 @@ const GenerarCuotaTabs: React.FC<AgregarProps> = ({ open, handleClose }) => {
 
   return (
     <ContenedorModal
-      ancho="800px"
+      ancho="550px"
       alto="auto"
       abrir={open}
       cerrar={handleCloseModal}
       loading={loading}
-      titulo="Generar Cuota"
+      titulo={cuota ? "Editar Cuota" : "Generar Cuota"}
       botones={
         <Button
           style={{ marginLeft: "auto", marginRight: "auto" }}
@@ -88,12 +88,10 @@ const GenerarCuotaTabs: React.FC<AgregarProps> = ({ open, handleClose }) => {
         </Tabs>
       </Box>
       <CustomTabPanel value={value} index={0}>
-        <GenerarCuota
-        ></GenerarCuota>
+        <GenerarCuota cuota={cuota}></GenerarCuota>
       </CustomTabPanel>
       <CustomTabPanel value={value} index={1}>
-        <GenerarCuotaPorPuesto
-        ></GenerarCuotaPorPuesto>
+        <GenerarCuotaPorPuesto cuota={cuota}></GenerarCuotaPorPuesto>
       </CustomTabPanel>
     </ContenedorModal>
   );

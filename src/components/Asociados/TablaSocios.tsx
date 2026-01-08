@@ -103,7 +103,7 @@ const TablaAsociados: React.FC = () => {
 
   // Eliminar socio
   const eliminarSocio = async (item: any) => {
-    
+
     try {
       const response = await apiClient.delete(Api_Global_Socios.socios.eliminar(item.id_socio));
       if (response.status === 200) {
@@ -216,18 +216,20 @@ const TablaAsociados: React.FC = () => {
                 <TableHead>
                   <TableRow>
                     {isTablet || isMobile
-                      ? <Typography
-                        sx={{
-                          mt: 2,
-                          mb: 1,
-                          fontSize: "1.5rem",
-                          fontWeight: "bold",
-                          textTransform: "uppercase",
-                          textAlign: "center",
-                        }}
-                      >
-                        Lista de socios
-                      </Typography>
+                      ? <TableCell colSpan={columns.length}>
+                        <Typography
+                          sx={{
+                            mt: 2,
+                            mb: 1,
+                            fontSize: "1.5rem",
+                            fontWeight: "bold",
+                            textTransform: "uppercase",
+                            textAlign: "center",
+                          }}
+                        >
+                          Lista de socios
+                        </Typography>
+                      </TableCell>
                       : columns.map((column) => (
                         <TableCell
                           key={column.id}
@@ -248,7 +250,7 @@ const TablaAsociados: React.FC = () => {
                 </TableHead>
                 <TableBody>
                   {socios.map((socio) => (
-                    <TableRow hover role="checkbox" tabIndex={-1}>
+                    <TableRow key={socio.id_socio} hover role="checkbox" tabIndex={-1}>
                       {isTablet || isMobile
                         ? <TableCell padding="checkbox" colSpan={columns.length}>
                           <Box sx={{ display: "flex", flexDirection: "column" }}>
@@ -281,16 +283,16 @@ const TablaAsociados: React.FC = () => {
                                 {columns.map((column) => {
                                   const value = column.id === "accion" ? "" : (socio as any)[column.id];
                                   return (
-                                    <Box>
+                                    <Box key={column.id}>
                                       {/* Mostrar titulo del campo */}
-                                        {
-                                          column.id === "bloque" ? "" : 
+                                      {
+                                        column.id === "bloque" ? "" :
                                           column.id === "inquilino" ? "" :
-                                          column.id === "giro_negocio" ? "" :
-                                          <Typography sx={{ fontWeight: "bold", mb: 1 }}>
-                                            {column.id === "numero_puesto" ? "Puestos" : column.label}
-                                          </Typography>
-                                        }
+                                            column.id === "giro_negocio" ? "" :
+                                              <Typography sx={{ fontWeight: "bold", mb: 1 }}>
+                                                {column.id === "numero_puesto" ? "Puestos" : column.label}
+                                              </Typography>
+                                      }
                                       {/* Mostrar los detalles del socio */}
                                       <Typography>
                                         {
@@ -421,111 +423,111 @@ const TablaAsociados: React.FC = () => {
                                 height: "100%",
                                 verticalAlign: "middle",
                                 backgroundColor:
-                                  column.id === "deuda" && value === 0 
-                                  ? "#B5F598" : column.id === "deuda" 
-                                  ? "#f8d7da" : undefined,
+                                  column.id === "deuda" && value === 0
+                                    ? "#B5F598" : column.id === "deuda"
+                                      ? "#f8d7da" : undefined,
                                 color:
-                                  column.id === "deuda" && value === 0 
-                                  ? "green" : column.id === "deuda" 
-                                  ? "#721c24" : undefined,
+                                  column.id === "deuda" && value === 0
+                                    ? "green" : column.id === "deuda"
+                                      ? "#721c24" : undefined,
                               }}
                             >
-                              {column.id === "bloque" 
-                                ? (socio.puestos.length > 0 ? socio.puestos.map((puesto, index) => 
+                              {column.id === "bloque"
+                                ? (socio.puestos.length > 0 ? socio.puestos.map((puesto, index) =>
                                   <Box
                                     key={index}
                                     sx={{ height: "45px", display: "block", alignContent: "center", justifyContent: "center" }}
                                   >
                                     {puesto?.block?.nombre}
                                   </Box>
+                                ) : "No asignado")
+                                : column.id === "numero_puesto"
+                                  ? (socio.puestos.length > 0 ? socio.puestos.map((puesto, index) =>
+                                    <Box
+                                      key={index}
+                                      sx={{ height: "45px", display: "block", alignContent: "center", justifyContent: "center" }}
+                                    >
+                                      {puesto.numero_puesto}
+                                    </Box>
                                   ) : "No asignado")
-                                : column.id === "numero_puesto" 
-                                ? (socio.puestos.length > 0 ? socio.puestos.map((puesto, index) =>
-                                  <Box
-                                    key={index}
-                                    sx={{ height: "45px", display: "block", alignContent: "center", justifyContent: "center" }}
-                                  >
-                                    {puesto.numero_puesto}
-                                  </Box>
-                                  ) : "No asignado")
-                                : column.id === "giro_negocio" 
-                                ? (socio.puestos.length > 0 ? socio.puestos.map((puesto, index) => 
-                                  <Box
-                                    key={index}
-                                    sx={{ height: "45px", display: "block", alignContent: "center", justifyContent: "center" }}
-                                  >
-                                    {puesto?.gironegocio?.nombre}
-                                  </Box>
-                                  ) : "No asignado")
-                                : column.id === "inquilino" 
-                                ? (socio.puestos.length > 0 ? socio.puestos.map((puesto, index) => 
-                                  <Box
-                                    key={index}
-                                    sx={{ height: "45px", display: "block", alignContent: "center", justifyContent: "center" }}
-                                  >
-                                    {puesto.nombre_inquilino}
-                                  </Box>
-                                  ) : "No asignado")
-                                : column.id === "deuda" 
-                                ? value === 0 ? "No existen deudas" : `S/ ${value}`
-                                : column.id === "ver_reporte" ? (
-                                  <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                    <IconButton
-                                      aria-label="payment"
-                                      sx={{ color: "crimson" }}
-                                      onClick={() => handleVerReporteDeudas(socio.id_socio)}
-                                    >
-                                      <Payments />
-                                    </IconButton>
-                                    <IconButton
-                                      aria-label="payment"
-                                      sx={{ color: "green" }}
-                                      onClick={() => handleVerReportePagos(socio.id_socio)}
-                                    >
-                                      <Payments />
-                                    </IconButton>
-                                  </Box>
-                                ) : column.id === "accion" ? (
-                                  <Box sx={{ display: "flex" }}>
-                                    <IconButton
-                                      aria-label="edit"
-                                      sx={{ color: "#0478E3" }}
-                                      onClick={() => handleOpen(socio)}
-                                    >
-                                      <SaveAs />
-                                    </IconButton>
-                                    <IconButton
-                                      aria-label="download"
-                                      sx={{ color: "black" }}
-                                      onClick={() => downloadDataSocios(1, "", socio)}
-                                    >
-                                      <Download />
-                                    </IconButton>
-                                    <IconButton
-                                      aria-label="whatsapp"
-                                      sx={{ color: "green" }}
-                                      onClick={() => downloadDataSocios(2, socio.telefono, socio)}
-                                    >
-                                      <WhatsApp />
-                                    </IconButton>
-                                    <IconButton
-                                      aria-label="delete"
-                                      sx={{ color: "red" }}
-                                      onClick={() => mostrarAlertaConfirmacion(
-                                          "Eliminar socio", "¿Estás seguro de eliminar este socio?", "Eliminar", "Cancelar"
-                                        ).then((result) => {
-                                          if (result.isConfirmed) {
-                                            eliminarSocio(socio);
-                                          }
-                                        }
-                                      )}
-                                    >
-                                      <DeleteForever />
-                                    </IconButton>
-                                  </Box>
-                                ) : (
-                                  value
-                                )}
+                                  : column.id === "giro_negocio"
+                                    ? (socio.puestos.length > 0 ? socio.puestos.map((puesto, index) =>
+                                      <Box
+                                        key={index}
+                                        sx={{ height: "45px", display: "block", alignContent: "center", justifyContent: "center" }}
+                                      >
+                                        {puesto?.gironegocio?.nombre}
+                                      </Box>
+                                    ) : "No asignado")
+                                    : column.id === "inquilino"
+                                      ? (socio.puestos.length > 0 ? socio.puestos.map((puesto, index) =>
+                                        <Box
+                                          key={index}
+                                          sx={{ height: "45px", display: "block", alignContent: "center", justifyContent: "center" }}
+                                        >
+                                          {puesto.nombre_inquilino}
+                                        </Box>
+                                      ) : "No asignado")
+                                      : column.id === "deuda"
+                                        ? value === 0 ? "No existen deudas" : `S/ ${value}`
+                                        : column.id === "ver_reporte" ? (
+                                          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                            <IconButton
+                                              aria-label="payment"
+                                              sx={{ color: "crimson" }}
+                                              onClick={() => handleVerReporteDeudas(socio.id_socio)}
+                                            >
+                                              <Payments />
+                                            </IconButton>
+                                            <IconButton
+                                              aria-label="payment"
+                                              sx={{ color: "green" }}
+                                              onClick={() => handleVerReportePagos(socio.id_socio)}
+                                            >
+                                              <Payments />
+                                            </IconButton>
+                                          </Box>
+                                        ) : column.id === "accion" ? (
+                                          <Box sx={{ display: "flex" }}>
+                                            <IconButton
+                                              aria-label="edit"
+                                              sx={{ color: "#0478E3" }}
+                                              onClick={() => handleOpen(socio)}
+                                            >
+                                              <SaveAs />
+                                            </IconButton>
+                                            <IconButton
+                                              aria-label="download"
+                                              sx={{ color: "black" }}
+                                              onClick={() => downloadDataSocios(1, "", socio)}
+                                            >
+                                              <Download />
+                                            </IconButton>
+                                            <IconButton
+                                              aria-label="whatsapp"
+                                              sx={{ color: "green" }}
+                                              onClick={() => downloadDataSocios(2, socio.telefono, socio)}
+                                            >
+                                              <WhatsApp />
+                                            </IconButton>
+                                            <IconButton
+                                              aria-label="delete"
+                                              sx={{ color: "red" }}
+                                              onClick={() => mostrarAlertaConfirmacion(
+                                                "Eliminar socio", "¿Estás seguro de eliminar este socio?", "Eliminar", "Cancelar"
+                                              ).then((result) => {
+                                                if (result.isConfirmed) {
+                                                  eliminarSocio(socio);
+                                                }
+                                              }
+                                              )}
+                                            >
+                                              <DeleteForever />
+                                            </IconButton>
+                                          </Box>
+                                        ) : (
+                                          value
+                                        )}
                             </TableCell>
                           );
                         })}

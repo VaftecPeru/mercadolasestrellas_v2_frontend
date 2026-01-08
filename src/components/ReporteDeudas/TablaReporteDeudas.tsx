@@ -178,18 +178,20 @@ const TablaReporteDeudas: React.FC = () => {
                 <TableHead>
                   <TableRow>
                     {isTablet || isMobile
-                      ? <Typography
-                        sx={{
-                          mt: 2,
-                          mb: 1,
-                          fontSize: "1.5rem",
-                          fontWeight: "bold",
-                          textTransform: "uppercase",
-                          textAlign: "center",
-                        }}
-                      >
-                        Lista de Deudas
-                      </Typography>
+                      ? <TableCell colSpan={columns.length}>
+                        <Typography
+                          sx={{
+                            mt: 2,
+                            mb: 1,
+                            fontSize: "1.5rem",
+                            fontWeight: "bold",
+                            textTransform: "uppercase",
+                            textAlign: "center",
+                          }}
+                        >
+                          Lista de Deudas
+                        </Typography>
+                      </TableCell>
                       : columns.map((column) => (
                         <TableCell
                           key={column.id}

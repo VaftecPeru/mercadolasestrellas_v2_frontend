@@ -32,20 +32,20 @@ const ContenedorModal: React.FC<ContenedorModalProps> = ({ ancho, alto, abrir, c
         sx={{
           width: isTablet ? "90%" : isMobile ? "95%" : `${ancho}`,
           height: isSmallLaptop || isTablet || isMobile ? "90%" : `${alto}`,
-          p: isMobile ? 3 : "40px",
+          p: isMobile ? 2 : 3,
           bgcolor: "white",
           boxShadow: 24,
           borderRadius: 2,
           display: "flex",
           flexDirection: "column",
-          gap: 2,
+          gap: 1,
           overflowY: "auto",
         }}
       >
         <Box
           sx={{
             backgroundColor: "#008001",
-            p: 2,
+            p: 1,
             color: "#fff",
             borderRadius: 1,
           }}
@@ -98,7 +98,7 @@ const ContenedorModal: React.FC<ContenedorModalProps> = ({ ancho, alto, abrir, c
                 tabs.map((tab, index) => (
                   <Tab key={index} label={tab} />
                 )
-              ))}
+                ))}
             </Tabs>
           )}
         </Box>
@@ -106,7 +106,7 @@ const ContenedorModal: React.FC<ContenedorModalProps> = ({ ancho, alto, abrir, c
           component="form"
           noValidate
           autoComplete="off"
-          sx={{ padding: isTablet || isMobile ? "0px" : "0px 58px" }}
+          sx={{ padding: isTablet || isMobile ? "0px" : "0px 20px" }}
         >
           {children}
         </Box>

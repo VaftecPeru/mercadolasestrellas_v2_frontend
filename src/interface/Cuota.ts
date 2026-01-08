@@ -10,7 +10,7 @@ export interface Cuotas {
 }
 
 interface PuestoCuotas {
-  id_puesto: string;  
+  id_puesto: string;
   numero: string;
 }
 
@@ -42,4 +42,5 @@ export interface ColumnServicios {
 export interface AgregarProps {
   open: boolean;
   handleClose: () => void;
+  cuota?: Cuotas | null;
 }

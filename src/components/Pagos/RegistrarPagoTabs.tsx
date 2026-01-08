@@ -1,13 +1,13 @@
 import React, { useState } from "react";
 import ContenedorModal from "../Shared/ContenedorModal";
-import { AgregarProps } from "../../interface/Cuota";
+import { AgregarProps } from "../../interface/Pagos/Pagos";
 import RegistrarPago from "./RegistrarPago";
 import Stepper from '@mui/material/Stepper';
 import Step from '@mui/material/Step';
 import StepButton from '@mui/material/StepButton';
 import RegistrarPagoBanco from "./RegistrarPagoBanco";
 
-const RegistrarPagoTabs: React.FC<AgregarProps> = ({ open, handleClose }) => {
+const RegistrarPagoTabs: React.FC<AgregarProps> = ({ open, handleClose, pago }) => {
   const [loading, setLoading] = useState(false);
   const [activeStep, setActiveStep] = React.useState(0);
 
@@ -22,7 +22,7 @@ const RegistrarPagoTabs: React.FC<AgregarProps> = ({ open, handleClose }) => {
 
   return (
     <ContenedorModal
-      ancho="800px"
+      ancho="650px"
       alto="auto"
       abrir={open}
       cerrar={handleCloseModal}
@@ -45,11 +45,11 @@ const RegistrarPagoTabs: React.FC<AgregarProps> = ({ open, handleClose }) => {
       <div>
         {activeStep == 0 ? (
           <React.Fragment>
-            <RegistrarPago open={true} handleClose={handleClose}></RegistrarPago>
+            <RegistrarPago open={true} handleClose={handleClose} pago={pago}></RegistrarPago>
           </React.Fragment>
         ) : (
           <React.Fragment>
-            <RegistrarPagoBanco open={true} handleClose={handleClose}></RegistrarPagoBanco>
+            <RegistrarPagoBanco open={true} handleClose={handleClose} pago={pago}></RegistrarPagoBanco>
           </React.Fragment>
         )}
       </div>

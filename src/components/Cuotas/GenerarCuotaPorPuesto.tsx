@@ -26,7 +26,7 @@ import { manejarError, mostrarAlerta } from "../Alerts/Registrar";
 import { AvisoFormulario, TxtFormulario } from "../Shared/ElementosFormulario";
 import apiClient from "../../Utils/apliClient";
 import { Api_Global_Cuotas } from "../../service/CuotaApi";
-import { ColumnServicios } from "../../interface/Cuota";
+import { ColumnServicios, Cuotas } from "../../interface/Cuota";
 import { Servicio } from "../../interface/Servicios";
 import ContenedorMini from "../Shared/ContenedorMini";
 import { Puesto } from "../../interface/Puestos";
@@ -38,14 +38,18 @@ const columns: readonly ColumnServicios[] = [
   { id: "accion", label: "", minWidth: 50, align: "center" },
 ];
 
-const GenerarCuotaPorPuesto: React.FC = () => {
+interface Props {
+  cuota?: Cuotas | null;
+}
+
+const GenerarCuotaPorPuesto: React.FC<Props> = ({ cuota }) => {
 
   // Variables para el diseño responsivo
   const { isLaptop, isTablet, isMobile } = useResponsive();
 
   // Para seleccionar servicios
   const [servicios, setServicios] = useState<Servicio[]>([]);
-  const [servicioSeleccionado, setServicioSeleccionado] = useState<{ value: unknown } | "">("");
+  const [servicioSeleccionado, setServicioSeleccionado] = useState<string>("");
   const [serviciosAgregados, setServiciosAgregados] = useState<Servicio[]>([]);
   const [serviciosIds, setServiciosIds] = useState<string[]>([]);
 
@@ -58,32 +62,47 @@ const GenerarCuotaPorPuesto: React.FC = () => {
   // Datos del formulario
   const [fechaEmision, setFechaEmision] = useState("");
   const [fechaVencimiento, setFechaVencimiento] = useState("");
+
+  // Efecto para cargar datos si se está editando
+  useEffect(() => {
+    if (cuota) {
+      setFechaEmision(cuota.fecha_emision);
+      setFechaVencimiento(cuota.fecha_vencimiento);
+      setServiciosAgregados(cuota.servicios);
+      setImporteTotal(parseFloat(cuota.importe));
+      // Nota: Aquí faltaría seleccionar el puesto si la cuota tuviera uno solo asignado
+    }
+  }, [cuota]);
   const [loading, setLoading] = useState(false);
   const [puestos, setPuestos] = useState<Puesto[]>([]);
-  const [puestoSeleccionado, setPuestoSeleccionado] = useState<{ value: unknown } | "">("");
+  const [puestoSeleccionado, setPuestoSeleccionado] = useState<string>("");
 
-  const [formData, setFormData] = useState({
-    fecha_emision: "",
-    fecha_vencimiento: "",
-    id_puesto: ""
-  });
 
   // Para calcular la fecha de vencimiento de la cuota (La cuota vence en 30 dias)
   const manejarFechaEmisionCambio = (event: React.ChangeEvent<HTMLInputElement>) => {
     const nuevaFechaEmision = event.target.value;
     setFechaEmision(nuevaFechaEmision);
 
+    if (!nuevaFechaEmision) {
+      setFechaVencimiento("");
+      return;
+    }
+
     const fecha = new Date(nuevaFechaEmision);
-    fecha.setDate(fecha.getDate() + 30);
-    const fechaVencimientoFormateada = fecha.toISOString().split('T')[0];
-    setFechaVencimiento(fechaVencimientoFormateada);
+    if (!isNaN(fecha.getTime())) {
+      fecha.setDate(fecha.getDate() + 30);
+      const fechaVencimientoFormateada = fecha.toISOString().split('T')[0];
+      setFechaVencimiento(fechaVencimientoFormateada);
+    } else {
+      setFechaVencimiento("");
+    }
   };
 
   // Obtener los servicios para el SelectList
   useEffect(() => {
     const fetchServicios = async () => {
       try {
-        const response = await apiClient.get(Api_Global_Cuotas.servicio.listar());  
+        const response = await apiClient.get(Api_Global_Cuotas.servicio.listar());
         setServicios(response.data.data);
       } catch (error) {
       }
@@ -95,7 +114,7 @@ const GenerarCuotaPorPuesto: React.FC = () => {
   useEffect(() => {
     const fetchPuestos = async () => {
       try {
-        const response = await apiClient.get(Api_Global_Cuotas.puesto.listar());  
+        const response = await apiClient.get(Api_Global_Cuotas.puesto.listar());
         setPuestos(response.data.data);
       } catch (error) {
       }
@@ -104,20 +123,16 @@ const GenerarCuotaPorPuesto: React.FC = () => {
   }, []);
 
   // Para manejar el cambio de seleccion y agregar puestos a la tabla
-  const handlePuestoChange = (event: SelectChangeEvent<{ value: unknown } | "">) => {
-    const puestoId = event.target.value as any;
+  const handlePuestoChange = (event: SelectChangeEvent<string>) => {
+    const puestoId = event.target.value as string;
     setPuestoSeleccionado(puestoId);
 
-    setFormData({
-      ...formData,
-      id_puesto: puestoId,
-    });
   };
 
   // Para manejar el cambio de seleccion y agregar servicios a la tabla
-  const handleServicioChange = (event: SelectChangeEvent<{ value: unknown } | "">) => {
+  const handleServicioChange = (event: SelectChangeEvent<string>) => {
     const servicioId = event.target.value as string;
-    setServicioSeleccionado({ value: servicioId });
+    setServicioSeleccionado(servicioId);
     const servicio = servicios.find((s) => s.id_servicio === servicioId);
     if (servicio) {
       if (!serviciosAgregados.some((s) => s.id_servicio === servicio.id_servicio)) {
@@ -140,11 +155,6 @@ const GenerarCuotaPorPuesto: React.FC = () => {
   }, [serviciosAgregados]);
 
   const limpiarCuota = () => {
-    setFormData({
-      fecha_emision: "",
-      fecha_vencimiento: "",
-      id_puesto: ""
-    });
     setFechaEmision("");
     setFechaVencimiento("");
     setPuestoSeleccionado("");
@@ -157,14 +167,24 @@ const GenerarCuotaPorPuesto: React.FC = () => {
     e.preventDefault();
     setLoading(true);
     const dataToSend = {
-      ...formData,
+      fecha_emision: fechaEmision,
+      fecha_vencimiento: fechaVencimiento,
+      id_puesto: puestoSeleccionado,
       servicios: serviciosIds,
     };
     try {
-      const response = await apiClient.post(Api_Global_Cuotas.cuotas.registrarPorPuesto(), dataToSend);
+      let response;
+      if (cuota) {
+        // Modo edición
+        response = await apiClient.put(Api_Global_Cuotas.cuotas.editar(cuota.id_cuota), dataToSend);
+      } else {
+        // Modo registro
+        response = await apiClient.post(Api_Global_Cuotas.cuotas.registrarPorPuesto(), dataToSend);
+      }
+
       if (response.status === 200) {
-        const mensaje = response.data.message || "La cuota fue registrada con éxito";
-        mostrarAlerta("Registro exitoso", mensaje, "success").then(() => {
+        const mensaje = response.data.message || (cuota ? "La cuota fue actualizada con éxito" : "La cuota fue registrada con éxito");
+        mostrarAlerta(cuota ? "Actualización exitosa" : "Registro exitoso", mensaje, "success").then(() => {
           handleCloseModal();
         });
       } else {
@@ -187,14 +207,13 @@ const GenerarCuotaPorPuesto: React.FC = () => {
         return (
           <>
             <AvisoFormulario />
-            {/* <pre>{JSON.stringify(formData, null, 2)}</pre> */}
-            <Grid container spacing={2}>
+            <Grid container spacing={1}>
               <Grid item xs={12} sm={6}>
                 <TxtFormulario
                   type="date"
                   label="Fecha de emisión"
                   name="fecha_registro"
-                  value={formData.fecha_emision =  fechaEmision}
+                  value={fechaEmision}
                   onChange={manejarFechaEmisionCambio}
                   noMargin={true}
                   icono={<CalendarIcon sx={{ mr: 1, color: "gray" }} />}
@@ -205,13 +224,13 @@ const GenerarCuotaPorPuesto: React.FC = () => {
                   type="date"
                   label="Fecha de vencimiento"
                   name="fecha_vencimiento"
-                  value={formData.fecha_vencimiento = fechaVencimiento}
+                  value={fechaVencimiento}
                   onChange={(e) => setFechaVencimiento(e.target.value)}
                   noMargin={true}
                   icono={<CalendarIcon sx={{ mr: 1, color: "gray" }} />}
                 />
               </Grid>
-              <Grid item xs={12} sm={12}>
+              <Grid item xs={12} sm={6}>
                 <FormControl fullWidth required>
                   <InputLabel id="servicio-label">
                     Seleccionar Servicio
@@ -226,7 +245,7 @@ const GenerarCuotaPorPuesto: React.FC = () => {
                       PaperProps: {
                         style: {
                           maxHeight: 200,
-                          overflowY: "auto", 
+                          overflowY: "auto",
                         },
                       },
                     }}
@@ -242,7 +261,7 @@ const GenerarCuotaPorPuesto: React.FC = () => {
                   </Select>
                 </FormControl>
               </Grid>
-              <Grid item xs={12} sm={12}>
+              <Grid item xs={12} sm={6}>
                 <FormControl fullWidth required>
                   <InputLabel id="seleccionar-puesto-label">
                     Seleccionar Puesto
@@ -268,14 +287,14 @@ const GenerarCuotaPorPuesto: React.FC = () => {
               <Grid item xs={12} sm={12}>
                 <Paper
                   sx={{
-                    width: isLaptop || isTablet || isMobile ? "100%" : "524px",
+                    width: "100%",
                     overflow: "hidden",
                     boxShadow: "none",
                   }}
                 >
                   <TableContainer
                     sx={{
-                      height: "220px",
+                      height: "100px",
                       mb: "5px",
                       borderRadius: "10px",
                       border: "1px solid #202123",
@@ -298,7 +317,7 @@ const GenerarCuotaPorPuesto: React.FC = () => {
                       </TableHead>
                       <TableBody>
                         {serviciosAgregados.map((servicio) => (
-                          <TableRow hover role="checkbox" tabIndex={-1}>
+                          <TableRow key={servicio.id_servicio} hover role="checkbox" tabIndex={-1}>
                             {columns.map((column) => {
                               const value =
                                 column.id === "accion"
@@ -344,7 +363,7 @@ const GenerarCuotaPorPuesto: React.FC = () => {
                 </Paper>
               </Grid>
               {/* Importe */}
-              <Grid item xs={12} sm={6} sx={{ m: "0 auto 0 auto"  }}>
+              <Grid item xs={12} sm={6} sx={{ m: "0 auto 0 auto" }}>
                 <TextField
                   fullWidth
                   required
@@ -369,23 +388,23 @@ const GenerarCuotaPorPuesto: React.FC = () => {
   return (
     <ContenedorMini>
       {renderTabContent()}
-      <div style={{ textAlign:"center", marginTop: "15px" }}>
-      <Button
-        variant="contained"
-        sx={{
-          width: "140px",
-          height: "45px",
-          mr: 1,
-          backgroundColor: "#008001",
-          color: "#fff",
-          "&:hover": {
-            backgroundColor: "#388E3C",
-          },
-        }}
-        onClick={registrarCuota}
-      >
-        Registrar
-      </Button>
+      <div style={{ textAlign: "center", marginTop: "15px" }}>
+        <Button
+          variant="contained"
+          sx={{
+            width: "140px",
+            height: "45px",
+            mr: 1,
+            backgroundColor: "#008001",
+            color: "#fff",
+            "&:hover": {
+              backgroundColor: "#388E3C",
+            },
+          }}
+          onClick={registrarCuota}
+        >
+          {cuota ? "Actualizar" : "Registrar"}
+        </Button>
       </div>
     </ContenedorMini>
   );

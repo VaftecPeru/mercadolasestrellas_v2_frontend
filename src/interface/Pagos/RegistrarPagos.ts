@@ -1,6 +1,7 @@
 export interface AgregarProps {
   open: boolean;
   handleClose: () => void;
+  pago?: any | null;
 }
 
 export interface Socio {

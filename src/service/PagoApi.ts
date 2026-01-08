@@ -4,6 +4,8 @@ export const Api_Global_Pagos = {
     exportar: () => `/pagos/exportar`,
     registrar: () => `/pagos`,
     registrarPorBanco: () => `/pagos/por-bancos`,
+    editar: (id_pago: string | number | undefined) => `/pagos/${id_pago}`,
+    eliminar: (id_pago: string | number | undefined) => `/pagos/${id_pago}`,
 
   },
   socios: {

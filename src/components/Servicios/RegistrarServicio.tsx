@@ -44,7 +44,7 @@ const RegistrarServicio: React.FC<AgregarProps> = ({
   servicio,
 }) => {
   const { isMobile } = useResponsive();
-  const [loading, setLoading] = useState(false); 
+  const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
   const [costoMetroCuadrado, setCostoMetroCuadrado] = useState(0);
   const [totalPuestos, setTotalPuestos] = useState(0);
@@ -150,7 +150,7 @@ const RegistrarServicio: React.FC<AgregarProps> = ({
       if (!formDataPMC.costo_unitario) {
         setCostoMetroCuadrado(0);
         return;
-      } 
+      }
       const costoTotal = parseFloat(formDataPMC.costo_unitario);
       const costoMetroCuadrado = costoTotal / areaTotal;
       setCostoMetroCuadrado(costoMetroCuadrado);
@@ -241,7 +241,7 @@ const RegistrarServicio: React.FC<AgregarProps> = ({
       importe: "",
     });
     setEditarMIA(true);
-  } 
+  }
 
   // Registrar servicio
   const registrarServicio = async (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -252,7 +252,7 @@ const RegistrarServicio: React.FC<AgregarProps> = ({
     try {
       const response = await apiClient.post(API_ROUTES.servicios.registrar(), dataToSend);
       if (response.status === 200) {
-        const mensaje =response.data.messsage || "El servicio se registró correctamente";
+        const mensaje = response.data.messsage || "El servicio se registró correctamente";
         mostrarAlerta("Registro exitoso", mensaje, "success").then(() => {
           handleCloseModal();
         });
@@ -271,10 +271,10 @@ const RegistrarServicio: React.FC<AgregarProps> = ({
     e.preventDefault();
     setLoading(true);
     const { ...dataToSend } = formData;
-  
+
     try {
 
-      const response = await apiClient.put(API_ROUTES.servicios.editar(servicio?.id_servicio),dataToSend);
+      const response = await apiClient.put(API_ROUTES.servicios.editar(servicio?.id_servicio), dataToSend);
       if (response.status === 200) {
         mostrarAlerta(response.data.message);
         handleCloseModal();
@@ -318,10 +318,10 @@ const RegistrarServicio: React.FC<AgregarProps> = ({
     e.preventDefault();
     setLoading(true);
     const { ...dataToSend } = formDataPMC;
-  
+
     try {
 
-      const response = await apiClient.put(API_ROUTES.servicios.editar(servicio?.id_servicio),dataToSend);
+      const response = await apiClient.put(API_ROUTES.servicios.editar(servicio?.id_servicio), dataToSend);
       if (response.status === 200) {
         const mensaje = `Los datos del servicio: "${dataToSend.nombre}" fueron actualizados con éxito`;
         mostrarAlerta("Actualización exitosa", mensaje, "success");
@@ -340,7 +340,7 @@ const RegistrarServicio: React.FC<AgregarProps> = ({
   const registrarServicioMIA = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     setLoading(true);
-    
+
     const { ...dataToSend } = formDataMIA;
 
     try {
@@ -378,7 +378,7 @@ const RegistrarServicio: React.FC<AgregarProps> = ({
 
             {/* <pre>{JSON.stringify(formData, null, 2)}</pre> */}
 
-            <Grid container spacing={2}>
+            <Grid container spacing={1}>
               <Grid item xs={12} sm={6}>
                 <SeparadorBloque nombre="Detalles del servicio" />
 
@@ -392,7 +392,7 @@ const RegistrarServicio: React.FC<AgregarProps> = ({
                 />
 
                 {/* Seleccionar tipo de servicio */}
-                <FormControl fullWidth required sx={{ mb: 2 }}>
+                <FormControl fullWidth required sx={{ mb: 1 }}>
                   <InputLabel id="tipo-servicio-label">
                     Tipo de servicio
                   </InputLabel>
@@ -448,7 +448,7 @@ const RegistrarServicio: React.FC<AgregarProps> = ({
                 color: "#333",
                 textAlign: "center",
                 fontSize: "12px",
-                p: isMobile ? "0px" : "0px 58px",
+                p: isMobile ? "0px" : "0px 20px",
               }}
             >
               El monto total ingresado en este servicio sera repartido entre el
@@ -457,7 +457,7 @@ const RegistrarServicio: React.FC<AgregarProps> = ({
 
             {/* <pre>{JSON.stringify(formDataPMC, null, 2)}</pre> */}
 
-            <Grid container spacing={2}>
+            <Grid container spacing={1}>
               <Grid item xs={12} sm={6}>
                 {/* Separador */}
                 <SeparadorBloque nombre="Detalles del servicio" />
@@ -502,7 +502,7 @@ const RegistrarServicio: React.FC<AgregarProps> = ({
 
                 <SeparadorBloque nombre="Información de los puestos" />
 
-                <Grid container direction="row" spacing={2}>
+                <Grid container direction="row" spacing={1}>
                   <Grid item xs={12} sm={6}>
 
                     {/* Nro. Puestos activos */}
@@ -549,9 +549,9 @@ const RegistrarServicio: React.FC<AgregarProps> = ({
           <>
             <AvisoFormulario />
             {/* <pre>{JSON.stringify(formDataMIA, null, 2)}</pre> */}
-            <Grid container spacing={2}>
+            <Grid container spacing={1}>
               <Grid item xs={12} sm={6}>
-                <SeparadorBloque nombre="Seleccionar socio"/>
+                <SeparadorBloque nombre="Seleccionar socio" />
                 <FormControl sx={{ width: "100%" }}>
                   <Autocomplete
                     options={socios}
@@ -594,7 +594,7 @@ const RegistrarServicio: React.FC<AgregarProps> = ({
                 </FormControl>
               </Grid>
               <Grid item xs={12} sm={6}>
-                <SeparadorBloque nombre="Seleccionar puesto"/>
+                <SeparadorBloque nombre="Seleccionar puesto" />
                 <FormControl sx={{ width: "100%" }}>
                   <InputLabel id="seleccionar-puesto-label">
                     Seleccionar Puesto
@@ -658,8 +658,8 @@ const RegistrarServicio: React.FC<AgregarProps> = ({
 
   return (
     <ContenedorModal
-      ancho="720px"
-      alto="720px"
+      ancho="600px"
+      alto="auto"
       abrir={open}
       cerrar={handleCloseModal}
       loading={loading}

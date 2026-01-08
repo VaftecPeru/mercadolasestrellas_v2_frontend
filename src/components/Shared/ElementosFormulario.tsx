@@ -19,7 +19,7 @@ export const AvisoFormulario = () => {
   return (
     <Typography
       sx={{
-        mb: 3,
+        mb: 1,
         color: "#333",
         textAlign: "center",
         fontSize: "0.8rem",

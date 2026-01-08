@@ -24,7 +24,10 @@ import {
   WhatsApp,
   ExpandLess,
   ExpandMore,
+  SaveAs,
+  DeleteForever,
 } from "@mui/icons-material";
+import * as XLSX from 'xlsx';
 // import GenerarCuota from "./GenerarCuota";
 import GenerarCuotaTabs from "./GenerarCuotaTabs";
 import useResponsive from "../../hooks/Responsive/useResponsive";
@@ -39,6 +42,7 @@ import { Api_Global_Cuotas } from "../../service/CuotaApi";
 import { handleExport } from "../../Utils/exportUtils";
 import apiClient from "../../Utils/apliClient";
 import { Cuotas, IMeses } from "../../interface/Cuota";
+import { manejarError, mostrarAlerta, mostrarAlertaConfirmacion } from "../Alerts/Registrar";
 
 const optMeses = [
   { value: "", label: "Mes" },
@@ -79,25 +83,30 @@ const TablaCuota: React.FC = () => {
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
   const [mostrarDetalles, setMostrarDetalles] = useState<string | null>(null);
   const [iMeses, setIMeses] = useState<IMeses[]>([]);
-  const [totalPages, setTotalPages] = useState(1); 
-  const [paginaActual, setPaginaActual] = useState(1); 
+  const [totalPages, setTotalPages] = useState(1);
+  const [paginaActual, setPaginaActual] = useState(1);
   const [exportFormat, setExportFormat] = useState<string>("");
   const [anio, setAnio] = useState<string>("");
   const [mes, setMes] = useState<string>("");
   const [open, setOpen] = useState(false);
   const [cuotas, setCuotas] = useState<Cuotas[]>([]);
+  const [cuotaSeleccionada, setCuotaSeleccionada] = useState<Cuotas | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleOpen = () => setOpen(true);
+  const handleOpen = (cuota?: Cuotas) => {
+    setCuotaSeleccionada(cuota || null);
+    setOpen(true);
+  };
   const handleClose = () => {
     setOpen(false);
+    setCuotaSeleccionada(null);
     listarCuotas();
-  } 
+  }
 
   const handleExportCuotas = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
-    const exportUrl = Api_Global_Cuotas.cuotas.exportar(); 
-    const fileNamePrefix = "lista-cuotas"; 
+    const exportUrl = Api_Global_Cuotas.cuotas.exportar();
+    const fileNamePrefix = "lista-cuotas";
     await handleExport(exportUrl, exportFormat, fileNamePrefix, setExportFormat);
   };
 
@@ -118,8 +127,8 @@ const TablaCuota: React.FC = () => {
         servicios: item.servicios,
       }));
       setCuotas(data);
-      setTotalPages(response.data.meta.last_page); 
-      setPaginaActual(response.data.meta.current_page); 
+      setTotalPages(response.data.meta.last_page);
+      setPaginaActual(response.data.meta.current_page);
     } catch (error) {
     } finally {
       setIsLoading(false);
@@ -129,6 +138,60 @@ const TablaCuota: React.FC = () => {
   const CambioDePagina = (event: React.ChangeEvent<unknown>, value: number) => {
     setPaginaActual(value);
     listarCuotas(value)
+  };
+
+  const eliminarCuota = async (id_cuota: string) => {
+    try {
+      const response = await apiClient.delete(Api_Global_Cuotas.cuotas.eliminar(id_cuota));
+      if (response.status === 200) {
+        mostrarAlerta("Éxito", "La cuota ha sido eliminada correctamente", "success");
+        listarCuotas(paginaActual);
+      }
+    } catch (error) {
+      manejarError(error);
+    }
+  };
+
+  const handleAccionesCuota = async (accion: number, cuota: Cuotas) => {
+    const puestos = cuota.puestos_asignados
+      ? cuota.puestos_asignados.map(p => p.numero).join(", ")
+      : "Todos los puestos";
+
+    const servicios = cuota.servicios.map(s => `${s.nombre} (S/ ${s.costo_unitario})`).join("\n");
+
+    const data = [
+      ["ID CUOTA", cuota.id_cuota],
+      ["Fec. Emisión", cuota.fecha_emision],
+      ["Fec. Vencimiento", cuota.fecha_vencimiento],
+      ["Importe Total", cuota.importe],
+      ["Puestos", puestos],
+      ["Servicios", servicios],
+    ];
+
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Cuota Detalle");
+
+    ws['!cols'] = [{ wch: 20 }, { wch: 30 }];
+
+    const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+
+    if (accion === 1) {
+      // Descargar
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `Cuota-${cuota.id_cuota}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      // WhatsApp
+      const mensaje = `Detalle de la Cuota #${cuota.id_cuota}:\nEmisión: ${cuota.fecha_emision}\nVencimiento: ${cuota.fecha_vencimiento}\nImporte: S/ ${cuota.importe}\nServicios:\n${servicios}\n\nPuedes descargar el detalle aquí: ${url}`;
+      const urlWhatsApp = `https://api.whatsapp.com/send?text=${encodeURIComponent(mensaje)}`;
+      window.open(urlWhatsApp, '_blank');
+    }
   };
 
   useEffect(() => {
@@ -143,7 +206,7 @@ const TablaCuota: React.FC = () => {
     <Contenedor>
       <ContenedorBotones>
         <BotonAgregar
-          handleAction={handleOpen}
+          handleAction={() => handleOpen()}
           texto="Generar Cuota"
         />
         {/* <GenerarCuota
@@ -153,6 +216,7 @@ const TablaCuota: React.FC = () => {
         <GenerarCuotaTabs
           open={open}
           handleClose={handleClose}
+          cuota={cuotaSeleccionada}
         />
         <BotonExportar
           exportFormat={exportFormat}
@@ -281,7 +345,7 @@ const TablaCuota: React.FC = () => {
 
       )}
       {isLoading ? (
-        <LoadingSpinner /> 
+        <LoadingSpinner />
       ) : (
         <>
           <Paper sx={{ width: "100%", overflow: "hidden", boxShadow: "none" }}>
@@ -292,18 +356,20 @@ const TablaCuota: React.FC = () => {
                 <TableHead>
                   <TableRow>
                     {isTablet || isMobile
-                      ? <Typography
-                        sx={{
-                          mt: 2,
-                          mb: 1,
-                          fontSize: "1.5rem",
-                          fontWeight: "bold",
-                          textTransform: "uppercase",
-                          textAlign: "center",
-                        }}
-                      >
-                        Listado de Cuotas
-                      </Typography>
+                      ? <TableCell colSpan={columns.length}>
+                        <Typography
+                          sx={{
+                            mt: 2,
+                            mb: 1,
+                            fontSize: "1.5rem",
+                            fontWeight: "bold",
+                            textTransform: "uppercase",
+                            textAlign: "center",
+                          }}
+                        >
+                          Listado de Cuotas
+                        </Typography>
+                      </TableCell>
                       : columns.map((column) => (
                         <TableCell
                           key={column.id}
@@ -320,7 +386,7 @@ const TablaCuota: React.FC = () => {
                 </TableHead>
                 <TableBody>
                   {cuotas.map((cuota) => (
-                    <TableRow hover role="checkbox" tabIndex={-1}>
+                    <TableRow key={cuota.id_cuota} hover role="checkbox" tabIndex={-1}>
                       {isTablet || isMobile
                         ? <TableCell padding="checkbox" colSpan={columns.length}>
                           <Box sx={{ display: "flex", flexDirection: "column" }}>
@@ -353,31 +419,43 @@ const TablaCuota: React.FC = () => {
                                 {columns.map((column) => {
                                   const value = column.id === "accion" ? "" : (cuota as any)[column.id];
                                   return (
-                                    <Box>
+                                    <Box key={column.id}>
                                       {/* Mostrar titulo del campo */}
                                       <Typography sx={{ fontWeight: "bold", mb: 1 }}>
                                         {column.label}
                                       </Typography>
                                       {/* Mostrar los detalles de la cuota */}
-                                      <Typography>
+                                      <Box>
                                         {column.id === "accion" ? (
                                           <Box
                                             sx={{
                                               width: "100%",
                                               display: "flex",
                                               flexDirection: "column",
-                                              justifyContent: "center"
+                                              justifyContent: "center",
+                                              gap: 1
                                             }}
                                           >
                                             <Button
                                               variant="contained"
                                               sx={{
-                                                mt: 1,
-                                                mb: 1,
+                                                padding: "0.5rem 1.5rem",
+                                                backgroundColor: "#0478E3",
+                                                color: "white"
+                                              }}
+                                              onClick={() => handleOpen(cuota)}
+                                            >
+                                              <SaveAs sx={{ mr: 1 }} />
+                                              Editar
+                                            </Button>
+                                            <Button
+                                              variant="contained"
+                                              sx={{
                                                 padding: "0.5rem 1.5rem",
                                                 backgroundColor: "black",
                                                 color: "white"
                                               }}
+                                              onClick={() => handleAccionesCuota(1, cuota)}
                                             >
                                               <Download sx={{ mr: 1 }} />
                                               Descargar
@@ -389,15 +467,47 @@ const TablaCuota: React.FC = () => {
                                                 backgroundColor: "green",
                                                 color: "white"
                                               }}
+                                              onClick={() => handleAccionesCuota(2, cuota)}
                                             >
                                               <WhatsApp sx={{ mr: 1 }} />
                                               Enviar
                                             </Button>
+                                            <Button
+                                              variant="contained"
+                                              sx={{
+                                                padding: "0.5rem 1.5rem",
+                                                backgroundColor: "crimson",
+                                                color: "white"
+                                              }}
+                                              onClick={() => mostrarAlertaConfirmacion(
+                                                "Eliminar cuota",
+                                                "¿Estás seguro de eliminar esta cuota?",
+                                                "Eliminar",
+                                                "Cancelar"
+                                              ).then((result) => {
+                                                if (result.isConfirmed) {
+                                                  eliminarCuota(cuota.id_cuota);
+                                                }
+                                              })}
+                                            >
+                                              <DeleteForever sx={{ mr: 1 }} />
+                                              Eliminar
+                                            </Button>
                                           </Box>
+                                        ) : column.id === "servicios" ? (
+                                          cuota.servicios.map((servicio, index) => (
+                                            <Typography key={servicio.id_servicio || index}>{`${servicio.nombre} - S/ ${servicio.costo_unitario}`}</Typography>
+                                          ))
+                                        ) : column.id === "puestos_asignados" ? (
+                                          cuota.puestos_asignados ? cuota.puestos_asignados.map((puesto, index) => (
+                                            <Typography key={puesto.id_puesto || index}>{puesto.numero}</Typography>
+                                          )) : <Typography>Todos los puestos</Typography>
+                                        ) : column.id === "importe" ? (
+                                          <Typography>{parseFloat(cuota.importe).toFixed(2)}</Typography>
                                         ) : (
-                                          value
+                                          <Typography>{value}</Typography>
                                         )}
-                                      </Typography>
+                                      </Box>
                                     </Box>
                                   )
                                 })}
@@ -416,37 +526,62 @@ const TablaCuota: React.FC = () => {
                               }
                             >
                               {column.id === "servicios" ? (
-                                cuota.servicios.map((servicio) => (
-                                  <Typography>{ `${servicio.nombre } - S/ ${servicio.costo_unitario}` }</Typography>
+                                cuota.servicios.map((servicio, index) => (
+                                  <Typography key={servicio.id_servicio || index}>{`${servicio.nombre} - S/ ${servicio.costo_unitario}`}</Typography>
                                 ))
                               ) : column.id === "puestos_asignados" ? (
-                                cuota.puestos_asignados ? cuota.puestos_asignados.map((puesto) => (
-                                  <Typography>{ puesto.numero }</Typography>
+                                cuota.puestos_asignados ? cuota.puestos_asignados.map((puesto, index) => (
+                                  <Typography key={puesto.id_puesto || index}>{puesto.numero}</Typography>
                                 )) : <Typography>Todos los puestos</Typography>
                               ) : column.id === "importe" ?
                                 parseFloat(cuota.importe).toFixed(2)
-                              : column.id === "accion" ? (
-                                <Box
-                                  sx={{
-                                    display: "flex",
-                                    justifyContent: "center",
-                                  }}
-                                >
-                                  {/* Alinea los íconos a la derecha */}
-                                  <IconButton
-                                    aria-label="copy"
-                                    sx={{ color: "black" }}
+                                : column.id === "accion" ? (
+                                  <Box
+                                    sx={{
+                                      display: "flex",
+                                      justifyContent: "center",
+                                    }}
                                   >
-                                    <Download />
-                                  </IconButton>
-                                  <IconButton
-                                    aria-label="whatsapp"
-                                    sx={{ color: "green" }}
-                                  >
-                                    <WhatsApp />
-                                  </IconButton>
-                                </Box>
-                              ) : value}
+                                    {/* Alinea los íconos a la derecha */}
+                                    <IconButton
+                                      aria-label="edit"
+                                      sx={{ color: "#0478E3" }}
+                                      onClick={() => handleOpen(cuota)}
+                                    >
+                                      <SaveAs />
+                                    </IconButton>
+                                    <IconButton
+                                      aria-label="copy"
+                                      sx={{ color: "black" }}
+                                      onClick={() => handleAccionesCuota(1, cuota)}
+                                    >
+                                      <Download />
+                                    </IconButton>
+                                    <IconButton
+                                      aria-label="whatsapp"
+                                      sx={{ color: "green" }}
+                                      onClick={() => handleAccionesCuota(2, cuota)}
+                                    >
+                                      <WhatsApp />
+                                    </IconButton>
+                                    <IconButton
+                                      aria-label="delete"
+                                      sx={{ color: "red" }}
+                                      onClick={() => mostrarAlertaConfirmacion(
+                                        "Eliminar cuota",
+                                        "¿Estás seguro de eliminar esta cuota?",
+                                        "Eliminar",
+                                        "Cancelar"
+                                      ).then((result) => {
+                                        if (result.isConfirmed) {
+                                          eliminarCuota(cuota.id_cuota);
+                                        }
+                                      })}
+                                    >
+                                      <DeleteForever />
+                                    </IconButton>
+                                  </Box>
+                                ) : value}
                             </TableCell>
                           );
                         })}
