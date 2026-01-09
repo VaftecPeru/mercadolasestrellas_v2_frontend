@@ -28,7 +28,6 @@ import apiClient from "../../Utils/apliClient";
 import { Api_Global_Cuotas } from "../../service/CuotaApi";
 import { ColumnServicios } from "../../interface/Cuota";
 import { Servicio } from "../../interface/Servicios";
-import ContenedorMini from "../Shared/ContenedorMini";
 
 const columns: readonly ColumnServicios[] = [
   { id: "nombre", label: "Servicio", minWidth: 50, align: "center" },
@@ -43,7 +42,7 @@ const GenerarCuota: React.FC = () => {
 
   // Para seleccionar servicios
   const [servicios, setServicios] = useState<Servicio[]>([]);
-  const [servicioSeleccionado, setServicioSeleccionado] = useState<{ value: unknown } | "">("");
+  const [servicioSeleccionado, setServicioSeleccionado] = useState<string>("");
   const [serviciosAgregados, setServiciosAgregados] = useState<Servicio[]>([]);
   const [serviciosIds, setServiciosIds] = useState<string[]>([]);
 
@@ -68,7 +67,13 @@ const GenerarCuota: React.FC = () => {
     const nuevaFechaEmision = event.target.value;
     setFechaEmision(nuevaFechaEmision);
 
+    if (!nuevaFechaEmision) {
+      setFechaEmision("");
+      setFechaVencimiento("");
+      return;
+    }
     const fecha = new Date(nuevaFechaEmision);
+    if (isNaN(fecha.getTime())) return;
     fecha.setDate(fecha.getDate() + 30);
     const fechaVencimientoFormateada = fecha.toISOString().split('T')[0];
     setFechaVencimiento(fechaVencimientoFormateada);
@@ -78,7 +83,7 @@ const GenerarCuota: React.FC = () => {
   useEffect(() => {
     const fetchServicios = async () => {
       try {
-        const response = await apiClient.get(Api_Global_Cuotas.servicio.listar());  
+        const response = await apiClient.get(Api_Global_Cuotas.servicio.listar());
         setServicios(response.data.data);
       } catch (error) {
       }
@@ -87,10 +92,10 @@ const GenerarCuota: React.FC = () => {
   }, []);
 
   // Para manejar el cambio de seleccion y agregar servicios a la tabla
-  const handleServicioChange = (event: SelectChangeEvent<{ value: unknown } | "">) => {
-    const servicioId = event.target.value as string;
-    setServicioSeleccionado({ value: servicioId });
-    const servicio = servicios.find((s) => s.id_servicio === servicioId);
+  const handleServicioChange = (event: SelectChangeEvent<string>) => {
+    const servicioId = event.target.value;
+    setServicioSeleccionado(servicioId);
+    const servicio = servicios.find((s) => String(s.id_servicio) === String(servicioId));
     if (servicio) {
       if (!serviciosAgregados.some((s) => s.id_servicio === servicio.id_servicio)) {
         setServiciosAgregados([...serviciosAgregados, servicio]);
@@ -99,56 +104,55 @@ const GenerarCuota: React.FC = () => {
     }
   };
 
-  // Para eliminar un servicio de la lista
+  // Para eliminar un servicio de la tabla
   const handleServicioDelete = (id: string) => {
-    setServiciosAgregados(serviciosAgregados.filter((s) => s.id_servicio !== id));
-    setServiciosIds((prevIds) => prevIds.filter((servicioId) => servicioId !== id));
+    const updatedServicios = serviciosAgregados.filter((s) => s.id_servicio !== id);
+    setServiciosAgregados(updatedServicios);
+    const updatedServiciosIds = serviciosIds.filter((servicioId) => servicioId !== id);
+    setServiciosIds(updatedServiciosIds);
   };
 
-  // Para calcular el importe total
+  // Para calcular el importe total cuando cambien los servicios agregados
   useEffect(() => {
-    const total = serviciosAgregados.reduce((sum, servicio) => sum + parseFloat(servicio.costo_unitario), 0);
+    const total = serviciosAgregados.reduce((sum, servicio) => {
+      const cost = parseFloat(servicio.costo_unitario);
+      return sum + (isNaN(cost) ? 0 : cost);
+    }, 0);
     setImporteTotal(total);
   }, [serviciosAgregados]);
 
-  const limpiarCuota = () => {
-    setFormData({
-      fecha_emision: "",
-      fecha_vencimiento: ""
-    });
-    setFechaEmision("");
-    setFechaVencimiento("");
-    setServiciosAgregados([]);
-    setServiciosIds([]);
-  }
-
-  // Generar cuota
-  const registrarCuota = async (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.preventDefault();
+  // Handle submit (Registrar cuota)
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (fechaEmision === "" || fechaVencimiento === "" || serviciosAgregados.length === 0) {
+      mostrarAlerta("Error", "Debe completar todos los campos", "error");
+      return;
+    }
     setLoading(true);
-    const dataToSend = {
-      ...formData,
-      servicios: serviciosIds,
-    };
+
     try {
-      const response = await apiClient.post(Api_Global_Cuotas.cuotas.registrar(), dataToSend);
-      if (response.status === 200) {
-        const mensaje = response.data.message || "La cuota fue registrada con éxito";
-        mostrarAlerta("Registro exitoso", mensaje, "success").then(() => {
-          handleCloseModal();
-        });
+      const response = await apiClient.post(Api_Global_Cuotas.cuotas.registrar(), {
+        fecha_emision: fechaEmision,
+        fecha_vencimiento: fechaVencimiento,
+        servicios: serviciosIds,
+      });
+
+      if (response.status === 201) {
+        mostrarAlerta("Éxito", "La cuota ha sido registrada correctamente", "success");
+        setFechaEmision("");
+        setFechaVencimiento("");
+        setServiciosAgregados([]);
+        setServiciosIds([]);
+        setServicioSeleccionado("");
+        setImporteTotal(0);
       } else {
-        mostrarAlerta("Error");
+        mostrarAlerta("Error", "No se pudo registrar la cuota", "error");
       }
     } catch (error) {
       manejarError(error);
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleCloseModal = () => {
-    limpiarCuota();
   };
 
   const renderTabContent = () => {
@@ -158,13 +162,14 @@ const GenerarCuota: React.FC = () => {
           <>
             <AvisoFormulario />
             {/* <pre>{JSON.stringify(formData, null, 2)}</pre> */}
-            <Grid container spacing={2}>
+            <Grid container spacing={1}>
               <Grid item xs={12} sm={6}>
+                {/* Seleccionar fecha de emision y fecha de vencimiento */}
                 <TxtFormulario
                   type="date"
                   label="Fecha de emisión"
-                  name="fecha_registro"
-                  value={formData.fecha_emision =  fechaEmision}
+                  name="fecha_emision"
+                  value={fechaEmision}
                   onChange={manejarFechaEmisionCambio}
                   noMargin={true}
                   icono={<CalendarIcon sx={{ mr: 1, color: "gray" }} />}
@@ -175,134 +180,101 @@ const GenerarCuota: React.FC = () => {
                   type="date"
                   label="Fecha de vencimiento"
                   name="fecha_vencimiento"
-                  value={formData.fecha_vencimiento = fechaVencimiento}
+                  value={fechaVencimiento}
                   onChange={(e) => setFechaVencimiento(e.target.value)}
                   noMargin={true}
                   icono={<CalendarIcon sx={{ mr: 1, color: "gray" }} />}
                 />
               </Grid>
-              <Grid item xs={12} sm={12}>
+
+              {/* Botón para abrir el selector de servicios */}
+              <Grid item xs={12}>
                 <FormControl fullWidth required>
-                  <InputLabel id="servicio-label">
-                    Seleccionar Servicio
-                  </InputLabel>
+                  <InputLabel id="servicio-label">Seleccionar Servicio *</InputLabel>
                   <Select
                     labelId="servicio-label"
-                    label="Seleccionar servicio"
+                    id="servicio-select"
                     value={servicioSeleccionado}
+                    label="Seleccionar servicio"
                     onChange={handleServicioChange}
                     startAdornment={<Bolt sx={{ mr: 1, color: "gray" }} />}
                     MenuProps={{
                       PaperProps: {
                         style: {
                           maxHeight: 200,
-                          overflowY: "auto", 
                         },
                       },
                     }}
                   >
-                    {servicios.map((servicio: Servicio) => (
-                      <MenuItem
-                        key={servicio.id_servicio}
-                        value={servicio.id_servicio}
-                      >
+                    {servicios.map((servicio) => (
+                      <MenuItem key={servicio.id_servicio} value={String(servicio.id_servicio)}>
                         {`${servicio.nombre} - S/ ${servicio.costo_unitario}`}
                       </MenuItem>
                     ))}
                   </Select>
                 </FormControl>
               </Grid>
-              {/* Tabla servicios */}
-              <Grid item xs={12} sm={12}>
-                <Paper
+
+              {/* Tabla para mostrar servicios agregados */}
+              <Grid item xs={12}>
+                <TableContainer component={Paper}
                   sx={{
-                    width: isLaptop || isTablet || isMobile ? "100%" : "524px",
-                    overflow: "hidden",
-                    boxShadow: "none",
+                    height: "150px",
+                    mb: "5px",
+                    borderRadius: "10px",
+                    border: "1px solid #202123",
                   }}
                 >
-                  <TableContainer
-                    sx={{
-                      height: "220px",
-                      mb: "5px",
-                      borderRadius: "10px",
-                      border: "1px solid #202123",
-                    }}
-                  >
-                    <Table>
-                      <TableHead sx={{ backgroundColor: "#202123" }}>
-                        <TableRow>
-                          {columns.map((column) => (
-                            <TableCell
-                              key={column.id}
-                              align={column.align}
-                              style={{ minWidth: column.minWidth }}
-                              sx={{ color: "white" }}
-                            >
+                  <Table stickyHeader aria-label="sticky table" size="small">
+                    <TableHead>
+                      <TableRow>
+                        {columns.map((column) => (
+                          <TableCell
+                            key={column.id}
+                            align={column.align}
+                            style={{ minWidth: column.minWidth, backgroundColor: "#202123", color: "white" }}
+                          >
+                            <Typography sx={{ fontWeight: "bold", fontSize: "14px" }}>
                               {column.label}
-                            </TableCell>
-                          ))}
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {serviciosAgregados.map((servicio) => (
-                          <TableRow hover role="checkbox" tabIndex={-1}>
-                            {columns.map((column) => {
-                              const value =
-                                column.id === "accion"
-                                  ? ""
-                                  : (servicio as any)[column.id];
-                              return (
-                                <TableCell
-                                  padding="checkbox"
-                                  key={column.id}
-                                  align="center"
-                                >
-                                  {column.id === "accion" ? (
-                                    <Box
-                                      sx={{
-                                        display: "flex",
-                                        gap: 1,
-                                        justifyContent: "center",
-                                      }}
-                                    >
-                                      <IconButton
-                                        aria-label="delete"
-                                        sx={{ color: "#840202" }}
-                                        onClick={() =>
-                                          handleServicioDelete(
-                                            servicio.id_servicio
-                                          )
-                                        }
-                                      >
-                                        <Delete />
-                                      </IconButton>
-                                    </Box>
-                                  ) : (
-                                    value
-                                  )}
-                                </TableCell>
-                              );
-                            })}
-                          </TableRow>
+                            </Typography>
+                          </TableCell>
                         ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                </Paper>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {serviciosAgregados.length > 0 ? (
+                        serviciosAgregados.map((servicio) => (
+                          <TableRow hover role="checkbox" tabIndex={-1} key={servicio.id_servicio}>
+                            <TableCell align="center">{servicio.nombre}</TableCell>
+                            <TableCell align="center">{servicio.costo_unitario}</TableCell>
+                            <TableCell align="center">
+                              <IconButton onClick={() => handleServicioDelete(servicio.id_servicio)}>
+                                <Delete sx={{ color: "#840202" }} />
+                              </IconButton>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={3} align="center">
+                            No se han agregado servicios
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
               </Grid>
-              {/* Importe */}
-              <Grid item xs={12} sm={6} sx={{ m: "0 auto 0 auto"  }}>
+
+              {/* Importe total */}
+              <Grid item xs={12} sm={6} m="0 auto" mt={1}>
                 <TextField
                   fullWidth
-                  required
-                  label="Importe (S/)"
+                  label="Importe (S/) *"
                   value={importeTotal.toFixed(2)}
                   InputProps={{
                     readOnly: true,
-                    startAdornment: (
-                      <AttachMoney sx={{ mr: 1, color: "gray" }} />
-                    ),
+                    startAdornment: <AttachMoney sx={{ mr: 1, color: "gray" }} />,
                   }}
                 />
               </Grid>
@@ -310,32 +282,31 @@ const GenerarCuota: React.FC = () => {
           </>
         );
       default:
-        return <Typography>Seleccione una pestaña</Typography>;
+        return "";
     }
   };
 
   return (
-    <ContenedorMini>
+    <Box sx={{ p: 1 }}>
       {renderTabContent()}
-      <div style={{ textAlign:"center", marginTop: "15px" }}>
-      <Button
-        variant="contained"
-        sx={{
-          width: "140px",
-          height: "45px",
-          mr: 1,
-          backgroundColor: "#008001",
-          color: "#fff",
-          "&:hover": {
-            backgroundColor: "#388E3C",
-          },
-        }}
-        onClick={registrarCuota}
-      >
-        Registrar
-      </Button>
+      <div style={{ textAlign: "center", marginTop: "15px" }}>
+        <Button
+          variant="contained"
+          sx={{
+            width: "200px",
+            height: "45px",
+            backgroundColor: "#008001",
+            color: "#fff",
+            "&:hover": {
+              backgroundColor: "#388E3C",
+            },
+          }}
+          onClick={handleSubmit}
+        >
+          Registrar
+        </Button>
       </div>
-    </ContenedorMini>
+    </Box>
   );
 };
 

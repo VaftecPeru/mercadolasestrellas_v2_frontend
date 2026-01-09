@@ -22,7 +22,7 @@ const RegistrarPagoTabs: React.FC<AgregarProps> = ({ open, handleClose }) => {
 
   return (
     <ContenedorModal
-      ancho="800px"
+      ancho="750px"
       alto="auto"
       abrir={open}
       cerrar={handleCloseModal}

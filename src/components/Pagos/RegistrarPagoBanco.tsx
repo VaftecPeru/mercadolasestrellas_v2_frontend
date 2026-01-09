@@ -122,7 +122,7 @@ const RegistrarPagoBanco: React.FC<AgregarProps> = ({ open, handleClose }) => {
       } catch (error) {
       }
     };
-  
+
     fetchSocios();
   }, []);
 
@@ -240,7 +240,7 @@ const RegistrarPagoBanco: React.FC<AgregarProps> = ({ open, handleClose }) => {
           { id_deuda_cuota: idDeudaCuota, importe: montoPagar, servicio: servicioDescripcion },
         ],
       }));
-    // }
+      // }
     } else {
       // Al deseleccionar, eliminamos la deuda correspondiente
       setFormData((prevFormData) => ({
@@ -356,7 +356,7 @@ const RegistrarPagoBanco: React.FC<AgregarProps> = ({ open, handleClose }) => {
     // Extraemos los datos necesarios para enviar
     const { nombre_socio, nombre_block, numero_puesto, deudas, ...rest } = formData;
     const filteredDeudas = deudas.map(({ servicio, ...deudaRest }) => deudaRest); // Filtramos el servicio de las deudas
-    const dataToSend: { 
+    const dataToSend: {
       id_socio: string;
       deudas: { id_deuda_cuota: number; importe: number; }[] // Solo enviamos el id_deuda y el importe
     } = { ...rest, deudas: filteredDeudas }; // Retornamos el id_socio y las deudas sin el servicio
@@ -712,7 +712,7 @@ const RegistrarPagoBanco: React.FC<AgregarProps> = ({ open, handleClose }) => {
                 >
                   <TableContainer
                     sx={{
-                      height: "250px",
+                      height: "200px",
                       borderRadius: "10px",
                       border: "1px solid #202123",
                     }}
@@ -874,13 +874,13 @@ const RegistrarPagoBanco: React.FC<AgregarProps> = ({ open, handleClose }) => {
   };
 
   return (
-    <ContenedorMini>
+    <Box sx={{ p: 1 }}>
       {renderTabContent()}
-      <div style={{ textAlign:"right", marginTop: "45px" }}>
+      <div style={{ textAlign: "center", marginTop: "15px" }}>
         <Button
           variant="contained"
           sx={{
-            width: "140px",
+            width: "200px",
             height: "45px",
             mr: 1,
             backgroundColor: "#008001",
@@ -894,14 +894,12 @@ const RegistrarPagoBanco: React.FC<AgregarProps> = ({ open, handleClose }) => {
           Registrar
         </Button>
         <Button
-          style={{ marginLeft: "auto", marginRight: "auto" }}
           variant="contained"
           sx={{
-            width: "140px",
+            width: "200px",
             height: "45px",
             backgroundColor: "#202123",
             color: "#fff",
-            mr: 1,
             "&:hover": {
               backgroundColor: "#3F4145",
             },
@@ -911,7 +909,7 @@ const RegistrarPagoBanco: React.FC<AgregarProps> = ({ open, handleClose }) => {
           Cerrar
         </Button>
       </div>
-    </ContenedorMini>
+    </Box>
   );
 };
 

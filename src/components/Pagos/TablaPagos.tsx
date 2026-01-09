@@ -3,6 +3,8 @@ import {
   FileDownload,
   Search,
   WhatsApp,
+  Edit,
+  Delete,
 } from "@mui/icons-material";
 import {
   Box,
@@ -21,6 +23,7 @@ import {
 } from "@mui/material";
 import React, { useEffect, useState } from "react";
 import RegistrarPagoTabs from "./RegistrarPagoTabs";
+import ModalEditarPago from "./ModalEditarPago";
 import useResponsive from "../../hooks/Responsive/useResponsive";
 import LoadingSpinner from "../PogressBar/ProgressBarV1";
 import * as XLSX from 'xlsx';
@@ -34,15 +37,18 @@ import { columns } from "../../Columns/Pagos";
 import apiClient from "../../Utils/apliClient";
 import { Api_Global_Pagos } from "../../service/PagoApi";
 import { handleExport } from "../../Utils/exportUtils";
+import { mostrarAlerta, manejarError, mostrarAlertaConfirmacion } from "../Alerts/Registrar";
 
 const TablaPago: React.FC = () => {
   const { isTablet, isMobile, isSmallMobile } = useResponsive();
   const [mostrarDetalles, setMostrarDetalles] = useState<string | null>(null);
   const [pagos, setPagos] = useState<Data[]>([]);
-  const [totalPages, setTotalPages] = useState(1); 
-  const [paginaActual, setPaginaActual] = useState(1); 
+  const [totalPages, setTotalPages] = useState(1);
+  const [paginaActual, setPaginaActual] = useState(1);
   const [exportFormat, setExportFormat] = useState<string>("");
   const [open, setOpen] = useState(false);
+  const [openEdit, setOpenEdit] = useState(false);
+  const [selectedPago, setSelectedPago] = useState<Data | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleOpen = () => setOpen(true);
@@ -131,8 +137,8 @@ const TablaPago: React.FC = () => {
         serie_numero: item.serie_numero,
       }));
       setPagos(data);
-      setTotalPages(response.data.meta.last_page); 
-      setPaginaActual(response.data.meta.current_page); 
+      setTotalPages(response.data.meta.last_page);
+      setPaginaActual(response.data.meta.current_page);
     } catch (error) {
       console.error("Error al traer datos", error);
     } finally {
@@ -142,7 +148,40 @@ const TablaPago: React.FC = () => {
 
   const CambioDePagina = (event: React.ChangeEvent<unknown>, value: number) => {
     setPaginaActual(value);
-    listarPagos(value); 
+    listarPagos(value);
+  };
+
+  const handleDeletePago = async (id: number | string) => {
+    mostrarAlertaConfirmacion(
+      "¿Estás seguro?",
+      "Esta acción no se puede deshacer.",
+      "Eliminar",
+      "Cancelar"
+    ).then(async (result) => {
+      if (result.isConfirmed) {
+        setIsLoading(true);
+        try {
+          await apiClient.delete(Api_Global_Pagos.pagos.eliminar(id));
+          mostrarAlerta("Eliminado", "El pago ha sido eliminado.", "success");
+          listarPagos(paginaActual);
+        } catch (error) {
+          manejarError(error);
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    });
+  };
+
+  const handleEditPago = (pago: Data) => {
+    setSelectedPago(pago);
+    setOpenEdit(true);
+  };
+
+  const handleCloseEdit = () => {
+    setOpenEdit(false);
+    setSelectedPago(null);
+    listarPagos(paginaActual);
   };
 
   useEffect(() => {
@@ -159,6 +198,12 @@ const TablaPago: React.FC = () => {
         />
 
         <RegistrarPagoTabs open={open} handleClose={handleClose} />
+
+        <ModalEditarPago
+          open={openEdit}
+          handleClose={handleCloseEdit}
+          pago={selectedPago}
+        />
 
         <BotonExportar
           exportFormat={exportFormat}
@@ -229,18 +274,20 @@ const TablaPago: React.FC = () => {
                 <TableHead>
                   <TableRow>
                     {isTablet || isMobile
-                      ? <Typography
-                        sx={{
-                          mt: 2,
-                          mb: 1,
-                          fontSize: "1.5rem",
-                          fontWeight: "bold",
-                          textTransform: "uppercase",
-                          textAlign: "center",
-                        }}
-                      >
-                        Lista de pagos
-                      </Typography>
+                      ? <TableCell colSpan={columns.length}>
+                        <Typography
+                          sx={{
+                            mt: 2,
+                            mb: 1,
+                            fontSize: "1.5rem",
+                            fontWeight: "bold",
+                            textTransform: "uppercase",
+                            textAlign: "center",
+                          }}
+                        >
+                          Lista de pagos
+                        </Typography>
+                      </TableCell>
                       : columns.map((column) => (
                         <TableCell
                           key={column.id}
@@ -257,7 +304,7 @@ const TablaPago: React.FC = () => {
                 </TableHead>
                 <TableBody>
                   {pagos.map((pago) => (
-                    <TableRow hover role="checkbox" tabIndex={-1}>
+                    <TableRow key={pago.id_pago} hover role="checkbox" tabIndex={-1}>
                       {isTablet || isMobile
                         ? <TableCell padding="checkbox" colSpan={columns.length}>
                           <Box sx={{ display: "flex", flexDirection: "column" }}>
@@ -290,13 +337,13 @@ const TablaPago: React.FC = () => {
                                 {columns.map((column) => {
                                   const value = column.id === "accion" ? "" : (pago as any)[column.id];
                                   return (
-                                    <Box>
+                                    <Box key={column.id}>
                                       {/* Mostrar titulo del campo */}
                                       <Typography sx={{ fontWeight: "bold", mb: 1 }}>
                                         {column.label}
                                       </Typography>
                                       {/* Mostrar los detalles del pago */}
-                                      <Typography>
+                                      <Box>
                                         {column.id === "accion" ? (
                                           <Box
                                             sx={{
@@ -344,11 +391,67 @@ const TablaPago: React.FC = () => {
                                               <WhatsApp sx={{ mr: 1 }} />
                                               Enviar
                                             </Button>
+                                            <Box sx={{ display: "flex", gap: 1, mt: 1 }}>
+                                              <Button
+                                                variant="contained"
+                                                sx={{
+                                                  flex: 1,
+                                                  backgroundColor: "#1976d2",
+                                                  color: "white",
+                                                  "&:hover": { backgroundColor: "#1565c0" }
+                                                }}
+                                                onClick={() => handleEditPago(pago)}
+                                              >
+                                                <Edit sx={{ mr: 1 }} />
+                                                Editar
+                                              </Button>
+                                              <Button
+                                                variant="contained"
+                                                sx={{
+                                                  flex: 1,
+                                                  backgroundColor: "#202123",
+                                                  color: "white",
+                                                  "&:hover": { backgroundColor: "#3F4145" }
+                                                }}
+                                                onClick={() => handleAccionesPago(1, pago.telefono, pago)}
+                                              >
+                                                <Download sx={{ mr: 1 }} />
+                                                Descargar
+                                              </Button>
+                                            </Box>
+                                            <Box sx={{ display: "flex", gap: 1, mt: 1 }}>
+                                              <Button
+                                                variant="contained"
+                                                sx={{
+                                                  flex: 1,
+                                                  backgroundColor: "#008001",
+                                                  color: "white",
+                                                  "&:hover": { backgroundColor: "#006400" }
+                                                }}
+                                                onClick={() => handleAccionesPago(2, pago.telefono, pago)}
+                                              >
+                                                <WhatsApp sx={{ mr: 1 }} />
+                                                WhatsApp
+                                              </Button>
+                                              <Button
+                                                variant="contained"
+                                                sx={{
+                                                  flex: 1,
+                                                  backgroundColor: "#d32f2f",
+                                                  color: "white",
+                                                  "&:hover": { backgroundColor: "#b71c1c" }
+                                                }}
+                                                onClick={() => handleDeletePago(pago.id_pago)}
+                                              >
+                                                <Delete sx={{ mr: 1 }} />
+                                                Eliminar
+                                              </Button>
+                                            </Box>
                                           </Box>
                                         ) : (
                                           value
                                         )}
-                                      </Typography>
+                                      </Box>
                                     </Box>
                                   )
                                 })}
@@ -369,22 +472,33 @@ const TablaPago: React.FC = () => {
                                     justifyContent: "center",
                                   }}
                                 >
-                                  {/* Boton Descargar */}
+                                  <IconButton
+                                    aria-label="edit"
+                                    sx={{ color: "#1976d2" }}
+                                    onClick={() => handleEditPago(pago)}
+                                  >
+                                    <Edit />
+                                  </IconButton>
                                   <IconButton
                                     aria-label="download"
-                                    sx={{ color: "#002B7E" }}
-                                    onClick={() => handleAccionesPago(1, "", pago)}
+                                    sx={{ color: "#202123" }}
+                                    onClick={() => handleAccionesPago(1, pago.telefono, pago)}
                                   >
-                                    <FileDownload />
+                                    <Download />
                                   </IconButton>
-
-                                  {/* Boton Whatsapp */}
                                   <IconButton
-                                    aria-label="share"
+                                    aria-label="whatsapp"
                                     sx={{ color: "#008001" }}
                                     onClick={() => handleAccionesPago(2, pago.telefono, pago)}
                                   >
                                     <WhatsApp />
+                                  </IconButton>
+                                  <IconButton
+                                    aria-label="delete"
+                                    sx={{ color: "#d32f2f" }}
+                                    onClick={() => handleDeletePago(pago.id_pago)}
+                                  >
+                                    <Delete />
                                   </IconButton>
                                 </Box>
                               ) : (

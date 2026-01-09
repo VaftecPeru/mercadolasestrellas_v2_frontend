@@ -7,7 +7,7 @@ build/
 .next/
 out/
 
-# Variables de entorno (seguridad: nunca subas tus llaves API)
+# Variables de entorno 
 .env
 .env.local
 .env.development.local

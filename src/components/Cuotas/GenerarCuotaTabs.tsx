@@ -25,7 +25,7 @@ function CustomTabPanel(props: TabPanelProps) {
       aria-labelledby={`simple-tab-${index}`}
       {...other}
     >
-      {value === index && <Box sx={{ p: 2 }}>{children}</Box>}
+      {value === index && <Box sx={{ p: 0.5 }}>{children}</Box>}
     </div>
   );
 }
@@ -54,30 +54,30 @@ const GenerarCuotaTabs: React.FC<AgregarProps> = ({ open, handleClose }) => {
 
   return (
     <ContenedorModal
-      ancho="800px"
+      ancho="550px"
       alto="auto"
       abrir={open}
       cerrar={handleCloseModal}
       loading={loading}
       titulo="Generar Cuota"
       botones={
-        <Button
-          style={{ marginLeft: "auto", marginRight: "auto" }}
-          variant="contained"
-          sx={{
-            width: "140px",
-            height: "45px",
-            backgroundColor: "#202123",
-            color: "#fff",
-            mr: 1,
-            "&:hover": {
-              backgroundColor: "#3F4145",
-            },
-          }}
-          onClick={handleCloseModal}
-        >
-          Cerrar
-        </Button>
+        <Box sx={{ display: "flex", justifyContent: "center", width: "100%", mt: 1 }}>
+          <Button
+            variant="contained"
+            sx={{
+              width: "200px",
+              height: "45px",
+              backgroundColor: "#202123",
+              color: "#fff",
+              "&:hover": {
+                backgroundColor: "#3F4145",
+              },
+            }}
+            onClick={handleCloseModal}
+          >
+            Cerrar
+          </Button>
+        </Box>
       }
     >
 
