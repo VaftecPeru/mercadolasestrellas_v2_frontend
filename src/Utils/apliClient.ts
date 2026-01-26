@@ -1,9 +1,9 @@
 import axios from "axios";
-import Cookies from "js-cookie";
+import Cookies from "js-cookie";//baseURL: "http://127.0.0.1:8000/api/v1",
 
 const apiClient = axios.create({
   // Se agrega /api antes de /v1 porque Laravel rutea api.php bajo ese prefijo
-  baseURL: "http://127.0.0.1:8000/api/v1",
+  baseURL: "https://intranet.mercadolasestrellas.org/api/v1",
 
   headers: {
     "Content-Type": "application/json",

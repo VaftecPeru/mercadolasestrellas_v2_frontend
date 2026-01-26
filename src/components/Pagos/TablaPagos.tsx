@@ -23,6 +23,7 @@ import {
 } from "@mui/material";
 import React, { useEffect, useState } from "react";
 import RegistrarPagoTabs from "./RegistrarPagoTabs";
+import ImportPagosModal from "./ImportPagosModal";
 import useResponsive from "../../hooks/Responsive/useResponsive";
 import LoadingSpinner from "../PogressBar/ProgressBarV1";
 import * as XLSX from 'xlsx';
@@ -46,6 +47,7 @@ const TablaPago: React.FC = () => {
   const [paginaActual, setPaginaActual] = useState(1);
   const [exportFormat, setExportFormat] = useState<string>("");
   const [open, setOpen] = useState(false);
+  const [openImport, setOpenImport] = useState(false);
   const [pagoSeleccionado, setPagoSeleccionado] = useState<Data | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -58,6 +60,9 @@ const TablaPago: React.FC = () => {
     setOpen(false);
     listarPagos(paginaActual);
   }
+
+  const handleOpenImport = () => setOpenImport(true);
+  const handleCloseImport = () => setOpenImport(false);
 
   const handleExportPagos = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
@@ -180,6 +185,30 @@ const TablaPago: React.FC = () => {
         />
 
         <RegistrarPagoTabs open={open} handleClose={handleClose} pago={pagoSeleccionado} />
+
+        <Button
+          variant="contained"
+          startIcon={<FileDownload />}
+          sx={{
+            backgroundColor: "#002B7E",
+            "&:hover": {
+              backgroundColor: "#001a4d",
+            },
+            height: "45px",
+            borderRadius: "30px",
+            padding: "0 20px",
+            ml: 2
+          }}
+          onClick={handleOpenImport}
+        >
+          Importar Excel
+        </Button>
+
+        <ImportPagosModal
+          open={openImport}
+          handleClose={handleCloseImport}
+          onSuccess={() => listarPagos(paginaActual)}
+        />
 
         <BotonExportar
           exportFormat={exportFormat}
