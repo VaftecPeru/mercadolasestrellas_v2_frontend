@@ -119,17 +119,19 @@ const TablaPago: React.FC = () => {
 
   // Metodo para buscar pagos por socio
   const handleSearchPagos = async (e: React.MouseEvent<HTMLButtonElement>) => {
-
     e.preventDefault();
+    const searchInput = document.getElementById("search-socio") as HTMLInputElement;
+    const searchTerm = searchInput ? searchInput.value : "";
+    listarPagos(1, searchTerm);
+  };
 
-    listarPagos(1);
-
-  }
-
-  const listarPagos = async (page: number = 1) => {
+  const listarPagos = async (page: number = 1, search: string = "") => {
     setIsLoading(true)
     try {
-      const response = await apiClient.get(Api_Global_Pagos.pagos.listar(page));
+      const url = search
+        ? `${Api_Global_Pagos.pagos.listar(page)}&search=${search}`
+        : Api_Global_Pagos.pagos.listar(page);
+      const response = await apiClient.get(url);
       const data = response.data.data.map((item: Pagos) => ({
         id_pago: item.id_pago,
         puesto: item.puesto,
@@ -168,7 +170,9 @@ const TablaPago: React.FC = () => {
 
   const CambioDePagina = (event: React.ChangeEvent<unknown>, value: number) => {
     setPaginaActual(value);
-    listarPagos(value);
+    const searchInput = document.getElementById("search-socio") as HTMLInputElement;
+    const searchTerm = searchInput ? searchInput.value : "";
+    listarPagos(value, searchTerm);
   };
 
   useEffect(() => {
@@ -190,9 +194,9 @@ const TablaPago: React.FC = () => {
           variant="contained"
           startIcon={<FileDownload />}
           sx={{
-            backgroundColor: "#002B7E",
+            backgroundColor: "#008001",
             "&:hover": {
-              backgroundColor: "#001a4d",
+              backgroundColor: "#2c6d33",
             },
             height: "45px",
             borderRadius: "30px",
@@ -241,6 +245,7 @@ const TablaPago: React.FC = () => {
 
         {/* Input Nombre Socio */}
         <TextField
+          id="search-socio"
           sx={{ width: isTablet || isMobile ? "60%" : "30%" }}
           label="Nombre del socio"
           type="text"
@@ -261,7 +266,11 @@ const TablaPago: React.FC = () => {
             borderRadius: "30px",
             fontSize: isSmallMobile ? "0.8rem" : "auto"
           }}
-          onClick={handleSearchPagos}
+          onClick={() => {
+            const searchInput = document.getElementById("search-socio") as HTMLInputElement;
+            const searchTerm = searchInput ? searchInput.value : "";
+            listarPagos(1, searchTerm);
+          }}
         >
           Buscar
         </Button>
@@ -383,18 +392,6 @@ const TablaPago: React.FC = () => {
                                                 variant="contained"
                                                 sx={{
                                                   padding: "0.5rem 1.5rem",
-                                                  backgroundColor: "#0478E3",
-                                                  color: "white"
-                                                }}
-                                                onClick={() => handleOpen(pago)}
-                                              >
-                                                <SaveAs sx={{ mr: 1 }} />
-                                                Editar
-                                              </Button>
-                                              <Button
-                                                variant="contained"
-                                                sx={{
-                                                  padding: "0.5rem 1.5rem",
                                                   backgroundColor: "black",
                                                   color: "white"
                                                 }}
@@ -462,13 +459,6 @@ const TablaPago: React.FC = () => {
                                     justifyContent: "center",
                                   }}
                                 >
-                                  <IconButton
-                                    aria-label="edit"
-                                    sx={{ color: "#0478E3" }}
-                                    onClick={() => handleOpen(pago)}
-                                  >
-                                    <SaveAs />
-                                  </IconButton>
                                   {/* Boton Descargar */}
                                   <IconButton
                                     aria-label="download"

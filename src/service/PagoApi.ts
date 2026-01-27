@@ -6,7 +6,7 @@ export const Api_Global_Pagos = {
     registrarPorBanco: () => `/pagos/por-bancos`,
     editar: (id_pago: string | number | undefined) => `/pagos/${id_pago}`,
     eliminar: (id_pago: string | number | undefined) => `/pagos/${id_pago}`,
-    importar: () => `/procesar-importacion-pagos`,
+    importar: () => `/importar-pagos-excel`,
   },
   socios: {
     listar: (perPage: number = 1000) => `/socios?per_page=${perPage}`,
