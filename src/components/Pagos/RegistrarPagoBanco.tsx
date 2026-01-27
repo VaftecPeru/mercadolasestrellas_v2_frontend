@@ -1,4 +1,4 @@
-import { Business, AccountBalance, CardMembership, Event, Abc, AccountCircle } from "@mui/icons-material";
+import { Business, AccountBalance, CardMembership, Event, AccountCircle } from "@mui/icons-material";
 import {
   Box,
   Typography,
@@ -20,8 +20,7 @@ import {
   Autocomplete,
   Button,
 } from "@mui/material";
-import axios from "axios";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import useResponsive from "../../hooks/Responsive/useResponsive";
 import {
   manejarError,
@@ -30,12 +29,11 @@ import {
 import jsPDF from "jspdf";
 import { AvisoFormulario, TxtFormulario } from "../Shared/ElementosFormulario";
 import { formatDate, nombreMes } from "../../Utils/dateUtils";
-import { AgregarProps, Column, Data, Deuda, Puesto, Socio, DeudaPendiente, Banco, BancoCuenta } from "../../interface/Pagos/RegistrarPagos";
+import { AgregarProps, Column, Deuda, Puesto, Socio, DeudaPendiente, Banco, BancoCuenta } from "../../interface/Pagos/RegistrarPagos";
 import { Api_Global_Pagos } from "../../service/PagoApi";
 import { Api_Global_Setup } from "../../service/SetupApi";
 import apiClient from "../../Utils/apliClient";
 import ContenedorMini from "../Shared/ContenedorMini";
-import { Api_Global_Cuotas } from "../../service/CuotaApi";
 
 const columns: readonly Column[] = [
   { id: "anio", label: "Año", minWidth: 50, align: "center" },
@@ -57,8 +55,7 @@ const RegistrarPagoBanco: React.FC<AgregarProps> = ({ open, handleClose, pago })
   const [filasSeleccionadas, setFilasSeleccionadas] = useState<({ [key: string]: boolean; })>({});
   const [montoPagar, setMontoPagar] = useState<{ [key: number]: number }>({});
   const [totalPagar, setTotalPagar] = useState(0);
-  const [totalDeuda, setTotalDeuda] = useState(0);
-  const [activeTab, setActiveTab] = useState(0);
+  const [activeTab] = useState(0);
   const [loading, setLoading] = useState(false);
   const [valueAC, setValueAC] = React.useState<Socio | null>(null);
   const [fechaPago, setFechaPago] = useState(new Date().toISOString().split('T')[0]);
@@ -203,18 +200,18 @@ const RegistrarPagoBanco: React.FC<AgregarProps> = ({ open, handleClose, pago })
   };
 
   // Calcular el total de la deuda de las filas seleccionadas
-  const calcularTotalDeudaSeleccionado = () => {
+  const calcularTotalDeudaSeleccionado = useCallback(() => {
     let total = 0;
-    deudas.forEach((deuda, index) => {
+    deudas.forEach((deuda) => {
       if (deuda.checked) {
         total += parseFloat(deuda.total) - parseFloat(deuda.a_cuenta);
       }
     });
-    setTotalDeuda(total);
-  };
+    // setTotalDeuda(total);
+  }, [deudas]);
 
   // Calcular el total a pagar de las filas seleccionadas
-  const calcularTotalSeleccionado = () => {
+  const calcularTotalSeleccionado = useCallback(() => {
     let total = 0;
     Object.keys(filasSeleccionadas).forEach((id_deuda) => {
       if (filasSeleccionadas[id_deuda]) {
@@ -230,12 +227,12 @@ const RegistrarPagoBanco: React.FC<AgregarProps> = ({ open, handleClose, pago })
       }
     });
     setTotalPagar(total);
-  };
+  }, [filasSeleccionadas]);
 
   useEffect(() => {
     calcularTotalDeudaSeleccionado();
     calcularTotalSeleccionado();
-  }, [filasSeleccionadas]);
+  }, [filasSeleccionadas, calcularTotalDeudaSeleccionado, calcularTotalSeleccionado]);
 
   // Manejar las filas seleccionadas
   const handleCheckBoxChange = (
@@ -248,7 +245,7 @@ const RegistrarPagoBanco: React.FC<AgregarProps> = ({ open, handleClose, pago })
   ) => {
 
     const updateDeudas = deudas.map(deuda => {
-      if (deuda.id_deuda_cuota == idDeudaCuota) {
+      if (deuda.id_deuda_cuota === idDeudaCuota) {
         // Return a new circle 50px below
         return {
           ...deuda,
@@ -272,7 +269,7 @@ const RegistrarPagoBanco: React.FC<AgregarProps> = ({ open, handleClose, pago })
         ...prevFormData,
         deudas: [
           // Evitamos que las deudas se repitan
-          ...prevFormData.deudas.filter((deuda) => deuda.id_deuda_cuota != idDeudaCuota),
+          ...prevFormData.deudas.filter((deuda) => deuda.id_deuda_cuota !== idDeudaCuota),
           // Agregamos la nuevas deudas y su monto a pagar
           { id_deuda_cuota: idDeudaCuota, importe: montoPagar, servicio: servicioDescripcion },
         ],
@@ -283,7 +280,7 @@ const RegistrarPagoBanco: React.FC<AgregarProps> = ({ open, handleClose, pago })
       setFormData((prevFormData) => ({
         ...prevFormData,
         deudas: prevFormData.deudas.filter(
-          (deuda) => deuda.id_deuda_cuota != idDeudaCuota
+          (deuda) => deuda.id_deuda_cuota !== idDeudaCuota
         ),
       }));
 
@@ -298,7 +295,7 @@ const RegistrarPagoBanco: React.FC<AgregarProps> = ({ open, handleClose, pago })
     setFormData((prevFormData) => ({
       ...prevFormData,
       deudas: prevFormData.deudas.filter(
-        (deuda) => deuda.id_deuda_cuota != 0 && deuda.importe !== 0
+        (deuda) => deuda.id_deuda_cuota !== 0 && deuda.importe !== 0
       ),
     }));
 
@@ -322,7 +319,7 @@ const RegistrarPagoBanco: React.FC<AgregarProps> = ({ open, handleClose, pago })
     }));
 
     const updateDeudas = deudas.map(deudaUdp => {
-      if (deudaUdp.id_deuda_cuota == idDeudaCuota) {
+      if (deudaUdp.id_deuda_cuota === idDeudaCuota) {
         return {
           ...deudaUdp,
           deuda: validarMonto,
@@ -338,7 +335,7 @@ const RegistrarPagoBanco: React.FC<AgregarProps> = ({ open, handleClose, pago })
       ...prevFormData,
       deudas: prevFormData.deudas.map(
         (deuda) =>
-          deuda.id_deuda_cuota == idDeudaCuota
+          deuda.id_deuda_cuota === idDeudaCuota
             ? { ...deuda, importe: validarMonto } // Actualizar el importe
             : deuda // Mantener la deuda sin cambios
       ),
@@ -796,11 +793,7 @@ const RegistrarPagoBanco: React.FC<AgregarProps> = ({ open, handleClose, pago })
                       </TableHead>
                       <TableBody>
                         {deudas.map((deuda) => {
-                          // Calculamos el monto a pagar
-                          // const montoInicial = parseFloat(deuda.deuda);
                           const montoInicial = parseFloat(deuda.total) - parseFloat(deuda.a_cuenta);
-                          const seleccionado =
-                            filasSeleccionadas[deuda.id_deuda] || false;
 
                           // Si el monto a pagar se a cambiado, usamos el nuevo monto; si no, usamos el monto inicial
                           const nuevoMonto =

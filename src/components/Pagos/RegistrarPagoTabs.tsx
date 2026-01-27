@@ -8,7 +8,6 @@ import StepButton from '@mui/material/StepButton';
 import RegistrarPagoBanco from "./RegistrarPagoBanco";
 
 const RegistrarPagoTabs: React.FC<AgregarProps> = ({ open, handleClose, pago }) => {
-  const [loading, setLoading] = useState(false);
   const [activeStep, setActiveStep] = React.useState(0);
 
   const handleStep = (step: number) => () => {
@@ -26,7 +25,7 @@ const RegistrarPagoTabs: React.FC<AgregarProps> = ({ open, handleClose, pago }) 
       alto="auto"
       abrir={open}
       cerrar={handleCloseModal}
-      loading={loading}
+      loading={false}
       titulo="Registrar Pago"
       botones={null}
     >
@@ -43,7 +42,7 @@ const RegistrarPagoTabs: React.FC<AgregarProps> = ({ open, handleClose, pago }) 
         </Step>
       </Stepper>
       <div>
-        {activeStep == 0 ? (
+        {activeStep === 0 ? (
           <React.Fragment>
             <RegistrarPago open={true} handleClose={handleClose} pago={pago}></RegistrarPago>
           </React.Fragment>

@@ -3,7 +3,6 @@ import {
   FileDownload,
   Search,
   WhatsApp,
-  SaveAs,
   DeleteForever,
 } from "@mui/icons-material";
 import {
@@ -118,13 +117,6 @@ const TablaPago: React.FC = () => {
   }
 
   // Metodo para buscar pagos por socio
-  const handleSearchPagos = async (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.preventDefault();
-    const searchInput = document.getElementById("search-socio") as HTMLInputElement;
-    const searchTerm = searchInput ? searchInput.value : "";
-    listarPagos(1, searchTerm);
-  };
-
   const listarPagos = async (page: number = 1, search: string = "") => {
     setIsLoading(true)
     try {
@@ -177,7 +169,7 @@ const TablaPago: React.FC = () => {
 
   useEffect(() => {
     listarPagos(paginaActual);
-  }, []);
+  }, [paginaActual]);
 
   return (
     <Contenedor>
