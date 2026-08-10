@@ -32,7 +32,7 @@ const usePuestos = () => {
           numero_puesto: item.numero_puesto,
           area: item.area,
           estado: item.estado,
-          fecha_registro: formatDate(item.fecha_registro),
+          fecha_registro: item.fecha_registro ? formatDate(item.fecha_registro) : "Sin registro",
           socio: item.socio,
           giro_negocio: item.giro_negocio,
           block: item.block,
