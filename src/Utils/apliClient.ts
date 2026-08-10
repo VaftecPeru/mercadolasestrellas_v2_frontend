@@ -3,10 +3,10 @@ import Cookies from "js-cookie";
 
 const apiClient = axios.create({
   // URL de Producción (Para ver todos tus datos reales)
-  baseURL: "https://intranet.mercadolasestrellas.org/api/v1",
+  // baseURL: "https://intranet.mercadolasestrellas.org/api/v1",
 
   // URL Local (Usa esta para probar el nuevo IMPORTADOR de Excel)
-  //baseURL: "http://127.0.0.1:8000/api/v1",
+  baseURL: "http://127.0.0.1:8000/api/v1",
 
   headers: {
     "Content-Type": "application/json",
