@@ -415,25 +415,23 @@ const RegistrarPago: React.FC<AgregarProps> = ({ open, handleClose, pago }) => {
 
     textoMezclado("N° Recibo: ", pago.numero_pago, 20, 50, ticket);
     textoMezclado("Socio:  ", data.nombre_socio, 20, 60, ticket);
-    textoMezclado("Nombre de banco:  ", "", 20, 70, ticket);
-    textoMezclado("Numero de operación:  ", "", 20, 80, ticket);
 
     const posTextoCompleto = pageWidth - ticket.getTextWidth(`Block:  ${data.nombre_block} - Puesto:  ${data.numero_puesto}`) - 20;
     const anchoPuesto = ticket.getTextWidth(`Puesto:  ${data.numero_puesto}`);
-    textoMezclado('Block:  ', `${data.nombre_block} - `, posTextoCompleto, 60, ticket);
-    textoMezclado('Puesto:  ', data.numero_puesto, pageWidth - anchoPuesto - 20, 60, ticket);
+    textoMezclado('Block:  ', `${data.nombre_block} - `, posTextoCompleto, 50, ticket);
+    textoMezclado('Puesto:  ', data.numero_puesto, pageWidth - anchoPuesto - 20, 50, ticket);
 
     const fechaHora = new Date().toLocaleString();
 
     const anchoFechaHora = ticket.getTextWidth(`Fecha y hora:  ${fechaHora.toString()}`);
-    textoMezclado('Fecha y Hora:  ', fechaHora.toString(), pageWidth - anchoFechaHora - 20, 70, ticket);
+    textoMezclado('Fecha y Hora:  ', fechaHora.toString(), pageWidth - anchoFechaHora - 20, 60, ticket);
 
     ticket.setFont("helvetica", "bold");
 
-    ticket.text("DESCRIPCIÓN", 30, 100);
-    rightText("IMPORTE", 100);
+    ticket.text("DESCRIPCIÓN", 30, 80);
+    rightText("IMPORTE", 80);
 
-    let y = 110;
+    let y = 90;
 
     data.deudas.forEach((deuda, index) => {
 

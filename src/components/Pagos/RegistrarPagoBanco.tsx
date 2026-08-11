@@ -468,25 +468,36 @@ const RegistrarPagoBanco: React.FC<AgregarProps> = ({ open, handleClose, pago })
 
     textoMezclado("N° Recibo: ", pago.numero_pago, 20, 50, ticket);
     textoMezclado("Socio:  ", data.nombre_socio, 20, 60, ticket);
-    textoMezclado("Nombre de banco:  ", "", 20, 70, ticket);
-    textoMezclado("Numero de operación:  ", "", 20, 80, ticket);
+    
+    // Buscar nombre del banco
+    const bancoSeleccionado = bancos.find(b => b.id_banco === Number(data.id_banco));
+    const nombreBanco = bancoSeleccionado?.siglas_nombre || "";
+    
+    // Buscar número de cuenta
+    const cuentaSeleccionada = bancoCuentas.find(c => c.id_bancocuenta === Number(data.id_bancocuenta));
+    const numeroCuenta = cuentaSeleccionada?.numero_cuenta || "";
+    
+    textoMezclado("Nombre de banco:  ", nombreBanco, 20, 70, ticket);
+    textoMezclado("N° Cuenta:  ", numeroCuenta, 20, 80, ticket);
+    textoMezclado("N° Operación:  ", data.numero_operacion, 20, 90, ticket);
+    textoMezclado("Fecha Operación:  ", data.fecha_operacion, 20, 100, ticket);
 
     const posTextoCompleto = pageWidth - ticket.getTextWidth(`Block:  ${data.nombre_block} - Puesto:  ${data.numero_puesto}`) - 20;
     const anchoPuesto = ticket.getTextWidth(`Puesto:  ${data.numero_puesto}`);
-    textoMezclado('Block:  ', `${data.nombre_block} - `, posTextoCompleto, 60, ticket);
-    textoMezclado('Puesto:  ', data.numero_puesto, pageWidth - anchoPuesto - 20, 60, ticket);
+    textoMezclado('Block:  ', `${data.nombre_block} - `, posTextoCompleto, 50, ticket);
+    textoMezclado('Puesto:  ', data.numero_puesto, pageWidth - anchoPuesto - 20, 50, ticket);
 
     const fechaHora = new Date().toLocaleString();
 
     const anchoFechaHora = ticket.getTextWidth(`Fecha y hora:  ${fechaHora.toString()}`);
-    textoMezclado('Fecha y Hora:  ', fechaHora.toString(), pageWidth - anchoFechaHora - 20, 70, ticket);
+    textoMezclado('Fecha y Hora:  ', fechaHora.toString(), pageWidth - anchoFechaHora - 20, 60, ticket);
 
     ticket.setFont("helvetica", "bold");
 
-    ticket.text("DESCRIPCIÓN", 30, 100);
-    rightText("IMPORTE", 100);
+    ticket.text("DESCRIPCIÓN", 30, 115);
+    rightText("IMPORTE", 115);
 
-    let y = 110;
+    let y = 125;
 
     data.deudas.forEach((deuda, index) => {
 
