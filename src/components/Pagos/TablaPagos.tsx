@@ -20,7 +20,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import RegistrarPagoTabs from "./RegistrarPagoTabs";
 import ImportPagosModal from "./ImportPagosModal";
 import useResponsive from "../../hooks/Responsive/useResponsive";
@@ -49,6 +49,7 @@ const TablaPago: React.FC = () => {
   const [openImport, setOpenImport] = useState(false);
   const [pagoSeleccionado, setPagoSeleccionado] = useState<Data | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState<string>(""); // Estado para búsqueda
 
   const handleOpen = (pago?: Data) => {
     setPagoSeleccionado(pago || null);
@@ -116,12 +117,12 @@ const TablaPago: React.FC = () => {
 
   }
 
-  // Metodo para buscar pagos por socio
-  const listarPagos = async (page: number = 1, search: string = "") => {
-    setIsLoading(true)
+  // Método para buscar pagos por socio con useCallback
+  const listarPagos = useCallback(async (page: number = 1) => {
+    setIsLoading(true);
     try {
-      const url = search
-        ? `${Api_Global_Pagos.pagos.listar(page)}&search=${search}`
+      const url = searchTerm
+        ? `${Api_Global_Pagos.pagos.listar(page)}&search=${searchTerm}`
         : Api_Global_Pagos.pagos.listar(page);
       const response = await apiClient.get(url);
       const data = response.data.data.map((item: Pagos) => ({
@@ -146,7 +147,7 @@ const TablaPago: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [searchTerm]); // Dependencia: se ejecuta cuando searchTerm cambia
 
   const eliminarPago = async (id_pago: string) => {
     try {
@@ -162,14 +163,13 @@ const TablaPago: React.FC = () => {
 
   const CambioDePagina = (event: React.ChangeEvent<unknown>, value: number) => {
     setPaginaActual(value);
-    const searchInput = document.getElementById("search-socio") as HTMLInputElement;
-    const searchTerm = searchInput ? searchInput.value : "";
-    listarPagos(value, searchTerm);
+    listarPagos(value);
   };
 
+  // useEffect para ejecutar la búsqueda automáticamente
   useEffect(() => {
     listarPagos(paginaActual);
-  }, [paginaActual]);
+  }, [listarPagos, paginaActual]);
 
   return (
     <Contenedor>
@@ -221,7 +221,7 @@ const TablaPago: React.FC = () => {
           borderTop: "1px solid rgba(0, 0, 0, 0.25)",
           borderBottom: "1px solid rgba(0, 0, 0, 0.25)",
           display: "flex",
-          flexDirection: "row",
+          flexDirection: isMobile ? "column" : "row",
           alignItems: "center",
         }}
       >
@@ -235,12 +235,19 @@ const TablaPago: React.FC = () => {
           Buscar por:
         </Typography>
 
-        {/* Input Nombre Socio */}
+        {/* Input Nombre Socio con búsqueda en tiempo real */}
         <TextField
-          id="search-socio"
-          sx={{ width: isTablet || isMobile ? "60%" : "30%" }}
+          sx={{ 
+            width: isTablet ? "60%" : isMobile ? "100%" : "30%",
+            my: isMobile ? 1 : 0,
+          }}
           label="Nombre del socio"
           type="text"
+          value={searchTerm}
+          onChange={(e) => {
+            setSearchTerm(e.target.value);
+            setPaginaActual(1); // Reset a página 1 al buscar
+          }}
         />
 
         {/* Boton Buscar */}
@@ -253,16 +260,12 @@ const TablaPago: React.FC = () => {
               backgroundColor: "#2c6d33",
             },
             height: "50px",
-            width: isTablet || isMobile ? "40%" : "170px",
-            marginLeft: isMobile ? "10px" : "1rem",
+            width: isTablet ? "40%" : isMobile ? "100%" : "170px",
+            marginLeft: isMobile ? "0" : "1rem",
             borderRadius: "30px",
             fontSize: isSmallMobile ? "0.8rem" : "auto"
           }}
-          onClick={() => {
-            const searchInput = document.getElementById("search-socio") as HTMLInputElement;
-            const searchTerm = searchInput ? searchInput.value : "";
-            listarPagos(1, searchTerm);
-          }}
+          onClick={() => listarPagos(1)}
         >
           Buscar
         </Button>
