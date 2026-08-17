@@ -1,7 +1,11 @@
 export const Api_Global_Cuotas = {
   cuotas: {
-    listar: (page: number = 1, anio: string, mes: string) =>
-      `/cuotas?page=${page}&anio=${anio}&mes=${mes}`,
+    listar: (page: number = 1, anio?: string, mes?: string) => {
+      const params = new URLSearchParams({ page: page.toString() });
+      if (anio && anio.trim() !== '') params.append('anio', anio);
+      if (mes && mes.trim() !== '') params.append('mes', mes);
+      return `/cuotas?${params.toString()}`;
+    },
     registrar: () => `/cuotas`,
     registrarPorPuesto: () => `/cuotas/por-puestos`,
     exportar: () => `cuotas/exportar`,
