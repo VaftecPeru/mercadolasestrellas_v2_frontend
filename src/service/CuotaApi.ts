@@ -8,6 +8,7 @@ export const Api_Global_Cuotas = {
     },
     registrar: () => `/cuotas`,
     registrarPorPuesto: () => `/cuotas/por-puestos`,
+    registrarPorMultiplesPuestos: () => `/cuotas/por-multiples-puestos`,
     exportar: () => `cuotas/exportar`,
     buscar: (page: number, per_page: number) => `/cuotas?page=${page}&per_page=${per_page}`,
     editar: (id_cuota: string | undefined) => `/cuotas/${id_cuota}`,
