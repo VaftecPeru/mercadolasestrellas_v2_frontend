@@ -97,7 +97,7 @@ const TablaAsociados: React.FC = () => {
   }
 
   const CambioDePagina = (event: React.ChangeEvent<unknown>, value: number) => {
-    setPaginaActual(value);
+    // Primero hacer fetch con el nuevo valor, luego actualizar el estado
     fetchSocios(value);
   };
 
