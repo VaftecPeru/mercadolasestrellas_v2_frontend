@@ -38,6 +38,7 @@ const SYSTEM_FIELDS = [
     { key: 'socio_nombre', label: 'Socio', width: 300 },
     { key: 'dni', label: 'DNI', width: 110 },
     { key: 'fecha_operacion', label: 'Fecha', width: 110 },
+    { key: 'concepto', label: 'Concepto / Servicio', width: 250 },
     { key: 'telefono', label: 'Teléfono', width: 120 },
     { key: 'correo', label: 'Correo', width: 180 },
     { key: 'importe', label: 'A Cuenta', width: 110 },
@@ -49,7 +50,7 @@ const ImportPagosModal: React.FC<ImportPagosModalProps> = ({ open, handleClose, 
     const [activeStep, setActiveStep] = useState(0);
     const [loading, setLoading] = useState(false);
     const [importResult, setImportResult] = useState<{ imported_count: number; errors: string[] } | null>(null);
-    const [socios, setSocios] = useState<Array<{ id_socio: number; nombre_completo: string; dni?: string }>>([]);
+    const [socios, setSocios] = useState<Array<{ id_socio: number; nombre_completo: string; dni?: string; telefono?: string; correo?: string }>>([]);
     const [nextPagoId, setNextPagoId] = useState<number>(1);
 
     const steps = ['Cargar Excel', 'Verificar y Editar', 'Finalizar'];
@@ -72,18 +73,15 @@ const ImportPagosModal: React.FC<ImportPagosModalProps> = ({ open, handleClose, 
             // Fetch socios list
             apiClient.get('/socios/seleccionar')
                 .then(response => {
-                    console.log('Socios fetched from /socios/seleccionar:', response.data.data);
                     setSocios(response.data.data || []);
                 })
-                .catch(error => {
-                    console.error('Error fetching socios:', error);
+                .catch(() => {
                     mostrarAlerta("Error", "No se pudieron cargar los socios para la selección manual.", "error");
                 });
 
             // Fetch last pago to determine next ID
             apiClient.get('/pagos?per_page=1')
                 .then(response => {
-                    console.log('Last pago fetched from /pagos:', response.data.data);
                     const pagos = response.data.data || [];
                     if (pagos.length > 0) {
                         // Extract number from ID format like "0000-45"
@@ -94,8 +92,7 @@ const ImportPagosModal: React.FC<ImportPagosModalProps> = ({ open, handleClose, 
                         setNextPagoId(1);
                     }
                 })
-                .catch(error => {
-                    console.error('Error fetching last pago:', error);
+                .catch(() => {
                     setNextPagoId(1);
                 });
         }
@@ -103,207 +100,270 @@ const ImportPagosModal: React.FC<ImportPagosModalProps> = ({ open, handleClose, 
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
-            // const uploadedFile = e.target.files[0];
             setImportResult(null);
-
             const reader = new FileReader();
             reader.onload = (evt) => {
-                const bstr = evt.target?.result;
-                const wb = XLSX.read(bstr, { type: 'binary' });
-                const wsname = wb.SheetNames[0];
-                const ws = wb.Sheets[wsname];
+                try {
+                    const bstr = evt.target?.result;
+                    const wb = XLSX.read(bstr, { type: 'binary' });
+                    
+                    let processedData: any[] = [];
+                    let localNextId = nextPagoId;
 
-                // Get raw data as array of arrays
-                const rawGrid = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
+                    let globalPuesto = "";
+                    let globalSocio = "";
 
-                // 1. Detect "Statement Mode"
-                let statementMode = false;
-                let detectedPuesto = "";
-                let headerRowIndex = -1;
+                    // Pre-build socio lookup map for O(1) access (avoid socios.find per row)
+                    const normalizeStr = (t: string) => (t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
+                    const socioByName = new Map<string, any>();
+                    socios.forEach(s => socioByName.set(normalizeStr(s.nombre_completo), s));
 
-                for (let r = 0; r < Math.min(10, rawGrid.length); r++) {
-                    const row = rawGrid[r];
-                    for (let c = 0; c < row.length; c++) {
-                        const cellVal = String(row[c] || "").toUpperCase();
-                        if (cellVal.includes("PUESTO:")) {
-                            statementMode = true;
-                            if (cellVal.replace("PUESTO:", "").trim().length > 0) {
-                                detectedPuesto = cellVal.replace("PUESTO:", "").trim();
-                            } else if (c + 1 < row.length) {
-                                detectedPuesto = String(row[c + 1] || "").trim();
+                    wb.SheetNames.forEach((wsname) => {
+                        const ws = wb.Sheets[wsname];
+                        const rawGrid = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
+                        if (rawGrid.length === 0) return;
+
+                        let detectedPuesto = "";
+                        let detectedSocio = "";
+                        let headerRowIndex = -1;
+
+                        // Scan first 15 rows for puesto/socio metadata and header row
+                        for (let r = 0; r < Math.min(15, rawGrid.length); r++) {
+                            const row = rawGrid[r] || [];
+
+                            // Detect header row by FIRST occurrence only
+                            if (headerRowIndex === -1) {
+                                const joinedRow = row.map(x => String(x || "").toUpperCase()).join(" ");
+                                if (joinedRow.includes("TODOS LOS SERVICIOS")) {
+                                    headerRowIndex = r;
+                                }
+                            }
+
+                            for (let c = 0; c < row.length; c++) {
+                                const cellVal = String(row[c] || "").toUpperCase().trim();
+                                if (cellVal.startsWith("PUESTO:")) {
+                                    // Extract puesto code after "PUESTO:" 
+                                    const raw = String(row[c] || "").replace(/PUESTO:\s*/i, "").replace(/[^a-zA-Z0-9\-]/g, "").trim();
+                                    if (raw) detectedPuesto = raw;
+                                }
+                                // Only match cells that START with "SOCIO:" (avoids "ESTADO DE SOCIO:")
+                                if (cellVal.startsWith("SOCIO:")) {
+                                    const originalCell = String(row[c] || "");
+                                    const val = originalCell.replace(/SOCIO:\s*/i, "").trim();
+                                    if (val) {
+                                        detectedSocio = val;
+                                    }
+                                }
                             }
                         }
-                    }
-                    if (statementMode && headerRowIndex === -1) {
-                        const joinedRow = Array.from(row || []).map(x => String(x || "").toUpperCase()).join(" ");
-                        if (joinedRow.includes("CUOTAS EXTRAORDINARIAS") || joinedRow.includes("IMPORTE")) {
-                            headerRowIndex = r;
+
+                        if (detectedPuesto) globalPuesto = detectedPuesto;
+                        if (detectedSocio) globalSocio = detectedSocio;
+
+                        const activePuesto = detectedPuesto || globalPuesto;
+                        const activeSocio = detectedSocio || globalSocio;
+
+                        // Resolve socio once per sheet — exact normalized name match only
+                        let socioMatchObj: any = null;
+                        if (activeSocio) {
+                            socioMatchObj = socioByName.get(normalizeStr(activeSocio)) || null;
                         }
-                    }
-                }
 
-                let processedData: any[] = [];
+                        if (headerRowIndex !== -1) {
+                            const headersRow = Array.from(rawGrid[headerRowIndex] || []).map(h => String(h || "").trim().toUpperCase());
 
-                if (statementMode && headerRowIndex !== -1 && detectedPuesto) {
-                    // *** PARSE STATEMENT FORMAT ***
-                    const headersRow = Array.from(rawGrid[headerRowIndex] || []).map(h => String(h || "").trim());
-                    const idxConcepto = headersRow.findIndex(h => {
-                        const val = (h || "").toUpperCase();
-                        return val.includes("CUOTA") || val.includes("CONCEPTO") || val.includes("DESCRIPCIÓN") || val.includes("DESCRIPCION");
-                    });
-                    const idxImporte = headersRow.findIndex(h => {
-                        const val = (h || "").toUpperCase();
-                        return val.includes("IMPORTE") || val.includes("CUENTA") || val.includes("MONTO") || val.includes("SALDO") || val.includes("TOTAL") || val.includes("PAGADO") || val === "S/";
-                    });
+                            // Find column indices
+                            const idxAnioCol = headersRow.findIndex(h => h === "AÑO" || h === "ANIO");
+                            const idxConcepto = headersRow.findIndex(h => h.includes("TODOS LOS SERVICIOS") || h.includes("CUOTA") || h.includes("CONCEPTO") || h.includes("SERVICIO"));
+                            const idxImporteTotal = headersRow.findIndex(h => h.includes("IMPORTE TOTAL A PAGAR") || h.includes("TOTAL A PAGAR MERCADO"));
+                            const idxImportePagado = headersRow.findIndex(h => h.includes("REALIZO PAGO") || h.includes("INGRESO EN SOLES") || h.includes("INGRESO X AÑO"));
+                            const idxFecha = headersRow.findIndex(h => h.includes("FECHA DE PAGO") || (h.includes("FECHA") && !h.includes("RECEPCIÓN") && !h.includes("RECEPCION")));
+                            const idxNumRecibo = headersRow.findIndex(h => h.includes("NÚMERO DE RECIBO") || h.includes("NUMERO DE RECIBO") || h.includes("RECIBO DE BANCO"));
+                            const idxOperacion = headersRow.findIndex(h => {
+                                const normalized = h.replace(/\s+/g, ' ');
+                                return normalized.includes("N° OPERACIÓN") || normalized.includes("N° OPERACION") || normalized.includes("OPERACIÓN MERCADO") || normalized.includes("OPERACION MERCADO") || normalized.includes("N.° OPERACION") || normalized.includes("NRO OPERACION");
+                            });
+                            const idxReporte = headersRow.findIndex(h => h === "REPORTE" || h.startsWith("REPORTE"));
+                            const idxDeuda = headersRow.findIndex(h => h.includes("DEUDA POR PAGAR") || (h.includes("DEUDA") && !h.includes("TOTAL")));
 
-                    // Sum all importes for this puesto
-                    let totalImporte = 0;
-                    for (let r = headerRowIndex + 1; r < rawGrid.length; r++) {
-                        const row = rawGrid[r];
-                        if (!row || row.length === 0) continue;
-                        const concepto = idxConcepto !== -1 ? String(row[idxConcepto] || "").trim() : "";
-                        const importeRaw = idxImporte !== -1 ? row[idxImporte] : 0;
-                        const numericImporte = parseFloat(String(importeRaw).replace(/,/g, ''));
+                            const parseAmt = (val: any): number => {
+                                if (val === null || val === undefined || val === "" || val === "-") return 0;
+                                const str = String(val).trim().replace(/,/g, '').replace(/[^\d.]/g, '');
+                                return parseFloat(str) || 0;
+                            };
 
-                        if (concepto && !isNaN(numericImporte)) {
-                            totalImporte += numericImporte;
-                        }
-                    }
+                            for (let r = headerRowIndex + 1; r < rawGrid.length; r++) {
+                                const row = rawGrid[r];
+                                if (!row || row.length === 0) continue;
 
-                    // Create ONE row with the total
-                    if (totalImporte > 0 || detectedPuesto) {
-                        processedData.push({
-                            id: `0000-${nextPagoId}`,
-                            puesto: detectedPuesto,
-                            socio_nombre: '',
-                            dni: '',
-                            fecha_operacion: new Date().toISOString().split('T')[0],
-                            telefono: '',
-                            correo: '',
-                            importe: totalImporte,
-                            monto_actual: ''
-                        });
-                    }
-                } else {
-                    // *** FALLBACK TO STANDARD LOGIC (Auto-Map) ***
-                    const data = XLSX.utils.sheet_to_json(ws, { header: 1 });
-                    if (data.length > 1) { // At least header + 1 row
-                        const excelHeaders = (data[0] as string[]).map(h => String(h).trim());
-                        const rows = XLSX.utils.sheet_to_json(ws);
+                                const concepto = idxConcepto !== -1 ? String(row[idxConcepto] || "").trim() : "";
+                                if (!concepto) continue;
+                                const conceptoUpper = concepto.toUpperCase();
+                                if (conceptoUpper.includes("TODOS LOS SERVICIOS") || conceptoUpper === "TOTAL") continue;
 
-                        // Auto-mapping logic
-                        const tempMapping: { [key: string]: string } = {};
-                        const amountCols: string[] = [];
+                                const numOperacion = idxOperacion !== -1 ? String(row[idxOperacion] || "").trim() : "";
+                                const reporte = idxReporte !== -1 ? String(row[idxReporte] || "").trim().toUpperCase() : "";
 
-                        excelHeaders.forEach(h => {
-                            const lowerH = h.toLowerCase();
-                            if (lowerH.includes('id') || lowerH.includes('#')) tempMapping['id'] = h;
-                            if (lowerH.includes('puesto') || lowerH.includes('n°')) tempMapping['puesto'] = h;
-                            if (lowerH.includes('socio') || lowerH.includes('nombre')) tempMapping['socio_nombre'] = h;
-                            if (lowerH.includes('dni') || lowerH.includes('ruc')) tempMapping['dni'] = h;
-                            if (lowerH.includes('fecha')) tempMapping['fecha_operacion'] = h;
-                            if (lowerH.includes('telefono') || lowerH.includes('teléfono') || lowerH.includes('celular')) tempMapping['telefono'] = h;
-                            if (lowerH.includes('correo') || lowerH.includes('email') || lowerH.includes('mail')) tempMapping['correo'] = h;
+                                const hasOpNum = numOperacion && numOperacion !== "-";
+                                const isDebe = reporte.includes("DEBE");
+                                const isCancelado = reporte.includes("CANCELADO") || hasOpNum;
 
-                            // Amount-related columns
-                            if (lowerH.includes('cuenta') || lowerH.includes('pago') || lowerH.includes('importe') || lowerH.includes('total') || lowerH.includes('recibido') || lowerH.includes('pagado')) tempMapping['importe'] = h;
-                            if (lowerH.includes('monto') || lowerH.includes('actual') || lowerH.includes('saldo')) tempMapping['monto_actual'] = h;
+                                // Only import rows with a payment record or a pending debt
+                                if (!hasOpNum && !isDebe && !isCancelado) continue;
 
-                            // Special logic for "ordenes extraordinarias" and other fees
-                            if (lowerH.includes('extraordinaria') || lowerH.includes('extra') || lowerH.includes('multa') || lowerH.includes('penal') || lowerH.includes('orden') || lowerH.includes('ext') || lowerH.includes('cargo') || lowerH.includes('deuda') || lowerH.includes('cuota')) {
-                                amountCols.push(h);
+                                // Determine year
+                                let rowYear = idxAnioCol !== -1 && row[idxAnioCol] ? String(row[idxAnioCol]).trim() : "";
+                                if (!rowYear && /^\d{4}$/.test(wsname.trim())) rowYear = wsname.trim();
+
+                                // importe = lo que PAGÓ (REALIZO PAGO INGRESO EN SOLES), puede ser 0
+                                const importe = idxImportePagado !== -1 ? parseAmt(row[idxImportePagado]) : 0;
+
+                                // monto_actual = lo que AÚN DEBE (DEUDA POR PAGAR POR AÑO)
+                                const deuda = idxDeuda !== -1 ? parseAmt(row[idxDeuda]) : 0;
+
+                                // Parse fecha
+                                let fechaOperacion = new Date().toISOString().split('T')[0];
+                                if (idxFecha !== -1 && row[idxFecha] && row[idxFecha] !== '-') {
+                                    const fVal = row[idxFecha];
+                                    if (typeof fVal === 'number') {
+                                        fechaOperacion = new Date((fVal - 25569) * 86400 * 1000).toISOString().split('T')[0];
+                                    } else {
+                                        const parts = String(fVal).split('/');
+                                        if (parts.length === 3) {
+                                            fechaOperacion = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+                                        } else {
+                                            try { fechaOperacion = new Date(String(fVal)).toISOString().split('T')[0]; } catch (e) {}
+                                        }
+                                    }
+                                }
+
+                                const conceptoFinal = (rowYear && !concepto.includes(rowYear)) ? `${concepto} - ${rowYear}` : concepto;
+                                const numRecibo = idxNumRecibo !== -1 ? String(row[idxNumRecibo] || "").trim() : "";
+                                const opNumber = hasOpNum ? numOperacion : (numRecibo || (isDebe ? 'PENDIENTE' : 'IMPORTADO'));
+
+                                // Nombre del socio: usar el nombre detectado en el Excel (para que se muestre)
+                                // Buscar match en sistema para precargar datos adicionales
+                                const nombreSocioExcel = activeSocio || '';
+                                const socioNombreFinal = socioMatchObj ? socioMatchObj.nombre_completo : nombreSocioExcel;
+
+                                processedData.push({
+                                    id: `0000-${localNextId++}`,
+                                    puesto: activePuesto,
+                                    socio_nombre: socioNombreFinal,
+                                    id_socio: socioMatchObj ? socioMatchObj.id_socio : null,
+                                    dni: socioMatchObj ? (socioMatchObj.dni || '') : '',
+                                    fecha_operacion: fechaOperacion,
+                                    concepto: conceptoFinal,
+                                    numero_operacion: opNumber,
+                                    telefono: socioMatchObj?.telefono || '',
+                                    correo: socioMatchObj?.correo || '',
+                                    importe: importe.toFixed(2),         // lo que pagó (puede ser 0)
+                                    monto_actual: deuda > 0 ? deuda.toFixed(2) : '' // lo que debe
+                                });
                             }
-                        });
+                        } else {
+                            // *** FALLBACK TO STANDARD LOGIC (Auto-Map) ***
+                            const data = XLSX.utils.sheet_to_json(ws, { header: 1 });
+                            if (data.length > 1) {
+                                const excelHeaders = (data[0] as string[]).map(h => String(h).trim());
+                                const rows = XLSX.utils.sheet_to_json(ws);
 
-                        // If we didn't find a primary 'importe' but we have extra files, use the first extra
-                        if (!tempMapping['importe'] && amountCols.length > 0) {
-                            tempMapping['importe'] = amountCols[0];
-                        }
+                                const tempMapping: { [key: string]: string } = {};
+                                const amountCols: string[] = [];
 
-                        // Transform immediately with auto-generated IDs
-                        processedData = rows.map((row: any, index: number) => {
-                            const newRow: any = {};
-                            SYSTEM_FIELDS.forEach(field => {
-                                const excelCol = tempMapping[field.key];
-                                if (field.key === 'id') {
-                                    newRow[field.key] = `0000-${nextPagoId + index}`;
-                                } else if (field.key === 'importe') {
-                                    // SUM Logic: Main importe + all extra columns
-                                    const mainCol = tempMapping['importe'];
-                                    let total = 0;
+                                excelHeaders.forEach(h => {
+                                    const lowerH = h.toLowerCase();
+                                    if (lowerH.includes('id') || lowerH.includes('#')) tempMapping['id'] = h;
+                                    if (lowerH.includes('puesto') || lowerH.includes('n°')) tempMapping['puesto'] = h;
+                                    if (lowerH.includes('socio') || lowerH.includes('nombre')) tempMapping['socio_nombre'] = h;
+                                    if (lowerH.includes('dni') || lowerH.includes('ruc')) tempMapping['dni'] = h;
+                                    if (lowerH.includes('fecha')) tempMapping['fecha_operacion'] = h;
+                                    if (lowerH.includes('telefono') || lowerH.includes('teléfono') || lowerH.includes('celular')) tempMapping['telefono'] = h;
+                                    if (lowerH.includes('correo') || lowerH.includes('email') || lowerH.includes('mail')) tempMapping['correo'] = h;
+                                    if (lowerH.includes('cuenta') || lowerH.includes('pago') || lowerH.includes('importe') || lowerH.includes('total') || lowerH.includes('recibido') || lowerH.includes('pagado')) tempMapping['importe'] = h;
+                                    if (lowerH.includes('monto') || lowerH.includes('actual') || lowerH.includes('saldo')) tempMapping['monto_actual'] = h;
+                                    if (lowerH.includes('extraordinaria') || lowerH.includes('extra') || lowerH.includes('multa') || lowerH.includes('penal') || lowerH.includes('orden') || lowerH.includes('ext') || lowerH.includes('cargo') || lowerH.includes('deuda') || lowerH.includes('cuota')) {
+                                        amountCols.push(h);
+                                    }
+                                });
 
-                                    const parseAmt = (val: any) => {
-                                        if (!val) return 0;
-                                        let str = String(val).trim();
-                                        // Handle (123.00) as negative or just clean it
-                                        if (str.startsWith('(') && str.endsWith(')')) str = str.slice(1, -1);
-                                        // Robust parsing: remove non-numeric chars except . and ,
-                                        const cleanStr = str.replace(/[^\d.,]/g, '').replace(/,/g, '');
-                                        return parseFloat(cleanStr) || 0;
-                                    };
+                                if (!tempMapping['importe'] && amountCols.length > 0) {
+                                    tempMapping['importe'] = amountCols[0];
+                                }
 
-                                    if (mainCol && row[mainCol]) total += parseAmt(row[mainCol]);
-
-                                    amountCols.forEach(col => {
-                                        if (col !== mainCol && row[col]) total += parseAmt(row[col]);
+                                const sheetProcessed = rows.map((row: any) => {
+                                    const newRow: any = {};
+                                    SYSTEM_FIELDS.forEach(field => {
+                                        const excelCol = tempMapping[field.key];
+                                        if (field.key === 'id') {
+                                            newRow[field.key] = `0000-${localNextId++}`;
+                                        } else if (field.key === 'importe') {
+                                            const mainCol = tempMapping['importe'];
+                                            let total = 0;
+                                            const parseAmt = (val: any) => {
+                                                if (!val) return 0;
+                                                let str = String(val).trim();
+                                                if (str.startsWith('(') && str.endsWith(')')) str = str.slice(1, -1);
+                                                return parseFloat(str.replace(/[^\d.,]/g, '').replace(/,/g, '')) || 0;
+                                            };
+                                            if (mainCol && row[mainCol]) total += parseAmt(row[mainCol]);
+                                            amountCols.forEach(col => { if (col !== mainCol && row[col]) total += parseAmt(row[col]); });
+                                            newRow[field.key] = total > 0 ? total.toFixed(2) : "";
+                                        } else {
+                                            newRow[field.key] = excelCol ? row[excelCol] : "";
+                                        }
                                     });
 
-                                    newRow[field.key] = total > 0 ? total.toFixed(2) : "";
-                                } else if (field.key === 'monto_actual') {
-                                    // Special case for monto_actual to avoid showing 0 if not present
-                                    newRow[field.key] = excelCol ? row[excelCol] : "";
-                                } else {
-                                    newRow[field.key] = excelCol ? row[excelCol] : "";
-                                }
-                            });
+                                    const socioMatch = socios.find(s =>
+                                        (newRow.dni && s.dni === String(newRow.dni)) ||
+                                        (newRow.socio_nombre && s.nombre_completo === newRow.socio_nombre)
+                                    );
+                                    if (socioMatch) {
+                                        newRow.id_socio = socioMatch.id_socio;
+                                        if (!newRow.dni) newRow.dni = socioMatch.dni;
+                                        newRow.telefono = socioMatch.telefono || newRow.telefono || "";
+                                        newRow.correo = socioMatch.correo || newRow.correo || "";
+                                    }
+                                    return newRow;
+                                });
 
-                            // Ensure we capture identifiers for the initial match
-                            const socioMatch = socios.find(s =>
-                                (newRow.dni && s.dni === String(newRow.dni)) ||
-                                (newRow.socio_nombre && s.nombre_completo === newRow.socio_nombre) ||
-                                (newRow.id_socio && s.id_socio === newRow.id_socio)
-                            );
-                            if (socioMatch) {
-                                newRow.id_socio = socioMatch.id_socio;
-                                if (!newRow.dni) newRow.dni = socioMatch.dni;
-                            }
-
-                            return newRow;
-                        });
-                    }
-                }
-
-                if (processedData.length > 0) {
-                    // Normalize text for robust matching (remove accents and case)
-                    const normalizeStr = (t: string) => (t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
-
-                    // Improve matching using normalized names
-                    processedData = processedData.map(row => {
-                        if (row.socio_nombre && !row.id_socio) {
-                            const searchName = normalizeStr(row.socio_nombre);
-                            const match = socios.find(s => normalizeStr(s.nombre_completo) === searchName);
-                            if (match) {
-                                return {
-                                    ...row,
-                                    socio_nombre: match.nombre_completo,
-                                    dni: match.dni || row.dni
-                                };
+                                processedData = [...processedData, ...sheetProcessed];
                             }
                         }
-                        return row;
                     });
 
-                    setPreviewData(processedData);
-                    setActiveStep(1); // Jump to Verify/Edit
-                } else {
-                    mostrarAlerta("Error", "No se pudieron detectar datos válidos en el Excel.", "error");
+                    if (processedData.length > 0) {
+                        // Enrich with socio data (normalize only once per row)
+                        processedData = processedData.map(row => {
+                            if (row.socio_nombre) {
+                                const match = row.id_socio
+                                    ? socios.find(s => s.id_socio === row.id_socio)
+                                    : socioByName.get(normalizeStr(row.socio_nombre));
+                                if (match) {
+                                    return {
+                                        ...row,
+                                        socio_nombre: match.nombre_completo,
+                                        dni: match.dni || row.dni,
+                                        telefono: match.telefono || row.telefono || '',
+                                        correo: match.correo || row.correo || ''
+                                    };
+                                }
+                            }
+                            return row;
+                        });
+
+                        setPreviewData(processedData);
+                        setActiveStep(1);
+                    } else {
+                        mostrarAlerta("Error", "No se encontraron registros con pago o deuda en el Excel. Solo se importan filas con N° Operación o estado 'Debe'.", "error");
+                    }
+                } catch (err: any) {
+                    mostrarAlerta("Error", "Ocurrió un error al leer el archivo Excel: " + (err?.message || ""), "error");
                 }
             };
             reader.readAsBinaryString(e.target.files[0]);
         }
     };
-
-
 
     const [previewData, setPreviewData] = useState<any[]>([]);
 
@@ -313,15 +373,18 @@ const ImportPagosModal: React.FC<ImportPagosModalProps> = ({ open, handleClose, 
         setPreviewData(newData);
     };
 
+    const findSocioMatch = (row: any) =>
+        socios.find(s =>
+            (row.id_socio && s.id_socio === row.id_socio) ||
+            (row.dni && s.dni === String(row.dni)) ||
+            (s.nombre_completo === row.socio_nombre)
+        );
+
     const handleImport = async () => {
         setLoading(true);
         // Ensure all identification fields are sent
         const finalData = previewData.map(row => {
-            const socioMatch = socios.find(s =>
-                (row.id_socio && s.id_socio === row.id_socio) ||
-                (row.dni && s.dni === String(row.dni)) ||
-                (s.nombre_completo === row.socio_nombre)
-            );
+            const socioMatch = findSocioMatch(row);
             return {
                 ...row,
                 id_socio: socioMatch?.id_socio || row.id_socio || null,
@@ -360,12 +423,6 @@ const ImportPagosModal: React.FC<ImportPagosModalProps> = ({ open, handleClose, 
         }
     };
 
-    const handleDeleteRow = (index: number) => {
-        const newData = [...previewData];
-        newData.splice(index, 1);
-        setPreviewData(newData);
-    };
-
     const renderPreviewStep = () => (
         <Box>
             <Typography variant="subtitle2" sx={{ mb: 1 }}>
@@ -395,11 +452,7 @@ const ImportPagosModal: React.FC<ImportPagosModalProps> = ({ open, handleClose, 
                     </TableHead>
                     <TableBody>
                         {previewData.map((row, i) => {
-                            const socioMatch = socios.find(s =>
-                                (row.id_socio && s.id_socio === row.id_socio) ||
-                                (row.dni && s.dni === String(row.dni)) ||
-                                (s.nombre_completo === row.socio_nombre)
-                            );
+                            const socioMatch = findSocioMatch(row);
                             const hasSocioError = row.socio_nombre && !socioMatch;
 
                             return (
@@ -423,6 +476,8 @@ const ImportPagosModal: React.FC<ImportPagosModalProps> = ({ open, handleClose, 
                                                             ...newData[i],
                                                             socio_nombre: socio?.nombre_completo || (typeof newValue === 'string' ? newValue : ""),
                                                             dni: socio?.dni || newData[i].dni || "",
+                                                            telefono: socio?.telefono || "",
+                                                            correo: socio?.correo || "",
                                                             id_socio: socio?.id_socio || null
                                                         };
                                                         setPreviewData(newData);
