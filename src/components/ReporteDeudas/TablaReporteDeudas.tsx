@@ -124,6 +124,7 @@ const TablaReporteDeudas: React.FC = () => {
             <Autocomplete
               options={puestos}
               getOptionLabel={(puesto) => puesto.numero_puesto} // Mostrar el numero del puesto
+              value={puestos.find(p => Number(p.id_puesto) === puestoSeleccionado) || null}
               onChange={(event, value) => { // Obtener el id del puesto seleccionado
                 if (value) { // Si se selecciona un puesto
                   setPuestoSeleccionado(Number(value.id_puesto)); // Guardar el id del puesto

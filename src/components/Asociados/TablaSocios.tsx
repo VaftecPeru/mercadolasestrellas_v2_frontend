@@ -61,12 +61,26 @@ const TablaAsociados: React.FC = () => {
     fetchSocios,
   } = useSocios();
 
-  const handleVerReportePagos = (id_socio: number) => {
-    navigate(`/home/reporte-pagos?socio=${id_socio}`);
+  // Los reportes filtran por puesto; se obtiene el puesto del socio
+  const obtenerPuestoSocio = (socio: Socio): number | null =>
+    socio.puestos && socio.puestos.length > 0 ? socio.puestos[0].id_puesto : null;
+
+  const handleVerReportePagos = (socio: Socio) => {
+    const idPuesto = obtenerPuestoSocio(socio);
+    if (!idPuesto) {
+      mostrarAlerta("Atención", "El socio no tiene un puesto asignado.", "warning");
+      return;
+    }
+    navigate(`/home/reporte-pagos?puesto=${idPuesto}`);
   };
 
-  const handleVerReporteDeudas = (id_puesto: number) => {
-    navigate(`/home/reporte-deudas?puesto=${id_puesto}`);
+  const handleVerReporteDeudas = (socio: Socio) => {
+    const idPuesto = obtenerPuestoSocio(socio);
+    if (!idPuesto) {
+      mostrarAlerta("Atención", "El socio no tiene un puesto asignado.", "warning");
+      return;
+    }
+    navigate(`/home/reporte-deudas?puesto=${idPuesto}`);
   };
 
   const handleOpen = (socio?: Socio) => {
@@ -328,7 +342,7 @@ const TablaAsociados: React.FC = () => {
                                                   backgroundColor: "crimson",
                                                   color: "white"
                                                 }}
-                                                onClick={() => handleVerReporteDeudas(socio.id_socio)}
+                                                onClick={() => handleVerReporteDeudas(socio)}
                                               >
                                                 <Payments sx={{ mr: 1 }} />
                                                 Deudas
@@ -341,7 +355,7 @@ const TablaAsociados: React.FC = () => {
                                                   backgroundColor: "green",
                                                   color: "white"
                                                 }}
-                                                onClick={() => handleVerReportePagos(socio.id_socio)}
+                                                onClick={() => handleVerReportePagos(socio)}
                                               >
                                                 <Payments sx={{ mr: 1 }} />
                                                 Pagos
@@ -475,14 +489,14 @@ const TablaAsociados: React.FC = () => {
                                             <IconButton
                                               aria-label="payment"
                                               sx={{ color: "crimson" }}
-                                              onClick={() => handleVerReporteDeudas(socio.id_socio)}
+                                              onClick={() => handleVerReporteDeudas(socio)}
                                             >
                                               <Payments />
                                             </IconButton>
                                             <IconButton
                                               aria-label="payment"
                                               sx={{ color: "green" }}
-                                              onClick={() => handleVerReportePagos(socio.id_socio)}
+                                              onClick={() => handleVerReportePagos(socio)}
                                             >
                                               <Payments />
                                             </IconButton>
