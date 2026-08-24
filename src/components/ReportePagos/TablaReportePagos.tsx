@@ -22,7 +22,7 @@ const columns: readonly Column[] = [
   { id: "fecha", label: "Fec. Pago", minWidth: 100, align: "center" },
   { id: "servicios", label: "Servicios", minWidth: 150, align: "left" },
   { id: "montos", label: "Monto (S/)", minWidth: 100, align: "right" },
-  { id: "total", label: "Pago (S/)", minWidth: 120, align: "right" },
+  { id: "total", label: "Imp. Pagado (S/.)", minWidth: 120, align: "right" },
 ];
 
 const TablaReportePagos: React.FC = () => {
@@ -34,7 +34,7 @@ const TablaReportePagos: React.FC = () => {
 
   const getMesNombre = (fecha: string) => {
     const mesIndex = new Date(fecha).getUTCMonth();
-    return nombreMes(mesIndex).toUpperCase();
+    return nombreMes(mesIndex);
   };
 
   const [mostrarDetalles, setMostrarDetalles] = useState<string | null>(null);
@@ -268,8 +268,8 @@ const TablaReportePagos: React.FC = () => {
                                 </Typography>
                               </TableCell>
 
-                              {/* Pago */}
-                              <TableCell align="right" sx={{ fontWeight: 'bold', borderLeft: '1px solid #f0f0f0', backgroundColor: '#fafafa' }}>
+                              {/* Imp. Pagado */}
+                              <TableCell align="right" sx={{ borderLeft: '1px solid #f0f0f0', backgroundColor: '#fafafa' }}>
                                 {detIdx === pago.detalle_pagos.length - 1 ? `S/ ${Number(pago.total).toFixed(2)}` : ""}
                               </TableCell>
                             </>
@@ -292,7 +292,7 @@ const TablaReportePagos: React.FC = () => {
                 <TableHead>
                   <TableRow>
                     <TableCell colSpan={5} align="right" sx={{ fontWeight: "bold", backgroundColor: "#f0f0f0" }}>
-                      TOTAL A PAGAR:
+                      TOTAL PAGADO:
                     </TableCell>
                     <TableCell align="right" sx={{ fontWeight: "bold", backgroundColor: "#e3f2fd", fontSize: '1rem', borderTop: '2px solid #1976d2' }}>
                       S/ {Number(totalGeneral || 0).toFixed(2)}
