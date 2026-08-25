@@ -12,7 +12,7 @@ import apiClient from "../../Utils/apliClient";
 import { Api_Global_Reportes } from '../../service/ReporteApi';
 import { Api_Global_Cuotas } from '../../service/CuotaApi';
 import { handleExport } from '../../Utils/exportUtils';
-import { mostrarAlerta } from '../Alerts/Registrar';
+import { mostrarAlerta, manejarError } from '../Alerts/Registrar';
 
 interface Cuota {
   id_cuota: string;
@@ -80,11 +80,13 @@ const TablaReporteCuotasMetrado: React.FC = () => {
   const listarCuotas = async (pagina: number = 1, idCuota: number) => {
     setIsLoading(true)
     try {
-      const response = await apiClient.get(Api_Global_Reportes.reportes.cuotaPorMetros(1, 500, idCuota));
+      const response = await apiClient.get(Api_Global_Reportes.reportes.cuotaPorMetros(pagina, 15, idCuota));
       setCuotas(response.data.data);
       setTotalPaginas(response.data.meta.last_page);
       setPaginaActual(response.data.meta.current_page);
     } catch (error) {
+      manejarError(error);
+      setCuotas([]);
     } finally {
       setIsLoading(false);
     }
@@ -153,7 +155,13 @@ const TablaReporteCuotasMetrado: React.FC = () => {
           {/* Botón "Generar Reporte" */}
           <BotonAgregar
             exportar
-            handleAction={() => listarCuotas(undefined, cuotaSeleccionada)}
+            handleAction={() => {
+              if (!cuotaSeleccionada) {
+                mostrarAlerta("Error", "Seleccione una cuota para generar el reporte.", "warning");
+                return;
+              }
+              listarCuotas(1, cuotaSeleccionada);
+            }}
             texto="Generar"
           />
         </Box>
