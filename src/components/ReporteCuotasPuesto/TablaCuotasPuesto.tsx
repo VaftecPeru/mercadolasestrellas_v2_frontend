@@ -59,6 +59,12 @@ const TablaCuotasPuesto: React.FC = () => {
   const [paginaActual, setPaginaActual] = useState(1);
   const [totalPaginas, setTotalPaginas] = useState(1);
 
+  const totalGeneral = cuotas.reduce((acc, row) => ({
+    aprobado: acc.aprobado + parseFloat(row.aprobado),
+    pagado: acc.pagado + parseFloat(row.pagado),
+    por_pagar: acc.por_pagar + parseFloat(row.por_pagar),
+  }), { aprobado: 0, pagado: 0, por_pagar: 0 });
+
   const cambiarPagina = (event: React.ChangeEvent<unknown>, value: number) => {
     setPaginaActual(value);
     fetchCuotas(value, puestoSeleccionado);
@@ -308,6 +314,24 @@ const TablaCuotasPuesto: React.FC = () => {
                     </TableRow>
                   }
                 </TableBody>
+                {!isTablet && !isMobile && cuotas.length > 0 && (
+                  <TableHead>
+                    <TableRow>
+                      <TableCell colSpan={4} align="right" sx={{ fontWeight: "bold", backgroundColor: "#f0f0f0" }}>
+                        TOTAL:
+                      </TableCell>
+                      <TableCell align="right" sx={{ fontWeight: "bold", backgroundColor: "#e3f2fd", fontSize: '1rem', borderTop: '2px solid #1976d2' }}>
+                        S/ {Number(totalGeneral.aprobado || 0).toFixed(2)}
+                      </TableCell>
+                      <TableCell align="right" sx={{ fontWeight: "bold", backgroundColor: "#e3f2fd", fontSize: '1rem', borderTop: '2px solid #1976d2' }}>
+                        S/ {Number(totalGeneral.pagado || 0).toFixed(2)}
+                      </TableCell>
+                      <TableCell align="right" sx={{ fontWeight: "bold", backgroundColor: "#e3f2fd", fontSize: '1rem', borderTop: '2px solid #1976d2' }}>
+                        S/ {Number(totalGeneral.por_pagar || 0).toFixed(2)}
+                      </TableCell>
+                    </TableRow>
+                  </TableHead>
+                )}
               </Table>
             </TableContainer>
             <Box sx={{ display: "flex", justifyContent: "center", marginTop: 3 }}>

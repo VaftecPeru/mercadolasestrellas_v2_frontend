@@ -41,6 +41,12 @@ const TablaReporteDeudas: React.FC = () => {
   const [paginaActual, setPaginaActual] = useState(1);
   const [totalPaginas, setTotalPaginas] = useState(1);
 
+  const totalGeneral = deudas.reduce((acc, row) => ({
+    total: acc.total + parseFloat(row.total),
+    importe_pagado: acc.importe_pagado + parseFloat(row.importe_pagado),
+    importe_por_pagar: acc.importe_por_pagar + parseFloat(row.importe_por_pagar),
+  }), { total: 0, importe_pagado: 0, importe_por_pagar: 0 });
+
   const cambiarPagina = (event: React.ChangeEvent<unknown>, value: number) => {
     setPaginaActual(value);
     fetchDeudas(value, puestoSeleccionado);
@@ -287,6 +293,24 @@ const TablaReporteDeudas: React.FC = () => {
                     </TableRow>
                   }
                 </TableBody>
+                {!isTablet && !isMobile && deudas.length > 0 && (
+                  <TableHead>
+                    <TableRow>
+                      <TableCell colSpan={3} align="right" sx={{ fontWeight: "bold", backgroundColor: "#f0f0f0" }}>
+                        TOTAL:
+                      </TableCell>
+                      <TableCell align="right" sx={{ fontWeight: "bold", backgroundColor: "#e3f2fd", fontSize: '1rem', borderTop: '2px solid #1976d2' }}>
+                        S/ {Number(totalGeneral.total || 0).toFixed(2)}
+                      </TableCell>
+                      <TableCell align="right" sx={{ fontWeight: "bold", backgroundColor: "#e3f2fd", fontSize: '1rem', borderTop: '2px solid #1976d2' }}>
+                        S/ {Number(totalGeneral.importe_pagado || 0).toFixed(2)}
+                      </TableCell>
+                      <TableCell align="right" sx={{ fontWeight: "bold", backgroundColor: "#e3f2fd", fontSize: '1rem', borderTop: '2px solid #1976d2' }}>
+                        S/ {Number(totalGeneral.importe_por_pagar || 0).toFixed(2)}
+                      </TableCell>
+                    </TableRow>
+                  </TableHead>
+                )}
               </Table>
             </TableContainer>
             <Box sx={{ display: "flex", justifyContent: "center", marginTop: 3 }}>
