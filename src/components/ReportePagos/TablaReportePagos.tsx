@@ -17,11 +17,9 @@ import { useAuth } from '../../context/AuthContext';
 import { mostrarAlerta } from '../Alerts/Registrar';
 
 const columns: readonly Column[] = [
-  { id: "anio", label: "Año", minWidth: 80, align: "center" },
-  { id: "mes", label: "Mes", minWidth: 100, align: "center" },
   { id: "fecha", label: "Fec. Pago", minWidth: 100, align: "center" },
   { id: "servicios", label: "Servicios", minWidth: 150, align: "left" },
-  { id: "montos", label: "Monto (S/)", minWidth: 100, align: "right" },
+  { id: "montos", label: "Total (S/)", minWidth: 100, align: "right" },
   { id: "total", label: "Imp. Pagado (S/.)", minWidth: 120, align: "right" },
 ];
 
@@ -46,6 +44,10 @@ const TablaReportePagos: React.FC = () => {
   const idPuestoQuery = searchParams.get("puesto");
   const [isLoading, setIsLoading] = useState(false);
   const [totalGeneral, setTotalGeneral] = useState<number>(0);
+
+  const totalMonto = pagos.reduce((acc, pago) => {
+    return acc + pago.detalle_pagos.reduce((a, detalle) => a + Number(detalle.importe), 0);
+  }, 0);
 
   const { usuario } = useAuth();
 
@@ -239,16 +241,6 @@ const TablaReportePagos: React.FC = () => {
                             )
                           ) : (
                             <>
-                              {/* Año */}
-                              <TableCell align="center" sx={{ borderRight: '1px solid #f0f0f0' }}>
-                                {getAnio(pago.fecha)}
-                              </TableCell>
-
-                              {/* Mes */}
-                              <TableCell align="center" sx={{ borderRight: '1px solid #f0f0f0' }}>
-                                {getMesNombre(pago.fecha)}
-                              </TableCell>
-
                               {/* Fecha */}
                               <TableCell align="center" sx={{ borderRight: '1px solid #f0f0f0' }}>
                                 {pago.fecha}
@@ -291,8 +283,11 @@ const TablaReportePagos: React.FC = () => {
               {!isTablet && !isMobile && pagos.length > 0 && (
                 <TableHead>
                   <TableRow>
-                    <TableCell colSpan={5} align="right" sx={{ fontWeight: "bold", backgroundColor: "#f0f0f0" }}>
-                      TOTAL PAGADO:
+                    <TableCell colSpan={2} align="right" sx={{ fontWeight: "bold", backgroundColor: "#f0f0f0" }}>
+                      TOTAL:
+                    </TableCell>
+                    <TableCell align="right" sx={{ fontWeight: "bold", backgroundColor: "#e3f2fd", fontSize: '1rem', borderTop: '2px solid #1976d2' }}>
+                      S/ {Number(totalMonto || 0).toFixed(2)}
                     </TableCell>
                     <TableCell align="right" sx={{ fontWeight: "bold", backgroundColor: "#e3f2fd", fontSize: '1rem', borderTop: '2px solid #1976d2' }}>
                       S/ {Number(totalGeneral || 0).toFixed(2)}

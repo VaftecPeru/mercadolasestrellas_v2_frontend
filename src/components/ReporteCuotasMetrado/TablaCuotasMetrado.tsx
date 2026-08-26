@@ -26,6 +26,7 @@ interface Data {
   area: string;
   total: string;
   importe_pagado: string;
+  importe_por_pagar?: string;
 }
 
 interface Column {
@@ -41,6 +42,7 @@ const columns: readonly Column[] = [
   { id: "area", label: "Área m2", minWidth: 50, align: "center" },
   { id: "total", label: "Total (S/)", minWidth: 50, align: "center" },
   { id: "importe_pagado", label: "Importe pagado (S/)", minWidth: 50, align: "center" },
+  { id: "importe_por_pagar", label: "Imp. Por pagar (S/)", minWidth: 50, align: "center" },
 ]
 
 const TablaReporteCuotasMetrado: React.FC = () => {
@@ -253,7 +255,7 @@ const TablaReporteCuotasMetrado: React.FC = () => {
                                     }}
                                   >
                                     {columns.map((column) => {
-                                      const value = column.id === "accion" ? "" : (cuota as any)[column.id];
+                                      const value = column.id === "accion" ? "" : column.id === "importe_por_pagar" ? (parseFloat(cuota.total) - parseFloat(cuota.importe_pagado)).toFixed(2) : (cuota as any)[column.id];
                                       return (
                                         <Box key={column.id}>
                                           {/* Mostrar titulo del campo */}
@@ -272,7 +274,7 @@ const TablaReporteCuotasMetrado: React.FC = () => {
                               </Box>
                             </TableCell>
                             : columns.map((column) => {
-                              const value = column.id === "accion" ? "" : (cuota as any)[column.id];
+                              const value = column.id === "accion" ? "" : column.id === "importe_por_pagar" ? (parseFloat(cuota.total) - parseFloat(cuota.importe_pagado)).toFixed(2) : (cuota as any)[column.id];
                               return (
                                 <TableCell
                                   key={column.id}
@@ -303,6 +305,9 @@ const TablaReporteCuotasMetrado: React.FC = () => {
                       </TableCell>
                       <TableCell align="right" sx={{ fontWeight: "bold", backgroundColor: "#e3f2fd", fontSize: '1rem', borderTop: '2px solid #1976d2' }}>
                         S/ {Number(totalGeneral.importe_pagado || 0).toFixed(2)}
+                      </TableCell>
+                      <TableCell align="right" sx={{ fontWeight: "bold", backgroundColor: "#e3f2fd", fontSize: '1rem', borderTop: '2px solid #1976d2' }}>
+                        S/ {Number(totalGeneral.importe_por_pagar || 0).toFixed(2)}
                       </TableCell>
                     </TableRow>
                   </TableHead>

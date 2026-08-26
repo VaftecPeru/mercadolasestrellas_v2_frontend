@@ -17,9 +17,8 @@ import { useAuth } from '../../context/AuthContext';
 import { mostrarAlerta } from '../Alerts/Registrar';
 
 const columns: readonly Column[] = [
-  { id: "anio", label: "Año", minWidth: 50, align: "center" },
-  { id: "mes", label: "Mes", minWidth: 50, align: "center" },
-  { id: "servicio_descripcion", label: "Servicios", minWidth: 50, align: "center" },
+  { id: "fecha", label: "Fec. Pago", minWidth: 50, align: "center" },
+  { id: "servicio_descripcion", label: "Servicios", minWidth: 50, align: "left" },
   { id: "total", label: "Total (S/)", minWidth: 50, align: "center" },
   { id: "importe_pagado", label: "Imp. Pagado (S/)", minWidth: 50, align: "center" },
   { id: "importe_por_pagar", label: "Imp. Por pagar (S/)", minWidth: 50, align: "center" },
@@ -296,7 +295,7 @@ const TablaReporteDeudas: React.FC = () => {
                 {!isTablet && !isMobile && deudas.length > 0 && (
                   <TableHead>
                     <TableRow>
-                      <TableCell colSpan={3} align="right" sx={{ fontWeight: "bold", backgroundColor: "#f0f0f0" }}>
+                      <TableCell colSpan={2} align="right" sx={{ fontWeight: "bold", backgroundColor: "#f0f0f0" }}>
                         TOTAL:
                       </TableCell>
                       <TableCell align="right" sx={{ fontWeight: "bold", backgroundColor: "#e3f2fd", fontSize: '1rem', borderTop: '2px solid #1976d2' }}>
