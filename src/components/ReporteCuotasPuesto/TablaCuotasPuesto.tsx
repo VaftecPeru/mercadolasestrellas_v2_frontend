@@ -38,8 +38,8 @@ const columns: readonly Column[] = [
   { id: "anio", label: "Año", minWidth: 50, align: "center" },
   { id: "mes", label: "Mes", minWidth: 50, align: "center" },
   { id: "dia", label: "Día", minWidth: 50, align: "center" },
-  { id: "servicio_descripcion", label: "Descripción del servicio", minWidth: 50, align: "center" },
-  { id: "aprobado", label: "Imp. Aprobado", minWidth: 50, align: "center" },
+  { id: "servicio_descripcion", label: "Servicios", minWidth: 50, align: "center" },
+  { id: "aprobado", label: "Total (S/)", minWidth: 50, align: "center" },
   { id: "pagado", label: "Imp. Pagado (S/)", minWidth: 50, align: "center" },
   { id: "por_pagar", label: "Imp. Por pagar (S/)", minWidth: 50, align: "center" },
 ]

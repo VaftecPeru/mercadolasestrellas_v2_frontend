@@ -20,7 +20,7 @@ const columns: readonly Column[] = [
   { id: "fecha", label: "Fec. Pago", minWidth: 100, align: "center" },
   { id: "servicios", label: "Servicios", minWidth: 150, align: "left" },
   { id: "montos", label: "Total (S/)", minWidth: 100, align: "right" },
-  { id: "total", label: "Imp. Pagado (S/.)", minWidth: 120, align: "right" },
+  { id: "total", label: "Imp. Pagado (S/)", minWidth: 120, align: "right" },
 ];
 
 const TablaReportePagos: React.FC = () => {
@@ -272,10 +272,9 @@ const TablaReportePagos: React.FC = () => {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={isTablet || isMobile ? 1 : columns.length} align="center" sx={{ py: 8 }}>
-                      <Typography variant="body1" color="textSecondary">
-                        No hay pagos registrados para este puesto.
-                      </Typography>
+                    <TableCell colSpan={isTablet || isMobile ? 1 : columns.length} align="center">
+                      No hay datos para mostrar. <br />
+                      Para generar el reporte, seleccione un puesto y de clic en el botón "GENERAR".
                     </TableCell>
                   </TableRow>
                 )}
