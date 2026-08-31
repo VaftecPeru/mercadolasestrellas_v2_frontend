@@ -382,9 +382,35 @@ const RegistrarPagoBanco: React.FC<AgregarProps> = ({ open, handleClose, pago })
     handleClose();
   };
 
+  // Validar formulario antes de registrar
+  const validarFormulario = () => {
+    if (!idSocioSeleccionado) {
+      mostrarAlerta("Atención", "Seleccione un socio.", "warning");
+      return false;
+    }
+    if (!idPuestoSeleccionado) {
+      mostrarAlerta("Atención", "Seleccione un puesto.", "warning");
+      return false;
+    }
+    if (formData.deudas.length === 0) {
+      mostrarAlerta("Atención", "Seleccione al menos una deuda a pagar.", "warning");
+      return false;
+    }
+    if (totalPagar <= 0) {
+      mostrarAlerta("Atención", "El monto a pagar debe ser mayor a cero.", "warning");
+      return false;
+    }
+    return true;
+  };
+
   // REGISTRAR PAGO
   const registrarPago = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
+
+    if (!pago && !validarFormulario()) {
+      return;
+    }
+
     setLoading(true);
 
     // Extraemos los datos necesarios para enviar
@@ -803,7 +829,18 @@ const RegistrarPagoBanco: React.FC<AgregarProps> = ({ open, handleClose, pago })
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        {deudas.map((deuda) => {
+                        {idPuestoSeleccionado !== "" && deudas.length === 0 ? (
+                          <TableRow>
+                            <TableCell
+                              colSpan={columns.length}
+                              align="center"
+                              sx={{ color: "#888", fontStyle: "italic", padding: "25px" }}
+                            >
+                              Este socio no tiene deudas pendientes para el puesto seleccionado.
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                        deudas.map((deuda) => {
                           const montoInicial = parseFloat(deuda.total) - parseFloat(deuda.a_cuenta);
 
                           // Si el monto a pagar se a cambiado, usamos el nuevo monto; si no, usamos el monto inicial
@@ -889,7 +926,8 @@ const RegistrarPagoBanco: React.FC<AgregarProps> = ({ open, handleClose, pago })
                               })}
                             </TableRow>
                           );
-                        })}
+                        })
+                        )}
                       </TableBody>
                     </Table>
                   </TableContainer>
