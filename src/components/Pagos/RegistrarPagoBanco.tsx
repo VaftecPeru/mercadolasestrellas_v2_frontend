@@ -25,6 +25,7 @@ import useResponsive from "../../hooks/Responsive/useResponsive";
 import {
   manejarError,
   mostrarAlerta,
+  mostrarAlertaConfirmacion,
 } from "../Alerts/Registrar";
 import jsPDF from "jspdf";
 import { AvisoFormulario, TxtFormulario } from "../Shared/ElementosFormulario";
@@ -409,6 +410,26 @@ const RegistrarPagoBanco: React.FC<AgregarProps> = ({ open, handleClose, pago })
 
     if (!pago && !validarFormulario()) {
       return;
+    }
+
+    if (!pago) {
+      const confirmHTML = `
+        <div style="text-align:left; line-height:1.8;">
+          <strong>Socio:</strong> ${formData.nombre_socio}<br/>
+          <strong>Puesto:</strong> ${formData.nombre_block} - ${formData.numero_puesto}<br/>
+          <strong>Monto total:</strong> S/ ${totalPagar.toFixed(2)}
+        </div>`;
+
+      const result = await mostrarAlertaConfirmacion(
+        "Confirmar pago",
+        "Verifique los datos antes de continuar",
+        "Confirmar",
+        "Cancelar",
+        confirmHTML
+      );
+      if (!result.isConfirmed) {
+        return;
+      }
     }
 
     setLoading(true);

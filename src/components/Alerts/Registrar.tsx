@@ -33,11 +33,12 @@ export const mostrarAlertaConfirmacion = (
     titulo: string,
     texto: string = "Verifique la información antes de continuar",
     confirmButtonText: string = "Confirmar",
-    cancelButtonText: string = "Cancelar"
+    cancelButtonText: string = "Cancelar",
+    html?: string
 ) => {
     return Swal.fire({
         title: titulo,
-        text: texto,
+        ...(html ? { html } : { text: texto }),
         icon: "question",
         showCancelButton: true,
         confirmButtonText,
