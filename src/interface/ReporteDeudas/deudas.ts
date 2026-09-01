@@ -3,8 +3,13 @@ export interface Puesto {
   numero_puesto: string;
 }
 
+export interface Socio {
+  id_socio: string;
+  nombre_completo: string;
+}
+
 export interface Column {
-  id: keyof Data | "accion";
+  id: keyof Data | keyof DeudaPendiente | "accion";
   label: string;
   minWidth?: number;
   align?: "center" | "left";
@@ -19,4 +24,15 @@ export interface Data {
   total: string;
   importe_pagado: string;
   importe_por_pagar: string;
+}
+
+export interface DeudaPendiente {
+  id_deuda: number;
+  id_deuda_cuota: number;
+  nombre_servicio: string;
+  anio: string;
+  mes: string;
+  total: string;
+  a_cuenta: string;
+  por_pagar: string;
 }

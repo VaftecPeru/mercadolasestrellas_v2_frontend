@@ -1,5 +1,4 @@
-import { Autocomplete, Box, FormControl, Pagination, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from '@mui/material';
-import axios from 'axios';
+import { Autocomplete, Box, FormControl, Pagination, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Tabs, Tab, TextField, Typography } from '@mui/material';
 import React, { useEffect, useState } from 'react'
 import useResponsive from '../../hooks/Responsive/useResponsive';
 import { useSearchParams } from 'react-router-dom';
@@ -8,55 +7,80 @@ import Contenedor from '../Shared/Contenedor';
 import BotonExportar from '../Shared/BotonExportar';
 import BotonAgregar from '../Shared/BotonAgregar';
 import ContenedorBotones from '../Shared/ContenedorBotones';
-import { Column, Data, Puesto } from '../../interface/ReporteDeudas/deudas';
+import { Column, Puesto, Socio, DeudaPendiente } from '../../interface/ReporteDeudas/deudas';
+import { Data as DataPago } from '../../interface/ReportePagos/pagos';
 import apiClient from "../../Utils/apliClient";
 import { Api_Global_Reportes } from '../../service/ReporteApi';
 import { Api_Global_Puestos } from '../../service/PuestoApi';
+import { Api_Global_Pagos } from '../../service/PagoApi';
 import { handleExport } from '../../Utils/exportUtils';
 import { useAuth } from '../../context/AuthContext';
 import { mostrarAlerta } from '../Alerts/Registrar';
 
-const columns: readonly Column[] = [
-  { id: "fecha", label: "Fec. Pago", minWidth: 50, align: "center" },
-  { id: "servicio_descripcion", label: "Servicios", minWidth: 50, align: "left" },
-  { id: "total", label: "Total (S/)", minWidth: 50, align: "center" },
-  { id: "importe_pagado", label: "Imp. Pagado (S/)", minWidth: 50, align: "center" },
-  { id: "importe_por_pagar", label: "Imp. Por pagar (S/)", minWidth: 50, align: "center" },
-]
+const columnsDeudas: readonly Column[] = [
+  { id: "anio", label: "Año", minWidth: 50, align: "center" },
+  { id: "mes", label: "Mes", minWidth: 60, align: "center" },
+  { id: "nombre_servicio", label: "Servicio", minWidth: 130, align: "left" },
+  { id: "total", label: "Total (S/)", minWidth: 60, align: "center" },
+  { id: "a_cuenta", label: "A cuenta (S/)", minWidth: 60, align: "center" },
+  { id: "por_pagar", label: "Imp. Por pagar (S/)", minWidth: 70, align: "center" },
+];
+
+const columnasPagos = ["Fec. Pago", "Comprobante", "Concepto", "Monto (S/)"];
 
 const TablaReporteDeudas: React.FC = () => {
   const { isTablet, isMobile } = useResponsive();
+  const [tab, setTab] = useState(0);
   const [mostrarDetalles, setMostrarDetalles] = useState<string | null>(null);
   const [puestos, setPuestos] = useState<Puesto[]>([]);
   const [puestoSeleccionado, setPuestoSeleccionado] = useState<number>(0);
-  const [deudas, setDeudas] = useState<Data[]>([]);
+  const [socios, setSocios] = useState<Socio[]>([]);
+  const [socioSeleccionado, setSocioSeleccionado] = useState<Socio | null>(null);
+  const [deudas, setDeudas] = useState<DeudaPendiente[]>([]);
+  const [pagos, setPagos] = useState<DataPago[]>([]);
   const [searchParams] = useSearchParams();
   const idPuesto = searchParams.get("puesto");
   const [isLoading, setIsLoading] = useState(false);
 
   const { usuario } = useAuth();
 
-  // Paginación
-  const [paginaActual, setPaginaActual] = useState(1);
-  const [totalPaginas, setTotalPaginas] = useState(1);
+  // Paginación por pestaña
+  const [paginaDeudas, setPaginaDeudas] = useState(1);
+  const [totalPaginasDeudas, setTotalPaginasDeudas] = useState(1);
+  const [paginaPagos, setPaginaPagos] = useState(1);
+  const [totalPaginasPagos, setTotalPaginasPagos] = useState(1);
 
-  const totalGeneral = deudas.reduce((acc, row) => ({
-    total: acc.total + parseFloat(row.total),
-    importe_pagado: acc.importe_pagado + parseFloat(row.importe_pagado),
-    importe_por_pagar: acc.importe_por_pagar + parseFloat(row.importe_por_pagar),
-  }), { total: 0, importe_pagado: 0, importe_por_pagar: 0 });
+  const totalGeneralDeudas = deudas.reduce((acc, row) => ({
+    total: acc.total + parseFloat(row.total || "0"),
+    a_cuenta: acc.a_cuenta + parseFloat(row.a_cuenta || "0"),
+    por_pagar: acc.por_pagar + parseFloat(row.por_pagar || "0"),
+  }), { total: 0, a_cuenta: 0, por_pagar: 0 });
+
+  const totalMontoPagos = pagos.reduce((acc, pago) =>
+    acc + pago.detalle_pagos.reduce((a, detalle) => a + Number(detalle.importe || 0), 0), 0);
 
   const cambiarPagina = (event: React.ChangeEvent<unknown>, value: number) => {
-    setPaginaActual(value);
-    fetchDeudas(value, puestoSeleccionado);
+    if (tab === 0) {
+      setPaginaDeudas(value);
+      fetchDeudas(value);
+    } else {
+      setPaginaPagos(value);
+      fetchPagos(value);
+    }
+  };
+
+  const cambiarTab = (_event: React.SyntheticEvent, nuevoTab: number) => {
+    setTab(nuevoTab);
+    setMostrarDetalles(null);
   };
 
   // Si el parametro puesto existe, obtener las deudas del puesto
   useEffect(() => {
     if (idPuesto) {
       setPuestoSeleccionado(Number(idPuesto));
-      fetchDeudas(undefined, Number(idPuesto));
+      fetchDeudas(1, Number(idPuesto), "");
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idPuesto]);
 
   // Para exportar
@@ -80,34 +104,350 @@ const TablaReporteDeudas: React.FC = () => {
     fetchPuestos();
   }, [usuario]);
 
-  // Metodo para obtener las deudas de un puesto
-  const fetchDeudas = async (pagina: number = 1, idPuesto: number) => {
+  // Metodo para obtener los socios
+  useEffect(() => {
+    const fetchSocios = async () => {
+      try {
+        const response = await apiClient.get(Api_Global_Pagos.socios.listar());
+        const data = response.data.data.map((item: any) => ({
+          id_socio: String(item.id_socio),
+          nombre_completo: item.nombre_completo,
+        }));
+        setSocios(data);
+      } catch (error) {
+        console.log("Error al cargar socios:", error);
+      }
+    }
+    fetchSocios();
+  }, []);
+
+  // Metodo para obtener las deudas pendientes de la pestaña actual
+  const fetchDeudas = async (pagina: number = 1, idPuestoOverride?: number, nombreSocioOverride?: string) => {
     setIsLoading(true)
     try {
-      const response = await apiClient.get(Api_Global_Reportes.reportes.deudas(pagina, 15, idPuesto));
+      const idPuestoFinal = idPuestoOverride ?? puestoSeleccionado;
+      const nombreSocioFinal = nombreSocioOverride ?? (socioSeleccionado?.nombre_completo ?? "");
+      const response = await apiClient.get(
+        Api_Global_Reportes.reportes.deudasPendientes(pagina, 15, idPuestoFinal, nombreSocioFinal.trim())
+      );
       setDeudas(response.data.data);
-      setTotalPaginas(response.data.meta.last_page);
-      setPaginaActual(response.data.meta.current_page);
+      setTotalPaginasDeudas(response.data.meta.last_page);
+      setPaginaDeudas(response.data.meta.current_page);
     } catch (error) {
       console.log("Error:", error);
+      setDeudas([]);
     } finally {
       setIsLoading(false);
     }
   }
 
-  const handleExportReporteDeudas = async (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.preventDefault();
-    if (!puestoSeleccionado) {
-      mostrarAlerta("Error", "Seleccione un puesto para exportar el reporte.", "warning");
+  // Metodo para obtener los pagos realizados de la pestaña actual
+  const fetchPagos = async (pagina: number = 1, idPuestoOverride?: number, nombreSocioOverride?: string) => {
+    setIsLoading(true)
+    try {
+      const idPuestoFinal = idPuestoOverride ?? puestoSeleccionado;
+      const nombreSocioFinal = nombreSocioOverride ?? (socioSeleccionado?.nombre_completo ?? "");
+      const response = await apiClient.get(
+        Api_Global_Reportes.reportes.pagos(pagina, 15, idPuestoFinal, nombreSocioFinal.trim())
+      );
+      setPagos(response.data.data);
+      setTotalPaginasPagos(response.data.meta.last_page);
+      setPaginaPagos(response.data.meta.current_page);
+    } catch (error) {
+      console.log("Error:", error);
+      setPagos([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  const generar = () => {
+    if (!puestoSeleccionado && !socioSeleccionado) {
+      mostrarAlerta("Atención", "Seleccione un puesto o un socio para generar el reporte.", "info");
       return;
     }
-    const exportUrl = Api_Global_Reportes.reportes.exportarReporteDeudas(); // URL específica para servicios
-    const fileNamePrefix = "lista-reporte-deudas"; // Nombre del archivo
-    await handleExport(exportUrl, exportFormat, fileNamePrefix, setExportFormat, `id_puesto=${puestoSeleccionado}`);
+    if (tab === 0) {
+      fetchDeudas(1);
+    } else {
+      fetchPagos(1);
+    }
   };
+
+  const handleExportReporte = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    if (!puestoSeleccionado && !socioSeleccionado) {
+      mostrarAlerta("Error", "Seleccione un puesto o un socio para exportar el reporte.", "warning");
+      return;
+    }
+    const nombreSocio = socioSeleccionado?.nombre_completo.trim() || "";
+    const params = [
+      puestoSeleccionado ? `id_puesto=${puestoSeleccionado}` : "",
+      nombreSocio ? `nombre_socio=${encodeURIComponent(nombreSocio)}` : "",
+    ].filter(Boolean).join("&");
+
+    const exportUrl = tab === 0
+      ? Api_Global_Reportes.reportes.exportarReporteDeudas()
+      : Api_Global_Reportes.reportes.exportarReportePagos();
+    const fileNamePrefix = tab === 0 ? "reporte-deudas-pendientes" : "reporte-pagos-realizados";
+    await handleExport(exportUrl, exportFormat, fileNamePrefix, setExportFormat, params);
+  };
+
+  const renderTablaDeudas = () => (
+    <Paper sx={{ width: "100%", overflow: "hidden", boxShadow: "none" }}>
+      <TableContainer
+        sx={{ maxHeight: "100%", borderRadius: "5px", border: "none" }}
+      >
+        <Table stickyHeader aria-label="sticky table">
+          <TableHead>
+            <TableRow>
+              {isTablet || isMobile
+                ? <TableCell colSpan={columnsDeudas.length}>
+                  <Typography
+                    sx={{
+                      mt: 2,
+                      mb: 1,
+                      fontSize: "1.5rem",
+                      fontWeight: "bold",
+                      textTransform: "uppercase",
+                      textAlign: "center",
+                    }}
+                  >
+                    Deudas Pendientes
+                  </Typography>
+                </TableCell>
+                : columnsDeudas.map((column) => (
+                  <TableCell
+                    key={column.id}
+                    align={column.align}
+                    style={{ minWidth: column.minWidth }}
+                    sx={{
+                      fontWeight: "bold",
+                    }}
+                  >
+                    {column.label}
+                  </TableCell>
+                ))}
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {deudas.length > 0
+              ? deudas
+                .map((deuda) => (
+                  <TableRow key={`${deuda.id_deuda}-${deuda.id_deuda_cuota}`} hover role="checkbox" tabIndex={-1}>
+                    {isTablet || isMobile
+                      ? <TableCell padding="checkbox" colSpan={columnsDeudas.length}>
+                        <Box sx={{ display: "flex", flexDirection: "column" }}>
+                          <Typography
+                            sx={{
+                              p: 2,
+                              bgcolor: mostrarDetalles === String(deuda.id_deuda_cuota) ? "#f0f0f0" : "inherit",
+                              "&:hover": {
+                                cursor: "pointer",
+                                bgcolor: "#f0f0f0",
+                              }
+                            }}
+                            onClick={() => setMostrarDetalles(
+                              mostrarDetalles === String(deuda.id_deuda_cuota) ? null : String(deuda.id_deuda_cuota)
+                            )}
+                          >
+                            {deuda.mes} - {deuda.anio} - {deuda.nombre_servicio} - S/{deuda.por_pagar}
+                          </Typography>
+                          {mostrarDetalles === String(deuda.id_deuda_cuota) && (
+                            <Box
+                              sx={{
+                                p: 2,
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: 1
+                              }}
+                            >
+                              {columnsDeudas.map((column) => (
+                                <Box key={column.id}>
+                                  <Typography sx={{ fontWeight: "bold", mb: 1 }}>
+                                    {column.label}
+                                  </Typography>
+                                  <Typography>
+                                    {(deuda as any)[column.id]}
+                                  </Typography>
+                                </Box>
+                              ))}
+                            </Box>
+                          )}
+                        </Box>
+                      </TableCell>
+                      : columnsDeudas.map((column) => (
+                        <TableCell
+                          key={column.id}
+                          align={column.align}
+                        >
+                          {(deuda as any)[column.id]}
+                        </TableCell>
+                      ))}
+                  </TableRow>
+                ))
+              : <TableRow>
+                <TableCell colSpan={columnsDeudas.length} align="center">
+                  No hay deudas pendientes para los filtros seleccionados. <br />
+                  Para generar el reporte, seleccione un puesto y/o un socio, y de clic en el botón "GENERAR".
+                </TableCell>
+              </TableRow>
+            }
+          </TableBody>
+          {!isTablet && !isMobile && deudas.length > 0 && (
+            <TableHead>
+              <TableRow>
+                <TableCell colSpan={3} align="right" sx={{ fontWeight: "bold", backgroundColor: "#f0f0f0" }}>
+                  TOTAL:
+                </TableCell>
+                <TableCell align="right" sx={{ fontWeight: "bold", backgroundColor: "#e3f2fd", fontSize: '1rem', borderTop: '2px solid #1976d2' }}>
+                  S/ {Number(totalGeneralDeudas.total || 0).toFixed(2)}
+                </TableCell>
+                <TableCell align="right" sx={{ fontWeight: "bold", backgroundColor: "#e3f2fd", fontSize: '1rem', borderTop: '2px solid #1976d2' }}>
+                  S/ {Number(totalGeneralDeudas.a_cuenta || 0).toFixed(2)}
+                </TableCell>
+                <TableCell align="right" sx={{ fontWeight: "bold", backgroundColor: "#e3f2fd", fontSize: '1rem', borderTop: '2px solid #1976d2' }}>
+                  S/ {Number(totalGeneralDeudas.por_pagar || 0).toFixed(2)}
+                </TableCell>
+              </TableRow>
+            </TableHead>
+          )}
+        </Table>
+      </TableContainer>
+      <Box sx={{ display: "flex", justifyContent: "center", marginTop: 3 }}>
+        <Pagination
+          count={totalPaginasDeudas}
+          page={paginaDeudas}
+          onChange={cambiarPagina}
+          color="primary" />
+      </Box>
+    </Paper>
+  );
+
+  const renderTablaPagos = () => (
+    <Paper sx={{ width: "100%", overflow: "hidden", boxShadow: "none" }}>
+      <TableContainer
+        sx={{ maxHeight: "100%", borderRadius: "5px", border: "none" }}
+      >
+        <Table stickyHeader aria-label="sticky table">
+          <TableHead>
+            <TableRow>
+              {isTablet || isMobile
+                ? <TableCell colSpan={columnasPagos.length}>
+                  <Typography
+                    sx={{
+                      mt: 2,
+                      mb: 1,
+                      fontSize: "1.5rem",
+                      fontWeight: "bold",
+                      textTransform: "uppercase",
+                      textAlign: "center",
+                    }}
+                  >
+                    Pagos Realizados
+                  </Typography>
+                </TableCell>
+                : columnasPagos.map((label, index) => (
+                  <TableCell
+                    key={label}
+                    align={index === 2 ? "left" : index === 3 ? "right" : "center"}
+                    sx={{ fontWeight: "bold" }}
+                  >
+                    {label}
+                  </TableCell>
+                ))}
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {pagos.length > 0
+              ? (isTablet || isMobile
+                ? pagos.map((pago) => (
+                  <TableRow key={pago.id_pago} hover tabIndex={-1}>
+                    <TableCell>
+                      <Box
+                        onClick={() => setMostrarDetalles(mostrarDetalles === String(pago.id_pago) ? null : String(pago.id_pago))}
+                        sx={{ cursor: 'pointer', py: 1 }}
+                      >
+                        <Typography variant="body2" sx={{ fontWeight: '500' }}>
+                          Fecha: {pago.fecha}
+                        </Typography>
+                        <Typography variant="caption" color="textSecondary" sx={{ display: 'block' }}>
+                          Comprobante: {pago.serie_numero}
+                        </Typography>
+                        <Typography variant="caption" color="textSecondary" sx={{ display: 'block' }}>
+                          Total Pago: S/ {Number(pago.total).toFixed(2)}
+                        </Typography>
+                        {mostrarDetalles === String(pago.id_pago) && (
+                          <Box sx={{ mt: 1, pl: 2, borderLeft: '3px solid #1976d2', bgcolor: '#fafafa', p: 1 }}>
+                            <Typography variant="caption" sx={{ fontWeight: 'bold' }}>Conceptos:</Typography>
+                            {pago.detalle_pagos.map((detalle, i) => (
+                              <Box key={i} sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                                <Typography variant="caption">• {detalle.descripcion}</Typography>
+                                <Typography variant="caption" sx={{ fontWeight: 'bold' }}>S/ {Number(detalle.importe).toFixed(2)}</Typography>
+                              </Box>
+                            ))}
+                          </Box>
+                        )}
+                      </Box>
+                    </TableCell>
+                  </TableRow>
+                ))
+                : pagos.map((pago) => (
+                  <React.Fragment key={pago.id_pago}>
+                    {pago.detalle_pagos.map((detalle, detIdx) => (
+                      <TableRow key={`${pago.id_pago}-${detIdx}`} hover tabIndex={-1}>
+                        <TableCell align="center">{detIdx === 0 ? pago.fecha : ""}</TableCell>
+                        <TableCell align="center">{detIdx === 0 ? pago.serie_numero : ""}</TableCell>
+                        <TableCell>{detalle.descripcion}</TableCell>
+                        <TableCell align="right">{detIdx === pago.detalle_pagos.length - 1 ? `S/ ${Number(pago.total).toFixed(2)}` : Number(detalle.importe).toFixed(2)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </React.Fragment>
+                )))
+              : <TableRow>
+                <TableCell colSpan={columnasPagos.length} align="center">
+                  No hay pagos realizados para los filtros seleccionados. <br />
+                  Para generar el reporte, seleccione un puesto y/o un socio, y de clic en el botón "GENERAR".
+                </TableCell>
+              </TableRow>
+            }
+          </TableBody>
+          {!isTablet && !isMobile && pagos.length > 0 && (
+            <TableHead>
+              <TableRow>
+                <TableCell colSpan={3} align="right" sx={{ fontWeight: "bold", backgroundColor: "#f0f0f0" }}>
+                  TOTAL:
+                </TableCell>
+                <TableCell align="right" sx={{ fontWeight: "bold", backgroundColor: "#e3f2fd", fontSize: '1rem', borderTop: '2px solid #1976d2' }}>
+                  S/ {Number(totalMontoPagos || 0).toFixed(2)}
+                </TableCell>
+              </TableRow>
+            </TableHead>
+          )}
+        </Table>
+      </TableContainer>
+      <Box sx={{ display: "flex", justifyContent: "center", marginTop: 3 }}>
+        <Pagination
+          count={totalPaginasPagos}
+          page={paginaPagos}
+          onChange={cambiarPagina}
+          color="primary" />
+      </Box>
+    </Paper>
+  );
 
   return (
     <Contenedor>
+      <Tabs
+        value={tab}
+        onChange={cambiarTab}
+        textColor="primary"
+        indicatorColor="primary"
+        sx={{ mb: 2 }}
+      >
+        <Tab label="Deudas Pendientes" />
+        <Tab label="Pagos Realizados" />
+      </Tabs>
+
       <ContenedorBotones reporte>
         <Box
           sx={{
@@ -128,18 +468,18 @@ const TablaReporteDeudas: React.FC = () => {
           >
             <Autocomplete
               options={puestos}
-              getOptionLabel={(puesto) => puesto.numero_puesto} // Mostrar el numero del puesto
+              getOptionLabel={(puesto) => puesto.numero_puesto}
               value={puestos.find(p => Number(p.id_puesto) === puestoSeleccionado) || null}
-              onChange={(event, value) => { // Obtener el id del puesto seleccionado
-                if (value) { // Si se selecciona un puesto
-                  setPuestoSeleccionado(Number(value.id_puesto)); // Guardar el id del puesto
+              onChange={(event, value) => {
+                if (value) {
+                  setPuestoSeleccionado(Number(value.id_puesto));
                 }
               }}
               renderInput={(params) => (
                 <TextField
                   {...params}
-                  label="Seleccionar puesto" // Etiqueta del input
-                  InputProps={{ ...params.InputProps }} // Propiedades del input
+                  label="Seleccionar puesto"
+                  InputProps={{ ...params.InputProps }}
                 />
               )}
               renderOption={(props, option) => (
@@ -149,17 +489,52 @@ const TablaReporteDeudas: React.FC = () => {
               )}
               ListboxProps={{
                 style: {
-                  maxHeight: 270, // Altura máxima de la lista de opciones
-                  overflow: 'auto', // Hacer scroll si hay muchos elementos
+                  maxHeight: 270,
+                  overflow: 'auto',
                 },
               }}
               isOptionEqualToValue={(option, value) => option.id_puesto === value.id_puesto}
             />
           </FormControl>
+          {/* Seleccionar socio */}
+          <FormControl fullWidth required
+            sx={{
+              width: isTablet ? "70%" : isMobile ? "100%" : "300px"
+            }}
+          >
+            <Autocomplete
+              options={socios}
+              getOptionLabel={(socio) => socio.nombre_completo}
+              value={socioSeleccionado}
+              onChange={(event, value) => {
+                setSocioSeleccionado(value);
+              }}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Seleccionar socio"
+                  InputProps={{ ...params.InputProps }}
+                />
+              )}
+              renderOption={(props, option) => (
+                <li {...props} key={option.id_socio}>
+                  {option.nombre_completo}
+                </li>
+              )}
+              ListboxProps={{
+                style: {
+                  maxHeight: 270,
+                  overflow: 'auto',
+                },
+              }}
+              isOptionEqualToValue={(option, value) => option.id_socio === value.id_socio}
+              noOptionsText="No se encontraron socios"
+            />
+          </FormControl>
           {/* Botón "Generar Reporte" */}
           <BotonAgregar
             exportar
-            handleAction={() => fetchDeudas(undefined, puestoSeleccionado)}
+            handleAction={generar}
             texto="Generar"
           />
         </Box>
@@ -167,164 +542,18 @@ const TablaReporteDeudas: React.FC = () => {
         <BotonExportar
           exportFormat={exportFormat}
           setExportFormat={setExportFormat}
-          handleExport={handleExportReporteDeudas}
+          handleExport={handleExportReporte}
         />
 
       </ContenedorBotones>
+
       {isLoading ? (
-        <LoadingSpinner /> // Mostrar el loading mientras se están cargando los datos
+        <LoadingSpinner />
       ) : (
-        <>
-          {/* Tabla reporte deudas */}
-          <Paper sx={{ width: "100%", overflow: "hidden", boxShadow: "none" }}>
-            <TableContainer
-              sx={{ maxHeight: "100%", borderRadius: "5px", border: "none" }}
-            >
-              <Table stickyHeader aria-label="sticky table">
-                <TableHead>
-                  <TableRow>
-                    {isTablet || isMobile
-                      ? <TableCell colSpan={columns.length}>
-                        <Typography
-                          sx={{
-                            mt: 2,
-                            mb: 1,
-                            fontSize: "1.5rem",
-                            fontWeight: "bold",
-                            textTransform: "uppercase",
-                            textAlign: "center",
-                          }}
-                        >
-                          Lista de Deudas
-                        </Typography>
-                      </TableCell>
-                      : columns.map((column) => (
-                        <TableCell
-                          key={column.id}
-                          align={column.align}
-                          style={{ minWidth: column.minWidth }}
-                          sx={{
-                            fontWeight: "bold",
-                          }}
-                        >
-                          {column.label}
-                        </TableCell>
-                      ))}
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {deudas.length > 0
-                    ? deudas
-                      .map((deuda) => (
-                        <TableRow key={deuda.id_cuota} hover role="checkbox" tabIndex={-1}>
-                          {isTablet || isMobile
-                            ? <TableCell padding="checkbox" colSpan={columns.length}>
-                              <Box sx={{ display: "flex", flexDirection: "column" }}>
-                                <Typography
-                                  sx={{
-                                    p: 2,
-                                    // Seleccionar la deuda y cambiar el color de fondo
-                                    bgcolor: mostrarDetalles === deuda.id_cuota ? "#f0f0f0" : "inherit",
-                                    "&:hover": {
-                                      cursor: "pointer",
-                                      bgcolor: "#f0f0f0",
-                                    }
-                                  }}
-                                  onClick={() => setMostrarDetalles(
-                                    mostrarDetalles === deuda.id_cuota ? null : deuda.id_cuota
-                                  )}
-                                >
-                                  {deuda.mes} - {deuda.anio} - S/{deuda.total}
-                                </Typography>
-                                {mostrarDetalles === deuda.id_cuota && (
-                                  <Box
-                                    sx={{
-                                      p: 2,
-                                      display: "flex",
-                                      flexDirection: "column",
-                                      gap: 1
-                                    }}
-                                  >
-                                    {columns.map((column) => {
-                                      const value = column.id === "accion" ? "" : (deuda as any)[column.id];
-                                      return (
-                                        <Box key={column.id}>
-                                          {/* Mostrar titulo del campo */}
-                                          <Typography sx={{ fontWeight: "bold", mb: 1 }}>
-                                            {column.label}
-                                          </Typography>
-                                          {/* Mostrar los detalles de la deuda */}
-                                          {Array.isArray(value) // Si es un array de servicios
-                                            ? (value.map((servicio, index) => ( // Mostrar los servicios
-                                              <Typography key={index}>
-                                                {servicio.nombre}: S/ {servicio.costo}
-                                              </Typography>
-                                            ))
-                                            ) : <Typography>
-                                              {value}
-                                            </Typography>
-                                          }
-                                        </Box>
-                                      )
-                                    })}
-                                  </Box>
-                                )}
-                              </Box>
-                            </TableCell>
-                            : columns.map((column) => {
-                              const value = column.id === "accion" ? "" : (deuda as any)[column.id];
-                              return (
-                                <TableCell
-                                  key={column.id}
-                                  align={column.align}
-                                >
-                                  {value}
-                                </TableCell>
-                              );
-                            })}
-                        </TableRow>
-                      ))
-                    : <TableRow>
-                      <TableCell colSpan={columns.length} align="center">
-                        No hay datos para mostrar. <br />
-                        Para generar el reporte, seleccione un puesto y de clic en el botón "GENERAR".
-                      </TableCell>
-                    </TableRow>
-                  }
-                </TableBody>
-                {!isTablet && !isMobile && deudas.length > 0 && (
-                  <TableHead>
-                    <TableRow>
-                      <TableCell colSpan={2} align="right" sx={{ fontWeight: "bold", backgroundColor: "#f0f0f0" }}>
-                        TOTAL:
-                      </TableCell>
-                      <TableCell align="right" sx={{ fontWeight: "bold", backgroundColor: "#e3f2fd", fontSize: '1rem', borderTop: '2px solid #1976d2' }}>
-                        S/ {Number(totalGeneral.total || 0).toFixed(2)}
-                      </TableCell>
-                      <TableCell align="right" sx={{ fontWeight: "bold", backgroundColor: "#e3f2fd", fontSize: '1rem', borderTop: '2px solid #1976d2' }}>
-                        S/ {Number(totalGeneral.importe_pagado || 0).toFixed(2)}
-                      </TableCell>
-                      <TableCell align="right" sx={{ fontWeight: "bold", backgroundColor: "#e3f2fd", fontSize: '1rem', borderTop: '2px solid #1976d2' }}>
-                        S/ {Number(totalGeneral.importe_por_pagar || 0).toFixed(2)}
-                      </TableCell>
-                    </TableRow>
-                  </TableHead>
-                )}
-              </Table>
-            </TableContainer>
-            <Box sx={{ display: "flex", justifyContent: "center", marginTop: 3 }}>
-              <Pagination
-                count={totalPaginas}
-                page={paginaActual}
-                onChange={cambiarPagina}
-                color="primary" />
-            </Box>
-          </Paper>
-        </>
+        tab === 0 ? renderTablaDeudas() : renderTablaPagos()
       )}
     </Contenedor>
   )
-
 }
 
 export default TablaReporteDeudas;
