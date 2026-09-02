@@ -13,20 +13,23 @@ import apiClient from "../../Utils/apliClient";
 import { Api_Global_Reportes } from '../../service/ReporteApi';
 import { Api_Global_Puestos } from '../../service/PuestoApi';
 import { Api_Global_Pagos } from '../../service/PagoApi';
+import { ordenarPuestosPorNumero } from '../../Utils/ordenarPuestos';
+import { ordenarSociosPorNombre } from '../../Utils/ordenarSocios';
 import { handleExport } from '../../Utils/exportUtils';
 import { useAuth } from '../../context/AuthContext';
 import { mostrarAlerta } from '../Alerts/Registrar';
 
 const columnsDeudas: readonly Column[] = [
-  { id: "anio", label: "Año", minWidth: 50, align: "center" },
-  { id: "mes", label: "Mes", minWidth: 60, align: "center" },
-  { id: "nombre_servicio", label: "Servicio", minWidth: 130, align: "left" },
-  { id: "total", label: "Total (S/)", minWidth: 60, align: "center" },
-  { id: "a_cuenta", label: "A cuenta (S/)", minWidth: 60, align: "center" },
-  { id: "por_pagar", label: "Imp. Por pagar (S/)", minWidth: 70, align: "center" },
+  { id: "fecha", label: "Fec. Pago", minWidth: 90, align: "center" },
+  { id: "nombre_servicio", label: "Servicios", minWidth: 200, align: "left" },
+  { id: "total", label: "Total (S/)", minWidth: 100, align: "right" },
+  { id: "a_cuenta", label: "Imp. Pagado (S/)", minWidth: 110, align: "right" },
+  { id: "por_pagar", label: "Imp. Por pagar (S/)", minWidth: 120, align: "right" },
 ];
 
 const columnasPagos = ["Fec. Pago", "Comprobante", "Concepto", "Monto (S/)"];
+
+const soloFecha = (fecha: string) => (fecha ? String(fecha).split(" ")[0] : "");
 
 const TablaReporteDeudas: React.FC = () => {
   const { isTablet, isMobile } = useResponsive();
@@ -38,7 +41,7 @@ const TablaReporteDeudas: React.FC = () => {
   const [socioSeleccionado, setSocioSeleccionado] = useState<Socio | null>(null);
   const [deudas, setDeudas] = useState<DeudaPendiente[]>([]);
   const [pagos, setPagos] = useState<DataPago[]>([]);
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const idPuesto = searchParams.get("puesto");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -92,10 +95,10 @@ const TablaReporteDeudas: React.FC = () => {
       try {
         if (usuario?.rol !== "Socio") {
           const response = await apiClient.get(Api_Global_Puestos.puestos.buscar(1, 1000, "", "", "", ""));
-          setPuestos(response.data.data);
+          setPuestos(ordenarPuestosPorNumero(response.data.data));
         } else {
           const response = await apiClient.get(Api_Global_Puestos.puestos.buscar(1, 1000, "", "", "", usuario.id_usuario.toString()));
-          setPuestos(response.data.data);
+          setPuestos(ordenarPuestosPorNumero(response.data.data));
         }
       } catch (error) {
         console.log("Error:", error);
@@ -113,7 +116,7 @@ const TablaReporteDeudas: React.FC = () => {
           id_socio: String(item.id_socio),
           nombre_completo: item.nombre_completo,
         }));
-        setSocios(data);
+        setSocios(ordenarSociosPorNombre(data));
       } catch (error) {
         console.log("Error al cargar socios:", error);
       }
@@ -183,6 +186,7 @@ const TablaReporteDeudas: React.FC = () => {
     const params = [
       puestoSeleccionado ? `id_puesto=${puestoSeleccionado}` : "",
       nombreSocio ? `nombre_socio=${encodeURIComponent(nombreSocio)}` : "",
+      tab === 1 ? "modo=detalle" : "",
     ].filter(Boolean).join("&");
 
     const exportUrl = tab === 0
@@ -222,6 +226,7 @@ const TablaReporteDeudas: React.FC = () => {
                     style={{ minWidth: column.minWidth }}
                     sx={{
                       fontWeight: "bold",
+                      backgroundColor: "#f5f5f5",
                     }}
                   >
                     {column.label}
@@ -250,7 +255,7 @@ const TablaReporteDeudas: React.FC = () => {
                               mostrarDetalles === String(deuda.id_deuda_cuota) ? null : String(deuda.id_deuda_cuota)
                             )}
                           >
-                            {deuda.mes} - {deuda.anio} - {deuda.nombre_servicio} - S/{deuda.por_pagar}
+                            {soloFecha(deuda.fecha)} - {deuda.nombre_servicio} - S/{deuda.por_pagar}
                           </Typography>
                           {mostrarDetalles === String(deuda.id_deuda_cuota) && (
                             <Box
@@ -296,7 +301,7 @@ const TablaReporteDeudas: React.FC = () => {
           {!isTablet && !isMobile && deudas.length > 0 && (
             <TableHead>
               <TableRow>
-                <TableCell colSpan={3} align="right" sx={{ fontWeight: "bold", backgroundColor: "#f0f0f0" }}>
+                <TableCell colSpan={2} align="right" sx={{ fontWeight: "bold", backgroundColor: "#f0f0f0" }}>
                   TOTAL:
                 </TableCell>
                 <TableCell align="right" sx={{ fontWeight: "bold", backgroundColor: "#e3f2fd", fontSize: '1rem', borderTop: '2px solid #1976d2' }}>
@@ -350,7 +355,7 @@ const TablaReporteDeudas: React.FC = () => {
                   <TableCell
                     key={label}
                     align={index === 2 ? "left" : index === 3 ? "right" : "center"}
-                    sx={{ fontWeight: "bold" }}
+                    sx={{ fontWeight: "bold", backgroundColor: "#f5f5f5" }}
                   >
                     {label}
                   </TableCell>
@@ -368,7 +373,7 @@ const TablaReporteDeudas: React.FC = () => {
                         sx={{ cursor: 'pointer', py: 1 }}
                       >
                         <Typography variant="body2" sx={{ fontWeight: '500' }}>
-                          Fecha: {pago.fecha}
+                          Fecha: {soloFecha(pago.fecha)}
                         </Typography>
                         <Typography variant="caption" color="textSecondary" sx={{ display: 'block' }}>
                           Comprobante: {pago.serie_numero}
@@ -395,7 +400,7 @@ const TablaReporteDeudas: React.FC = () => {
                   <React.Fragment key={pago.id_pago}>
                     {pago.detalle_pagos.map((detalle, detIdx) => (
                       <TableRow key={`${pago.id_pago}-${detIdx}`} hover tabIndex={-1}>
-                        <TableCell align="center">{detIdx === 0 ? pago.fecha : ""}</TableCell>
+                        <TableCell align="center">{detIdx === 0 ? soloFecha(pago.fecha) : ""}</TableCell>
                         <TableCell align="center">{detIdx === 0 ? pago.serie_numero : ""}</TableCell>
                         <TableCell>{detalle.descripcion}</TableCell>
                         <TableCell align="right">{detIdx === pago.detalle_pagos.length - 1 ? `S/ ${Number(pago.total).toFixed(2)}` : Number(detalle.importe).toFixed(2)}</TableCell>
@@ -463,7 +468,7 @@ const TablaReporteDeudas: React.FC = () => {
           {/* Seleccionar puesto */}
           <FormControl fullWidth required
             sx={{
-              width: isTablet ? "70%" : isMobile ? "100%" : "300px"
+              width: isTablet ? "70%" : isMobile ? "100%" : "250px"
             }}
           >
             <Autocomplete
@@ -471,8 +476,9 @@ const TablaReporteDeudas: React.FC = () => {
               getOptionLabel={(puesto) => puesto.numero_puesto}
               value={puestos.find(p => Number(p.id_puesto) === puestoSeleccionado) || null}
               onChange={(event, value) => {
-                if (value) {
-                  setPuestoSeleccionado(Number(value.id_puesto));
+                setPuestoSeleccionado(value ? Number(value.id_puesto) : 0);
+                if (!value && idPuesto) {
+                  setSearchParams({}, { replace: true });
                 }
               }}
               renderInput={(params) => (
@@ -499,7 +505,7 @@ const TablaReporteDeudas: React.FC = () => {
           {/* Seleccionar socio */}
           <FormControl fullWidth required
             sx={{
-              width: isTablet ? "70%" : isMobile ? "100%" : "300px"
+              width: isTablet ? "70%" : isMobile ? "100%" : "250px"
             }}
           >
             <Autocomplete

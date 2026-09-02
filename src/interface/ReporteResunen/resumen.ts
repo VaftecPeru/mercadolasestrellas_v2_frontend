@@ -7,7 +7,7 @@ export interface Column {
   id: keyof Data | "accion";
   label: string;
   minWidth?: number;
-  align?: "center";
+  align?: "center" | "left" | "right";
 }
 
 export interface Data {

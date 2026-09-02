@@ -16,6 +16,8 @@ import StepButton from '@mui/material/StepButton';
 import RegistrarPagoBanco from "./RegistrarPagoBanco";
 import { Api_Global_Pagos } from "../../service/PagoApi";
 import apiClient from "../../Utils/apliClient";
+import { ordenarPuestosPorNumero } from "../../Utils/ordenarPuestos";
+import { ordenarSociosPorNombre } from "../../Utils/ordenarSocios";
 
 const RegistrarPagoTabs: React.FC<AgregarProps> = ({ open, handleClose, pago }) => {
   const [activeStep, setActiveStep] = React.useState(0);
@@ -56,7 +58,7 @@ const RegistrarPagoTabs: React.FC<AgregarProps> = ({ open, handleClose, pago }) 
           id_socio: item.id_socio,
           nombre_completo: item.nombre_completo,
         }));
-        setSocios(data);
+        setSocios(ordenarSociosPorNombre(data));
       } catch (error) {
       }
     };
@@ -97,7 +99,7 @@ const RegistrarPagoTabs: React.FC<AgregarProps> = ({ open, handleClose, pago }) 
           nombre: item.block.nombre,
         },
       }));
-      setPuestos(data);
+      setPuestos(ordenarPuestosPorNumero(data));
     } catch (error) {
     }
   };

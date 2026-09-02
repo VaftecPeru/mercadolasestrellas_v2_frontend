@@ -34,17 +34,17 @@ interface Column {
   id: keyof Data | "accion";
   label: string;
   minWidth?: number;
-  align?: "center";
+  align?: "center" | "left" | "right";
 }
 
 const columns: readonly Column[] = [
-  { id: "fecha", label: "Fec. Registro", minWidth: 50, align: "center" },
-  { id: "nombre_completo", label: "Nombre del socio", minWidth: 50, align: "center" },
-  { id: "numero_puesto", label: "N° Puesto", minWidth: 50, align: "center" },
-  { id: "area", label: "Área (m2)", minWidth: 50, align: "center" },
-  { id: "total", label: "Total (S/)", minWidth: 50, align: "center" },
-  { id: "importe_pagado", label: "Imp. Pagado (S/)", minWidth: 50, align: "center" },
-  { id: "importe_por_pagar", label: "Imp. Por pagar (S/)", minWidth: 50, align: "center" },
+  { id: "fecha", label: "Fec. Registro", minWidth: 110, align: "center" },
+  { id: "nombre_completo", label: "Nombre del socio", minWidth: 200, align: "left" },
+  { id: "numero_puesto", label: "N° Puesto", minWidth: 100, align: "center" },
+  { id: "area", label: "Área (m2)", minWidth: 100, align: "right" },
+  { id: "total", label: "Total (S/)", minWidth: 100, align: "right" },
+  { id: "importe_pagado", label: "Imp. Pagado (S/)", minWidth: 120, align: "right" },
+  { id: "importe_por_pagar", label: "Imp. Por pagar (S/)", minWidth: 130, align: "right" },
 ]
 
 const TablaReporteCuotasMetrado: React.FC = () => {
@@ -216,6 +216,7 @@ const TablaReporteCuotasMetrado: React.FC = () => {
                           style={{ minWidth: column.minWidth }}
                           sx={{
                             fontWeight: "bold",
+                            backgroundColor: "#f5f5f5",
                           }}
                         >
                           {column.label}

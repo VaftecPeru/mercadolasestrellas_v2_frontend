@@ -28,6 +28,8 @@ import ContenedorModal from '../Shared/ContenedorModal';
 import { AvisoFormulario, SeparadorBloque, TxtFormulario } from '../Shared/ElementosFormulario';
 import { reFormatDate } from '../../Utils/dateUtils';
 import apiClient from '../../Utils/apliClient';
+import { ordenarPuestosPorNumero } from '../../Utils/ordenarPuestos';
+import { ordenarSociosPorNombre } from '../../Utils/ordenarSocios';
 import { Api_Global_Puestos } from '../../service/PuestoApi';
 import { Api_Global_Blocks } from '../../service/BlocksApi';
 import { Api_Global_GiroNegocio } from '../../service/GiroNegocioApi';
@@ -167,7 +169,7 @@ const RegistrarPuesto: React.FC<AgregarProps> = ({ open, handleClose, puesto }) 
   const fetchPuestosSinSocio = async (id_block: number) => {
     try {
       const response = await apiClient.get(Api_Global_Puestos.puestos.sinSocio(id_block));
-      setPuestosSinSocio(response.data);
+      setPuestosSinSocio(ordenarPuestosPorNumero(response.data));
     } catch (error) {
       console.error("Error al obtener los puestos", error);
     }
@@ -177,7 +179,7 @@ const RegistrarPuesto: React.FC<AgregarProps> = ({ open, handleClose, puesto }) 
   const fetchPuestosSinInquilino = async (id_block: number) => {
     try {
       const response = await apiClient.get(Api_Global_Puestos.puestos.sinInquilino(id_block));
-      setPuestosSinInquilino(response.data);
+      setPuestosSinInquilino(ordenarPuestosPorNumero(response.data));
     } catch (error) {
       console.error("Error al obtener los puestos", error);
     }
@@ -187,7 +189,7 @@ const RegistrarPuesto: React.FC<AgregarProps> = ({ open, handleClose, puesto }) 
   const fetchSocios = async () => {
     try {
       const response = await apiClient.get(Api_Global_Socios.socios.buscar(1, 150));
-      setSocios(response.data.data);
+      setSocios(ordenarSociosPorNombre(response.data.data));
     } catch (error) {
       console.error("Error al obtener el listado de socios", error);
     }
@@ -197,7 +199,7 @@ const RegistrarPuesto: React.FC<AgregarProps> = ({ open, handleClose, puesto }) 
   const fetchPuestosSocio = async (idSocio: string) => {
     try {
       const response = await apiClient.get(Api_Global_Puestos.puestos.buscar(1, 500, "", "", "", idSocio));
-      setPuestosSocios(response.data.data);
+      setPuestosSocios(ordenarPuestosPorNumero(response.data.data));
     } catch (error) {
       console.error("Error al obtener los puestos", error);
     }

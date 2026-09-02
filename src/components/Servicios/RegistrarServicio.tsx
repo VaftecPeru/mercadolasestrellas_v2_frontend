@@ -33,6 +33,8 @@ import {
 } from "../Shared/ElementosFormulario";
 import { reFormatDate } from "../../Utils/dateUtils";
 import apiClient from "../../Utils/apliClient";
+import { ordenarPuestosPorNumero } from "../../Utils/ordenarPuestos";
+import { ordenarSociosPorNombre } from "../../Utils/ordenarSocios";
 import { API_ROUTES } from "../../service/ServicioApi";
 import { SocioSelect } from "../../interface/Socios";
 import { AgregarProps } from "../../interface/Servicios";
@@ -58,7 +60,7 @@ const RegistrarServicio: React.FC<AgregarProps> = ({
     const fetchSocios = async () => {
       try {
         const response = await apiClient.get(API_ROUTES.socios.listar());
-        setSocios(response.data.data);
+        setSocios(ordenarSociosPorNombre(response.data.data));
       } catch (error) {
         console.error("Error al obtener los socios", error);
       }
@@ -70,7 +72,7 @@ const RegistrarServicio: React.FC<AgregarProps> = ({
   const fetchPuestosSocio = async (idSocio: number) => {
     try {
       const response = await apiClient.get(API_ROUTES.puestos.listarPorSocio(idSocio));
-      setPuestos(response.data.data);
+      setPuestos(ordenarPuestosPorNumero(response.data.data));
     } catch (error) {
       console.error("Error al obtener los puestos", error);
     }

@@ -23,6 +23,7 @@ import {
 import { Close, CloudUpload, Storage } from '@mui/icons-material';
 import * as XLSX from 'xlsx';
 import apiClient from '../../Utils/apliClient';
+import { ordenarSociosPorNombre } from '../../Utils/ordenarSocios';
 import { Api_Global_Pagos } from '../../service/PagoApi';
 import { mostrarAlerta, manejarError } from '../Alerts/Registrar';
 
@@ -73,7 +74,7 @@ const ImportPagosModal: React.FC<ImportPagosModalProps> = ({ open, handleClose, 
             // Fetch socios list
             apiClient.get('/socios/seleccionar')
                 .then(response => {
-                    setSocios(response.data.data || []);
+                    setSocios(ordenarSociosPorNombre(response.data.data || []));
                 })
                 .catch(() => {
                     mostrarAlerta("Error", "No se pudieron cargar los socios para la selección manual.", "error");

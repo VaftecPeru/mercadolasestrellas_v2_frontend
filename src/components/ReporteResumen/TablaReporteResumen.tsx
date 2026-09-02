@@ -27,16 +27,17 @@ import { Api_Global_Puestos } from "../../service/PuestoApi";
 import { handleExport } from "../../Utils/exportUtils";
 import { Column, Data, Puesto } from "../../interface/ReporteResunen/resumen";
 import { mostrarAlerta } from "../Alerts/Registrar";
+import { ordenarPuestosPorNumero } from "../../Utils/ordenarPuestos";
 
 
 const columns: readonly Column[] = [
-  { id: "serie_numero", label: "N° Recibo", minWidth: 50, align: "center" },
-  { id: "importe_ingreso", label: "Ingreso", minWidth: 50, align: "center" },
-  { id: "importe_gastos_administrativo", label: "Gastos Administrativos", minWidth: 50, align: "center" },
-  { id: "importe_multas_inasistencia", label: "Multas Inasistencia", minWidth: 50, align: "center" },
-  { id: "importe_pagos_transferencia", label: "Pagos Transferencia", minWidth: 50, align: "center" },
-  { id: "importe_cuotas_extraordinarias", label: "Cuotas Extraordinarias", minWidth: 50, align: "center" },
-  { id: "importe_total", label: "Total", minWidth: 50, align: "center" },
+  { id: "serie_numero", label: "N° Recibo", minWidth: 110, align: "center" },
+  { id: "importe_ingreso", label: "Ingreso", minWidth: 100, align: "right" },
+  { id: "importe_gastos_administrativo", label: "Gastos Administrativos", minWidth: 150, align: "right" },
+  { id: "importe_multas_inasistencia", label: "Multas Inasistencia", minWidth: 140, align: "right" },
+  { id: "importe_pagos_transferencia", label: "Pagos Transferencia", minWidth: 140, align: "right" },
+  { id: "importe_cuotas_extraordinarias", label: "Cuotas Extraordinarias", minWidth: 160, align: "right" },
+  { id: "importe_total", label: "Total", minWidth: 100, align: "right" },
 ];
 
 const TablaReporteResumen = () => {
@@ -59,7 +60,7 @@ const TablaReporteResumen = () => {
     const fetchPuestos = async () => {
       try {
         const response = await apiClient.get(Api_Global_Puestos.puestos.buscar(1, 500, "", "", "", ""));
-        setPuestos(response.data.data);
+        setPuestos(ordenarPuestosPorNumero(response.data.data));
       } catch (error) {
       }
     };
@@ -186,6 +187,7 @@ const TablaReporteResumen = () => {
                           style={{ minWidth: column.minWidth }}
                           sx={{
                             fontWeight: "bold",
+                            backgroundColor: "#f5f5f5",
                           }}
                         >
                           {column.label}

@@ -28,6 +28,7 @@ import ContenedorModal from "../Shared/ContenedorModal";
 import { AvisoFormulario, SeparadorBloque, TxtFormulario } from "../Shared/ElementosFormulario";
 import { reFormatDate } from "../../Utils/dateUtils";
 import apiClient from "../../Utils/apliClient";
+import { ordenarPuestosPorNumero } from "../../Utils/ordenarPuestos";
 import { Api_Global_Socios } from "../../service/SocioApi";
 import { Bloque, Puesto } from "../../interface/Puestos";
 import { AgregarProps } from "../../interface/Socios";
@@ -114,7 +115,7 @@ const Agregar: React.FC<AgregarProps> = ({ open, handleClose, socio }) => {
   const fetchPuestos = async (id_block: number) => {
     try {
       const response = await apiClient.get(Api_Global_Socios.puestos.obtenerPuestos(id_block)); // publico
-      setPuestos(response.data);
+      setPuestos(ordenarPuestosPorNumero(response.data));
     } catch (error) {
     }
   };

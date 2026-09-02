@@ -12,7 +12,7 @@ export interface Column {
   id: keyof Data | keyof DeudaPendiente | "accion";
   label: string;
   minWidth?: number;
-  align?: "center" | "left";
+  align?: "center" | "left" | "right";
 }
 
 export interface Data {
@@ -30,6 +30,7 @@ export interface DeudaPendiente {
   id_deuda: number;
   id_deuda_cuota: number;
   nombre_servicio: string;
+  fecha: string;
   anio: string;
   mes: string;
   total: string;

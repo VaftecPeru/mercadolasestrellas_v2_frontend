@@ -10,6 +10,7 @@ import ContenedorBotones from '../Shared/ContenedorBotones';
 import apiClient from "../../Utils/apliClient";
 import { Api_Global_Reportes } from '../../service/ReporteApi';
 import { Api_Global_Puestos } from '../../service/PuestoApi';
+import { ordenarPuestosPorNumero } from '../../Utils/ordenarPuestos';
 import { handleExport } from '../../Utils/exportUtils';
 import { Column, Data, Puesto } from '../../interface/ReportePagos/pagos';
 import { nombreMes } from '../../Utils/dateUtils';
@@ -64,7 +65,7 @@ const TablaReportePagos: React.FC = () => {
       try {
         const idSocioBusqueda = usuario?.rol === "Socio" ? usuario.id_usuario.toString() : "";
         const response = await apiClient.get(Api_Global_Puestos.puestos.buscar(1, 1000, "", "", "", idSocioBusqueda));
-        setPuestos(response.data.data);
+        setPuestos(ordenarPuestosPorNumero(response.data.data));
       } catch (error) {
         console.error("Error al cargar puestos:", error);
       }
@@ -297,17 +298,14 @@ const TablaReportePagos: React.FC = () => {
             </Table>
           </TableContainer>
 
-          {totalPaginas > 1 && (
-            <Box sx={{ display: "flex", justifyContent: "center", py: 3, borderTop: '1px solid #eee' }}>
-              <Pagination
-                count={totalPaginas}
-                page={paginaActual}
-                onChange={cambiarPagina}
-                color="primary"
-                size={isMobile ? "small" : "medium"}
-              />
-            </Box>
-          )}
+          <Box sx={{ display: "flex", justifyContent: "center", marginTop: 3 }}>
+            <Pagination
+              count={totalPaginas}
+              page={paginaActual}
+              onChange={cambiarPagina}
+              color="primary"
+            />
+          </Box>
         </Paper>
       )}
     </Contenedor>

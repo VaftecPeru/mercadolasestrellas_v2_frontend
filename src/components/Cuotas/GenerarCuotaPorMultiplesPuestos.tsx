@@ -25,6 +25,7 @@ import useResponsive from "../../hooks/Responsive/useResponsive";
 import { manejarError, mostrarAlerta } from "../Alerts/Registrar";
 import { AvisoFormulario, TxtFormulario } from "../Shared/ElementosFormulario";
 import apiClient from "../../Utils/apliClient";
+import { ordenarPuestosPorNumero } from "../../Utils/ordenarPuestos";
 import { Api_Global_Cuotas } from "../../service/CuotaApi";
 import { ColumnServicios, Cuotas } from "../../interface/Cuota";
 import { Servicio } from "../../interface/Servicios";
@@ -115,7 +116,7 @@ const GenerarCuotaPorMultiplesPuestos: React.FC<Props> = ({ cuota }) => {
     const fetchPuestos = async () => {
       try {
         const response = await apiClient.get(Api_Global_Cuotas.puesto.listar());
-        setPuestos(response.data.data);
+        setPuestos(ordenarPuestosPorNumero(response.data.data));
       } catch (error) {
       }
     }

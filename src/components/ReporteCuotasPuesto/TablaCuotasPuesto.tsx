@@ -12,6 +12,7 @@ import { Api_Global_Reportes } from "../../service/ReporteApi";
 import { Api_Global_Puestos } from "../../service/PuestoApi";
 import { handleExport } from "../../Utils/exportUtils";
 import { mostrarAlerta } from "../Alerts/Registrar";
+import { ordenarPuestosPorNumero } from "../../Utils/ordenarPuestos";
 
 interface Puesto {
   id_puesto: number;
@@ -31,17 +32,17 @@ interface Column {
   id: keyof Data | "mes" | "dia" | "accion";
   label: string;
   minWidth?: number;
-  align?: "center";
+  align?: "center" | "left" | "right";
 }
 
 const columns: readonly Column[] = [
-  { id: "anio", label: "Año", minWidth: 50, align: "center" },
-  { id: "mes", label: "Mes", minWidth: 50, align: "center" },
-  { id: "dia", label: "Día", minWidth: 50, align: "center" },
-  { id: "servicio_descripcion", label: "Servicios", minWidth: 50, align: "center" },
-  { id: "aprobado", label: "Total (S/)", minWidth: 50, align: "center" },
-  { id: "pagado", label: "Imp. Pagado (S/)", minWidth: 50, align: "center" },
-  { id: "por_pagar", label: "Imp. Por pagar (S/)", minWidth: 50, align: "center" },
+  { id: "anio", label: "Año", minWidth: 60, align: "center" },
+  { id: "mes", label: "Mes", minWidth: 90, align: "center" },
+  { id: "dia", label: "Día", minWidth: 60, align: "center" },
+  { id: "servicio_descripcion", label: "Servicios", minWidth: 200, align: "left" },
+  { id: "aprobado", label: "Total (S/)", minWidth: 100, align: "right" },
+  { id: "pagado", label: "Imp. Pagado (S/)", minWidth: 110, align: "right" },
+  { id: "por_pagar", label: "Imp. Por pagar (S/)", minWidth: 120, align: "right" },
 ]
 
 const TablaCuotasPuesto: React.FC = () => {
@@ -91,7 +92,7 @@ const TablaCuotasPuesto: React.FC = () => {
     const fetchPuestos = async () => {
       try {
         const response = await apiClient.get(Api_Global_Puestos.puestos.buscar(1, 500, "", "", "", ""));
-        setPuestos(response.data.data);
+        setPuestos(ordenarPuestosPorNumero(response.data.data));
       } catch (error) {
         console.log(error);
       }
@@ -222,6 +223,7 @@ const TablaCuotasPuesto: React.FC = () => {
                           style={{ minWidth: column.minWidth }}
                           sx={{
                             fontWeight: "bold",
+                            backgroundColor: "#f5f5f5",
                           }}
                         >
                           {column.label}
