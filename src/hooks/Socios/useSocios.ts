@@ -70,6 +70,7 @@ const useSocios = () => {
         setMostrarDetalles,
         nombreIngresado,
         setNombreIngresado,
+        numeroPuesto,
         setNumeroPuesto,
         socioSeleccionado,
         setSocioSeleccionado,

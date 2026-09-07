@@ -46,6 +46,7 @@ const TablaAsociados: React.FC = () => {
     setMostrarDetalles,
     nombreIngresado,
     setNombreIngresado,
+    numeroPuesto,
     setNumeroPuesto,
     socioSeleccionado,
     setSocioSeleccionado,
@@ -111,7 +112,7 @@ const TablaAsociados: React.FC = () => {
     fetchSocios();
   }
 
-  // Búsqueda en tiempo real por nombre de socio
+  // Búsqueda en tiempo real por nombre y número de puesto 
   const esPrimerRender = React.useRef(true);
   React.useEffect(() => {
     if (esPrimerRender.current) {
@@ -120,7 +121,7 @@ const TablaAsociados: React.FC = () => {
     }
     fetchSocios(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nombreIngresado]);
+  }, [nombreIngresado, numeroPuesto]);
 
   const CambioDePagina = (event: React.ChangeEvent<unknown>, value: number) => {
     // Primero hacer fetch con el nuevo valor, luego actualizar el estado
@@ -208,6 +209,7 @@ const TablaAsociados: React.FC = () => {
           }}
           type="text"
           label="Numero de puesto"
+          value={numeroPuesto}
           onChange={(e) => setNumeroPuesto(e.target.value)}
         />
 
