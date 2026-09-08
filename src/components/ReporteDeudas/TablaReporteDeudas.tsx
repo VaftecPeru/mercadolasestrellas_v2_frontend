@@ -20,14 +20,14 @@ import { useAuth } from '../../context/AuthContext';
 import { mostrarAlerta } from '../Alerts/Registrar';
 
 const columnsDeudas: readonly Column[] = [
-  { id: "fecha", label: "Fec. Pago", minWidth: 90, align: "center" },
+  { id: "fecha", label: "Fecha Pago", minWidth: 90, align: "center" },
   { id: "nombre_servicio", label: "Servicios", minWidth: 200, align: "left" },
   { id: "total", label: "Total (S/)", minWidth: 100, align: "right" },
   { id: "a_cuenta", label: "Imp. Pagado (S/)", minWidth: 110, align: "right" },
   { id: "por_pagar", label: "Imp. Por pagar (S/)", minWidth: 120, align: "right" },
 ];
 
-const columnasPagos = ["Fec. Pago", "Comprobante", "Concepto", "Monto (S/)"];
+const columnasPagos = ["Fecha Pago", "Comprobante", "Concepto", "Monto (S/)"];
 
 const soloFecha = (fecha: string) => (fecha ? String(fecha).split(" ")[0] : "");
 

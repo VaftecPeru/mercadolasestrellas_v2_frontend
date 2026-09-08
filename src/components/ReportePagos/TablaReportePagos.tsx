@@ -18,7 +18,7 @@ import { useAuth } from '../../context/AuthContext';
 import { mostrarAlerta } from '../Alerts/Registrar';
 
 const columns: readonly Column[] = [
-  { id: "fecha", label: "Fec. Pago", minWidth: 100, align: "center" },
+  { id: "fecha", label: "Fecha Pago", minWidth: 100, align: "center" },
   { id: "servicios", label: "Servicios", minWidth: 150, align: "left" },
   { id: "montos", label: "Total (S/)", minWidth: 100, align: "right" },
   { id: "total", label: "Imp. Pagado (S/)", minWidth: 120, align: "right" },

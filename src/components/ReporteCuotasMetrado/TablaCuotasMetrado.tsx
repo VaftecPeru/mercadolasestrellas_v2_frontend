@@ -38,7 +38,7 @@ interface Column {
 }
 
 const columns: readonly Column[] = [
-  { id: "fecha", label: "Fec. Registro", minWidth: 110, align: "center" },
+  { id: "fecha", label: "Fecha Registro", minWidth: 110, align: "center" },
   { id: "nombre_completo", label: "Nombre del socio", minWidth: 200, align: "left" },
   { id: "numero_puesto", label: "N° Puesto", minWidth: 100, align: "center" },
   { id: "area", label: "Área (m2)", minWidth: 100, align: "right" },

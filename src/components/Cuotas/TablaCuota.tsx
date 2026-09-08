@@ -152,8 +152,8 @@ const TablaCuota: React.FC = () => {
 
     const data = [
       ["ID CUOTA", cuota.id_cuota],
-      ["Fec. Emisión", cuota.fecha_emision],
-      ["Fec. Vencimiento", cuota.fecha_vencimiento],
+      ["Fecha Emisión", cuota.fecha_emision],
+      ["Fecha Vencimiento", cuota.fecha_vencimiento],
       ["Importe Total", cuota.importe],
       ["Puestos", puestos],
       ["Servicios", servicios],

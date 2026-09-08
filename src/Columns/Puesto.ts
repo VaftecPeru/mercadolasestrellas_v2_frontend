@@ -8,6 +8,6 @@ export const columns: readonly Column[] = [
     { id: "socio", label: "Nombre del socio", minWidth: 50 },
     { id: "inquilino", label: "Inquilino", minWidth: 50 },
     { id: "estado", label: "Estado", minWidth: 50 },
-    { id: "fecha_registro", label: "Fec. Registro", minWidth: 50 },
+    { id: "fecha_registro", label: "Fecha Registro", minWidth: 50 },
     { id: "accion", label: "Acciones", minWidth: 50 },
 ];
