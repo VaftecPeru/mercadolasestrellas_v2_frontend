@@ -24,6 +24,7 @@ const SocioReporteDeudas: React.FC<SocioReporteDeudasProps> = ({ deudas, isLoadi
       mostrarPuesto
       tituloMovil=""
       mensajeVacio="El socio no tiene deudas pendientes."
+      mostrarColumnasCompletas={false}
     />
   );
 };

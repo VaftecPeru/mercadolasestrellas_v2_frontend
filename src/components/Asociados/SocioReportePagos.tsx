@@ -23,6 +23,7 @@ const SocioReportePagos: React.FC<SocioReportePagosProps> = ({ pagos, isLoading 
       pagos={pagos}
       tituloMovil=""
       mensajeVacio="El socio no tiene pagos realizados."
+      mostrarPuesto
     />
   );
 };
