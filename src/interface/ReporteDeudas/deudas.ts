@@ -33,6 +33,7 @@ export interface DeudaPendiente {
   fecha: string;
   anio: string;
   mes: string;
+  numero_puesto?: string;
   total: string;
   a_cuenta: string;
   por_pagar: string;

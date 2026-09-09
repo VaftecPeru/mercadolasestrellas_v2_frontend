@@ -39,6 +39,9 @@ export const Api_Global_Reportes = {
       return url;
     },
 
+    socioDeudas: (idSocio: number) => `/deudas/pendientes?per_page=500&id_socio=${idSocio}`,
+    socioPagos: (idSocio: number) => `/reportes/pagos?per_page=500&id_socio=${idSocio}`,
+
     resumenPorPuestos: (page: number, per_page: number, idPuesto: number) =>
       `/reportes/resumen-por-puestos?page=${page}&per_page=${per_page}&id_puesto=${idPuesto}`,
   },

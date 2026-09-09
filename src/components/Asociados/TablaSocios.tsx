@@ -23,6 +23,7 @@ import {
   DeleteForever,
 } from "@mui/icons-material";
 import Agregar from "./RegistrarSocio";
+import ModalReporteSocio from "./ModalReporteSocio";
 import LoadingSpinner from "../PogressBar/ProgressBarV1";
 import Contenedor from "../Shared/Contenedor";
 import ContenedorBotones from "../Shared/ContenedorBotones";
@@ -59,30 +60,21 @@ const TablaAsociados: React.FC = () => {
     totalPages,
     paginaActual,
     setPaginaActual,
-    navigate,
     fetchSocios,
   } = useSocios();
 
-  // Los reportes filtran por puesto; se obtiene el puesto del socio
-  const obtenerPuestoSocio = (socio: Socio): number | null =>
-    socio.puestos && socio.puestos.length > 0 ? socio.puestos[0].id_puesto : null;
+  // Vista previa financiera del socio en un modal (sin salir de la pantalla)
+  const [socioReporte, setSocioReporte] = React.useState<Socio | null>(null);
+  const [tabReporteSocio, setTabReporteSocio] = React.useState(0);
 
-  const handleVerReportePagos = (socio: Socio) => {
-    const idPuesto = obtenerPuestoSocio(socio);
-    if (!idPuesto) {
-      mostrarAlerta("Atención", "El socio no tiene un puesto asignado.", "warning");
-      return;
-    }
-    navigate(`/home/reporte-pagos?puesto=${idPuesto}`);
+  const abrirReporteDeudas = (socio: Socio) => {
+    setTabReporteSocio(0);
+    setSocioReporte(socio);
   };
 
-  const handleVerReporteDeudas = (socio: Socio) => {
-    const idPuesto = obtenerPuestoSocio(socio);
-    if (!idPuesto) {
-      mostrarAlerta("Atención", "El socio no tiene un puesto asignado.", "warning");
-      return;
-    }
-    navigate(`/home/reporte-deudas?puesto=${idPuesto}`);
+  const abrirReportePagos = (socio: Socio) => {
+    setTabReporteSocio(1);
+    setSocioReporte(socio);
   };
 
   const handleOpen = (socio?: Socio) => {
@@ -357,7 +349,7 @@ const TablaAsociados: React.FC = () => {
                                                   backgroundColor: "crimson",
                                                   color: "white"
                                                 }}
-                                                onClick={() => handleVerReporteDeudas(socio)}
+                                                onClick={() => abrirReporteDeudas(socio)}
                                               >
                                                 <Payments sx={{ mr: 1 }} />
                                                 Deudas
@@ -370,7 +362,7 @@ const TablaAsociados: React.FC = () => {
                                                   backgroundColor: "green",
                                                   color: "white"
                                                 }}
-                                                onClick={() => handleVerReportePagos(socio)}
+                                                onClick={() => abrirReportePagos(socio)}
                                               >
                                                 <Payments sx={{ mr: 1 }} />
                                                 Pagos
@@ -504,14 +496,14 @@ const TablaAsociados: React.FC = () => {
                                             <IconButton
                                               aria-label="payment"
                                               sx={{ color: "crimson" }}
-                                              onClick={() => handleVerReporteDeudas(socio)}
+                                              onClick={() => abrirReporteDeudas(socio)}
                                             >
                                               <Payments />
                                             </IconButton>
                                             <IconButton
                                               aria-label="payment"
                                               sx={{ color: "green" }}
-                                              onClick={() => handleVerReportePagos(socio)}
+                                              onClick={() => abrirReportePagos(socio)}
                                             >
                                               <Payments />
                                             </IconButton>
@@ -579,6 +571,13 @@ const TablaAsociados: React.FC = () => {
           </Paper>
         </>
       )}
+
+      <ModalReporteSocio
+        open={socioReporte !== null}
+        socio={socioReporte}
+        tabInicial={tabReporteSocio}
+        onClose={() => setSocioReporte(null)}
+      />
     </Contenedor>
   );
 };
