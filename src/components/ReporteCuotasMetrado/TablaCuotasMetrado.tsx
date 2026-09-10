@@ -16,9 +16,17 @@ import { mostrarAlerta, manejarError } from '../Alerts/Registrar';
 
 interface Cuota {
   id_cuota: string;
-  // fecha_registro: string;
   fecha_emision: string;
+  servicios?: Array<{ nombre: string }>;
 }
+
+const etiquetaCuota = (cuota: Cuota) => {
+  const servicios = (cuota.servicios ?? [])
+    .map((servicio) => servicio.nombre)
+    .filter(Boolean)
+    .join(', ');
+  return `${cuota.id_cuota} - ${servicios || "Sin servicio"}`;
+};
 
 interface Data {
   fecha: string;
@@ -135,7 +143,7 @@ const TablaReporteCuotasMetrado: React.FC = () => {
           >
             <Autocomplete
               options={cuotasSelect}
-              getOptionLabel={(cuota) => `${cuota.id_cuota} - ${formatDate(cuota.fecha_emision)}`}
+              getOptionLabel={(cuota) => etiquetaCuota(cuota)}
               onChange={(event, value) => {
                 if (value) {
                   setCuotaSeleccionada(Number(value.id_cuota));
@@ -156,7 +164,7 @@ const TablaReporteCuotasMetrado: React.FC = () => {
               }}
               renderOption={(props, option) => (
                 <li {...props} key={option.id_cuota}>
-                  {`${option.id_cuota} - ${formatDate(option.fecha_emision)}`}
+                  {etiquetaCuota(option)}
                 </li>
               )}
               isOptionEqualToValue={(option, value) => option.id_cuota === value.id_cuota}

@@ -1,6 +1,7 @@
 import { Column } from "../interface/Cuota";
 
 export const columns: readonly Column[] = [
+  { id: "id_cuota", label: "ID", minWidth: 40 },
   { id: "fecha_emision", label: "Fecha Emisión", minWidth: 50 },
   { id: "fecha_vencimiento", label: "Fecha Vencimiento", minWidth: 50 },
   { id: "importe", label: "Importe", minWidth: 50 },

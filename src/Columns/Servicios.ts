@@ -2,6 +2,7 @@
 import { Column } from "../interface/Servicios"; // se esta importando la interface servicios
 
 export const columns: readonly Column[] = [
+    { id: "id_servicio", label: "ID", minWidth: 40 },
     { id: "nombre", label: "Nombre del servicio", minWidth: 50 },
     { id: "costo_unitario", label: "Costo Unitario", minWidth: 50 },
     { id: "tipo_servicio", label: "Tipo de Servicio", minWidth: 50 },
