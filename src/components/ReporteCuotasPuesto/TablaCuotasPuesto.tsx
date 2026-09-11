@@ -21,6 +21,7 @@ interface Puesto {
 
 interface Data {
   anio: string;
+  nombre_completo: string;
   servicio_descripcion: string;
   aprobado: string;
   pagado: string;
@@ -36,9 +37,7 @@ interface Column {
 }
 
 const columns: readonly Column[] = [
-  { id: "anio", label: "Año", minWidth: 60, align: "center" },
-  { id: "mes", label: "Mes", minWidth: 90, align: "center" },
-  { id: "dia", label: "Día", minWidth: 60, align: "center" },
+  { id: "fecha", label: "Fecha Registro", minWidth: 110, align: "center" },
   { id: "servicio_descripcion", label: "Servicios", minWidth: 200, align: "left" },
   { id: "aprobado", label: "Total (S/)", minWidth: 100, align: "right" },
   { id: "pagado", label: "Imp. Pagado (S/)", minWidth: 110, align: "right" },
@@ -319,7 +318,7 @@ const TablaCuotasPuesto: React.FC = () => {
                 {!isTablet && !isMobile && cuotas.length > 0 && (
                   <TableHead>
                     <TableRow>
-                      <TableCell colSpan={4} align="right" sx={{ fontWeight: "bold", backgroundColor: "#f0f0f0" }}>
+                      <TableCell colSpan={2} align="right" sx={{ fontWeight: "bold", backgroundColor: "#f0f0f0" }}>
                         TOTAL:
                       </TableCell>
                       <TableCell align="right" sx={{ fontWeight: "bold", backgroundColor: "#e3f2fd", fontSize: '1rem', borderTop: '2px solid #1976d2' }}>

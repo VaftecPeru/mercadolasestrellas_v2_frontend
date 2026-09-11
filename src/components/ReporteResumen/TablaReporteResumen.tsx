@@ -37,7 +37,7 @@ const columns: readonly Column[] = [
   { id: "importe_multas_inasistencia", label: "Multas Inasistencia", minWidth: 140, align: "right" },
   { id: "importe_pagos_transferencia", label: "Pagos Transferencia", minWidth: 140, align: "right" },
   { id: "importe_cuotas_extraordinarias", label: "Cuotas Extraordinarias", minWidth: 160, align: "right" },
-  { id: "importe_total", label: "Total", minWidth: 100, align: "right" },
+  { id: "importe_total", label: "Total (S/)", minWidth: 100, align: "right" },
 ];
 
 const TablaReporteResumen = () => {
