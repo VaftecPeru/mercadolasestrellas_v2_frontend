@@ -14,7 +14,7 @@ import { Data as DataPago } from '../../interface/ReportePagos/pagos';
 import apiClient from "../../Utils/apliClient";
 import { Api_Global_Reportes } from '../../service/ReporteApi';
 import { Api_Global_Puestos } from '../../service/PuestoApi';
-import { Api_Global_Pagos } from '../../service/PagoApi';
+import { Api_Global_Socios } from '../../service/SocioApi';
 import { ordenarPuestosPorNumero } from '../../Utils/ordenarPuestos';
 import { ordenarSociosPorNombre } from '../../Utils/ordenarSocios';
 import { handleExport } from '../../Utils/exportUtils';
@@ -86,13 +86,8 @@ const TablaReporteDeudas: React.FC = () => {
   useEffect(() => {
     const fetchPuestos = async () => {
       try {
-        if (usuario?.rol !== "Socio") {
-          const response = await apiClient.get(Api_Global_Puestos.puestos.buscar(1, 1000, "", "", "", ""));
-          setPuestos(ordenarPuestosPorNumero(response.data.data));
-        } else {
-          const response = await apiClient.get(Api_Global_Puestos.puestos.buscar(1, 1000, "", "", "", usuario.id_usuario.toString()));
-          setPuestos(ordenarPuestosPorNumero(response.data.data));
-        }
+        const response = await apiClient.get(Api_Global_Puestos.puestos.buscar(1, 1000, "", "", "", ""));
+        setPuestos(ordenarPuestosPorNumero(response.data.data));
       } catch (error) {
         console.log("Error:", error);
       }
@@ -104,7 +99,7 @@ const TablaReporteDeudas: React.FC = () => {
   useEffect(() => {
     const fetchSocios = async () => {
       try {
-        const response = await apiClient.get(Api_Global_Pagos.socios.listar());
+        const response = await apiClient.get(Api_Global_Socios.socios.seleccionar());
         const data = response.data.data.map((item: any) => ({
           id_socio: String(item.id_socio),
           nombre_completo: item.nombre_completo,

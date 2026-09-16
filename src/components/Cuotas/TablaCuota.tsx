@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Paper,
   Table,
@@ -192,6 +192,17 @@ const TablaCuota: React.FC = () => {
   useEffect(() => {
     setIMeses(optMeses);
   }, []);
+
+  // Filtros Año/Mes en tiempo real (patrón de otros módulos)
+  const esPrimerRender = useRef(true);
+  useEffect(() => {
+    if (esPrimerRender.current) {
+      esPrimerRender.current = false;
+      return;
+    }
+    listarCuotas(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [anio, mes]);
 
   return (
     <Contenedor>

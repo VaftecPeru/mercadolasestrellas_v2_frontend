@@ -70,8 +70,8 @@ const BusquedaRapida = () => {
   useEffect(() => {
     const fetchPuestos = async () => {
       try {
-        const response = await apiClient.get(Api_Global_Puestos.puestos.buscar(1, 15, "", "", ""));
-        setPuestos(ordenarPuestosPorNumero(response.data.data));
+        const response = await apiClient.get(Api_Global_Puestos.puestos.seleccionar());
+        setPuestos(ordenarPuestosPorNumero(response.data));
       } catch (error) {
       }
     }

@@ -12,5 +12,5 @@ export const columns: readonly Column[] = [
   { id: "fecha_registro", label: "Fecha Registro", minWidth: 40 },
   // { id: "deuda", label: "Deuda Total", minWidth: 30 },
   { id: "ver_reporte", label: "Deudas / Pagos", minWidth: 10 },
-  { id: "accion", label: "Acción", minWidth: 20 },
+  { id: "accion", label: "Acciones", minWidth: 20 },
 ];

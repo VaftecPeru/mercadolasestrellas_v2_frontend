@@ -6,6 +6,7 @@ import useResponsive from '../../hooks/Responsive/useResponsive';
 import { manejarError, mostrarAlerta } from "../Alerts/Registrar";
 import Cookies from 'js-cookie';
 import apiClient from "../../Utils/apliClient";
+import { ID_ROL } from "../../Utils/roles";
 
 const Login: React.FC = () => {
   const [nomUsuario, setNomUsuario] = useState<string>("");
@@ -27,8 +28,13 @@ const Login: React.FC = () => {
           Cookies.set('token', token, { path: '/' });
           login(userResponse);
 
-          mostrarAlerta('Inicio de sesión', `Bienvenido ${nomUsuario}.`, 'success');
-          navigate("/home");
+          if (userResponse.debe_cambiar_password) {
+            navigate("/cambiar-password");
+          } else {
+            const destino = userResponse.id_rol === ID_ROL.SOCIO ? "/home/reporte-deudas" : "/home";
+            mostrarAlerta('Inicio de sesión', `Bienvenido ${nomUsuario}.`, 'success');
+            navigate(destino);
+          }
         }
       })
       .catch((error) => {

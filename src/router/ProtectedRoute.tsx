@@ -2,11 +2,12 @@ import React, { ReactNode, useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import Cookies from "js-cookie";
+import { ID_ROL } from "../Utils/roles";
 
 
 interface ProtectedRouteProps {
   children: ReactNode;
-  requiredRoles?: string[];
+  requiredRoles?: number[];
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRoles }) => {
@@ -20,9 +21,9 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRoles
       navigate("/");
     }
 
-    if (requiredRoles && !requiredRoles.includes(usuario ? usuario?.rol : "")) {
-      if (usuario?.rol === "Socio") {
-        navigate("/home/reporte-pagos");
+    if (requiredRoles && !requiredRoles.includes(usuario ? usuario.id_rol : -1)) {
+      if (usuario?.id_rol === ID_ROL.SOCIO) {
+        navigate("/home/reporte-deudas");
       }
       navigate("/home");
     }
@@ -49,9 +50,9 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRoles
   //   return <Navigate to="/" />;
   // }
 
-  // if (requiredRoles && !requiredRoles.includes(usuario ? usuario?.rol : "")) {
-  //   if (usuario?.rol === "Socio") {
-  //     return <Navigate to="/home/reporte-pagos" />;
+  // if (requiredRoles && !requiredRoles.includes(usuario ? usuario.id_rol : -1)) {
+  //   if (usuario?.id_rol === ID_ROL.SOCIO) {
+  //     return <Navigate to="/home/reporte-deudas" />;
   //   }
   //   return <Navigate to="/home" />;
   // }

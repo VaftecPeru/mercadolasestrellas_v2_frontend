@@ -15,11 +15,18 @@ import TablaReporteCuotasMetrado from "../components/ReporteCuotasMetrado/TablaC
 import TablaCuotasPuesto from "../components/ReporteCuotasPuesto/TablaCuotasPuesto";
 import BusquedaRapida from "../components/BusquedaRapida";
 import TablaReporteResumen from "../components/ReporteResumen/TablaReporteResumen";
+import CambiarPassword from "../components/Login/CambiarPassword";
+import TablaUsuarios from "../components/Usuarios/TablaUsuarios";
+import { ID_ROL } from "../Utils/roles";
 
 export const router = createBrowserRouter([
   {
     path: "/",
     element: <Login />
+  },
+  {
+    path: "/cambiar-password",
+    element: <CambiarPassword />
   },
   {
     path: "/busqueda-rapida",
@@ -37,7 +44,7 @@ export const router = createBrowserRouter([
       {
         index: true,
         element: (
-          <ProtectedRoute requiredRoles={["Cajero", "Administrador"]}>
+          <ProtectedRoute requiredRoles={[ID_ROL.CAJERO, ID_ROL.ADMINISTRADOR]}>
             <Dashboard />
           </ProtectedRoute>
         ),
@@ -45,15 +52,23 @@ export const router = createBrowserRouter([
       {
         path: "socios",
         element: (
-          <ProtectedRoute requiredRoles={["Cajero", "Administrador"]}>
+          <ProtectedRoute requiredRoles={[ID_ROL.CAJERO, ID_ROL.ADMINISTRADOR]}>
             <Tabla />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "usuarios",
+        element: (
+          <ProtectedRoute requiredRoles={[ID_ROL.ADMINISTRADOR]}>
+            <TablaUsuarios />
           </ProtectedRoute>
         ),
       },
       {
         path: "puestos",
         element: (
-          <ProtectedRoute requiredRoles={["Administrador"]}>
+          <ProtectedRoute requiredRoles={[ID_ROL.ADMINISTRADOR]}>
             <TablaPuestos />,
           </ProtectedRoute>
         ),
@@ -61,7 +76,7 @@ export const router = createBrowserRouter([
       {
         path: "servicios",
         element: (
-          <ProtectedRoute requiredRoles={["Administrador"]}>
+          <ProtectedRoute requiredRoles={[ID_ROL.ADMINISTRADOR]}>
             <TablaServicios />
           </ProtectedRoute>
         ),
@@ -69,7 +84,7 @@ export const router = createBrowserRouter([
       {
         path: "cuotas",
         element: (
-          <ProtectedRoute requiredRoles={["Administrador"]}>
+          <ProtectedRoute requiredRoles={[ID_ROL.ADMINISTRADOR]}>
             <TablaCuota />
           </ProtectedRoute>
         ),
@@ -77,23 +92,31 @@ export const router = createBrowserRouter([
       {
         path: "pagos",
         element: (
-          <ProtectedRoute requiredRoles={["Cajero", "Administrador"]}>
+          <ProtectedRoute requiredRoles={[ID_ROL.CAJERO, ID_ROL.ADMINISTRADOR]}>
             <TablaPagos />
           </ProtectedRoute>  
         ),
       },
       {
         path: "reporte-pagos",
-        element: <TablaReportePagos />,
+        element: (
+          <ProtectedRoute requiredRoles={[ID_ROL.CAJERO, ID_ROL.ADMINISTRADOR]}>
+            <TablaReportePagos />
+          </ProtectedRoute>
+        ),
       },
       {
         path: "reporte-deudas",
-        element: <TablaReporteDeudas />,
+        element: (
+          <ProtectedRoute>
+            <TablaReporteDeudas />
+          </ProtectedRoute>
+        ),
       },
       {
         path: "reporte-cuotas-metrado",
         element: (
-          <ProtectedRoute requiredRoles={["Cajero", "Administrador"]}>
+          <ProtectedRoute requiredRoles={[ID_ROL.CAJERO, ID_ROL.ADMINISTRADOR]}>
             <TablaReporteCuotasMetrado />
           </ProtectedRoute>
         ),
@@ -101,7 +124,7 @@ export const router = createBrowserRouter([
       {
         path: "reporte-cuotas-puesto",
         element: (
-          <ProtectedRoute requiredRoles={["Cajero", "Administrador"]}>
+          <ProtectedRoute requiredRoles={[ID_ROL.CAJERO, ID_ROL.ADMINISTRADOR]}>
             <TablaCuotasPuesto />
           </ProtectedRoute>
         ),
@@ -109,7 +132,7 @@ export const router = createBrowserRouter([
       {
         path: "reporte-resumen",
         element: (
-          <ProtectedRoute requiredRoles={["Cajero", "Administrador"]}>
+          <ProtectedRoute requiredRoles={[ID_ROL.CAJERO, ID_ROL.ADMINISTRADOR]}>
             <TablaReporteResumen />
           </ProtectedRoute>
         ),

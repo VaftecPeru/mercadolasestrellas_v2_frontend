@@ -21,9 +21,13 @@ import {
   SaveAs,
   Search,
   DeleteForever,
+  Lock,
+  LockOpen,
+  VpnKey,
 } from "@mui/icons-material";
 import Agregar from "./RegistrarSocio";
 import ModalReporteSocio from "./ModalReporteSocio";
+import ModalCredenciales, { CredencialSocio } from "./ModalCredenciales";
 import LoadingSpinner from "../PogressBar/ProgressBarV1";
 import Contenedor from "../Shared/Contenedor";
 import ContenedorBotones from "../Shared/ContenedorBotones";
@@ -36,6 +40,8 @@ import { Api_Global_Socios } from "../../service/SocioApi";
 import useSocios from "../../hooks/Socios/useSocios";
 import { handleAccionesSocio } from "../../Utils/downloadDataSocio";
 import { manejarError, mostrarAlerta, mostrarAlertaConfirmacion } from "../Alerts/Registrar";
+import { useAuth } from "../../context/AuthContext";
+import { ID_ROL } from "../../Utils/roles";
 import apiClient from "../../Utils/apliClient";
 
 const TablaAsociados: React.FC = () => {
@@ -66,6 +72,13 @@ const TablaAsociados: React.FC = () => {
   // Vista previa financiera del socio en un modal (sin salir de la pantalla)
   const [socioReporte, setSocioReporte] = React.useState<Socio | null>(null);
   const [tabReporteSocio, setTabReporteSocio] = React.useState(0);
+
+  const { usuario } = useAuth();
+
+  // Credenciales a mostrar una sola vez en el modal
+  const [credenciales, setCredenciales] = React.useState<CredencialSocio[]>([]);
+  const [resumenCredenciales, setResumenCredenciales] = React.useState<string>("");
+  const [modalCredencialesAbierto, setModalCredencialesAbierto] = React.useState<boolean>(false);
 
   const abrirReporteDeudas = (socio: Socio) => {
     setTabReporteSocio(0);
@@ -136,6 +149,36 @@ const TablaAsociados: React.FC = () => {
       manejarError(error);
     } finally {
       // ---
+    }
+  };
+
+  // Habilitar/deshabilitar el acceso del socio
+  const toggleAccesoSocio = async (socio: Socio) => {
+    try {
+      const response = await apiClient.post(Api_Global_Socios.socios.toggleAcceso(socio.id_socio));
+      if (response.status === 200) {
+        const mensaje = response.data.message || "Acceso actualizado.";
+        mostrarAlerta("Acceso", mensaje, "success");
+        fetchSocios();
+      }
+    } catch (error) {
+      manejarError(error);
+    }
+  };
+
+  // Regenerar credenciales del socio
+  const regenerarCredencialesSocio = async (socio: Socio) => {
+    try {
+      const response = await apiClient.post(Api_Global_Socios.socios.regenerarCredenciales(socio.id_socio));
+      if (response.status === 200) {
+        setResumenCredenciales("");
+        setCredenciales([
+          { nombre_usuario: response.data.nombre_usuario, password_temporal: response.data.password_temporal },
+        ]);
+        setModalCredencialesAbierto(true);
+      }
+    } catch (error) {
+      manejarError(error);
     }
   };
 
@@ -421,6 +464,40 @@ const TablaAsociados: React.FC = () => {
                                                 <WhatsApp sx={{ mr: 1 }} />
                                                 Enviar
                                               </Button>
+                                              {usuario?.id_rol === ID_ROL.ADMINISTRADOR && socio.id_usuario && (
+                                                <>
+                                                  <Button
+                                                    variant="contained"
+                                                    sx={{
+                                                      width: isTablet ? "33%" : "100%",
+                                                      mt: isTablet ? 0 : 1,
+                                                      mb: isTablet ? 1 : 0,
+                                                      padding: "0.5rem 1.5rem",
+                                                      backgroundColor: "#6c757d",
+                                                      color: "white"
+                                                    }}
+                                                    onClick={() => toggleAccesoSocio(socio)}
+                                                  >
+                                                    {socio.usuario?.estado === "1" ? <LockOpen sx={{ mr: 1 }} /> : <Lock sx={{ mr: 1 }} />}
+                                                    {socio.usuario?.estado === "1" ? "Deshabilitar acceso" : "Habilitar acceso"}
+                                                  </Button>
+                                                  <Button
+                                                    variant="contained"
+                                                    sx={{
+                                                      width: isTablet ? "33%" : "100%",
+                                                      mt: isTablet ? 0 : 1,
+                                                      mb: isTablet ? 1 : 0,
+                                                      padding: "0.5rem 1.5rem",
+                                                      backgroundColor: "#ff9800",
+                                                      color: "white"
+                                                    }}
+                                                    onClick={() => regenerarCredencialesSocio(socio)}
+                                                  >
+                                                    <VpnKey sx={{ mr: 1 }} />
+                                                    Regenerar credenciales
+                                                  </Button>
+                                                </>
+                                              )}
                                             </Box>
                                           ) : (
                                             value
@@ -531,6 +608,24 @@ const TablaAsociados: React.FC = () => {
                                             >
                                               <WhatsApp />
                                             </IconButton>
+                                            {usuario?.id_rol === ID_ROL.ADMINISTRADOR && socio.id_usuario && (
+                                              <IconButton
+                                                aria-label="toggle-acceso"
+                                                sx={{ color: "#6c757d" }}
+                                                onClick={() => toggleAccesoSocio(socio)}
+                                              >
+                                                {socio.usuario?.estado === "1" ? <LockOpen /> : <Lock />}
+                                              </IconButton>
+                                            )}
+                                            {usuario?.id_rol === ID_ROL.ADMINISTRADOR && socio.id_usuario && (
+                                              <IconButton
+                                                aria-label="regenerar-credenciales"
+                                                sx={{ color: "#ff9800" }}
+                                                onClick={() => regenerarCredencialesSocio(socio)}
+                                              >
+                                                <VpnKey />
+                                              </IconButton>
+                                            )}
                                             <IconButton
                                               aria-label="delete"
                                               sx={{ color: "red" }}
@@ -577,6 +672,14 @@ const TablaAsociados: React.FC = () => {
         socio={socioReporte}
         tabInicial={tabReporteSocio}
         onClose={() => setSocioReporte(null)}
+      />
+
+      <ModalCredenciales
+        open={modalCredencialesAbierto}
+        onClose={() => setModalCredencialesAbierto(false)}
+        titulo="Credenciales de acceso"
+        credenciales={credenciales}
+        resumen={resumenCredenciales}
       />
     </Contenedor>
   );

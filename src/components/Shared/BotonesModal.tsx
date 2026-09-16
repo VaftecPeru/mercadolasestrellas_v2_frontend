@@ -7,6 +7,8 @@ interface BotonesModalProps {
   obj?: any;
   action: (e: React.MouseEvent<HTMLButtonElement>) => void;
   close: (e: React.MouseEvent<HTMLButtonElement>) => void;
+  textoAccion?: string;
+  disabledAccion?: boolean;
 }
 
 const BotonesModal: React.FC<BotonesModalProps> = ({
@@ -14,6 +16,8 @@ const BotonesModal: React.FC<BotonesModalProps> = ({
   obj,
   action,
   close,
+  textoAccion,
+  disabledAccion = false,
 }) => {
   const { isTablet, isMobile } = useResponsive();
 
@@ -57,9 +61,9 @@ const BotonesModal: React.FC<BotonesModalProps> = ({
           },
         }}
         onClick={action}
-        disabled={loading}
+        disabled={loading || disabledAccion}
       >
-        {loading ? "Cargando..." : obj ? "Actualizar" : "Registrar"}
+        {loading ? "Cargando..." : textoAccion ? textoAccion : obj ? "Actualizar" : "Registrar"}
       </Button>
     </Box>
   );

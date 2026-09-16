@@ -63,8 +63,7 @@ const TablaReportePagos: React.FC = () => {
   useEffect(() => {
     const fetchPuestos = async () => {
       try {
-        const idSocioBusqueda = usuario?.rol === "Socio" ? usuario.id_usuario.toString() : "";
-        const response = await apiClient.get(Api_Global_Puestos.puestos.buscar(1, 1000, "", "", "", idSocioBusqueda));
+        const response = await apiClient.get(Api_Global_Puestos.puestos.buscar(1, 1000, "", "", "", ""));
         setPuestos(ordenarPuestosPorNumero(response.data.data));
       } catch (error) {
         console.error("Error al cargar puestos:", error);

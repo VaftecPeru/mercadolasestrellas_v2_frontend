@@ -7,5 +7,5 @@ export const columns: readonly Column[] = [
   { id: "importe", label: "Importe", minWidth: 50 },
   { id: "puestos_asignados", label: "Puestos asignados", minWidth: 50 },
   { id: "servicios", label: "Servicios (Nombre + Costo unitario)", minWidth: 50 },
-  { id: "accion", label: "Acción", minWidth: 20 }, // Acciones
+  { id: "accion", label: "Acciones", minWidth: 20 }, // Acciones
 ];
