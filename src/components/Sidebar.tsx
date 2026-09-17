@@ -209,14 +209,14 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
           {modulos.map((modulo, index) => {
             const abierto = !colapsados.includes(modulo.id_modulo);
             const Icono = ICONOS[modulo.icon] || DashboardIcon;
-            const esPanelControl = index === 0;
+            const esDashboard = modulo.id_modulo === 1;
 
             return (
               <React.Fragment key={modulo.id_modulo}>
                 <ListItemButton
-                  sx={getEstilos(esPanelControl ? "/home" : "", { mt: index === 0 ? 2 : 3 })}
+                  sx={getEstilos(esDashboard ? "/home" : "", { mt: index === 0 ? 2 : 3 })}
                   onClick={() => {
-                    if (esPanelControl && location.pathname !== "/home") {
+                    if (esDashboard && location.pathname !== "/home") {
                       navigate("/home");
                       if (isTablet || isMobile) {
                         onClose();

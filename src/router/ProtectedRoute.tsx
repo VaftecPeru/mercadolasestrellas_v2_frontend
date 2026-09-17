@@ -24,6 +24,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRoles
     if (requiredRoles && !requiredRoles.includes(usuario ? usuario.id_rol : -1)) {
       if (usuario?.id_rol === ID_ROL.SOCIO) {
         navigate("/home/reporte-deudas");
+        return;
       }
       navigate("/home");
     }
