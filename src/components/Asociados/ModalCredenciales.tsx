@@ -22,9 +22,10 @@ interface ModalCredencialesProps {
   titulo: string;
   credenciales: CredencialSocio[];
   resumen?: string;
+  telefono?: string;
 }
 
-const ModalCredenciales: React.FC<ModalCredencialesProps> = ({ open, onClose, titulo, credenciales, resumen }) => {
+const ModalCredenciales: React.FC<ModalCredencialesProps> = ({ open, onClose, titulo, credenciales, resumen, telefono }) => {
   const copiar = (texto: string) => {
     navigator.clipboard.writeText(texto).then(
       () => mostrarAlerta("Copiado", "Credenciales copiadas al portapapeles.", "success"),
@@ -37,6 +38,20 @@ const ModalCredenciales: React.FC<ModalCredencialesProps> = ({ open, onClose, ti
       .map((c) => `Usuario: ${c.nombre_usuario}\nContraseña temporal: ${c.password_temporal}`)
       .join("\n\n");
     copiar(texto);
+  };
+
+  const enviarWhatsApp = () => {
+    if (!telefono) {
+      mostrarAlerta("Sin teléfono", "No se dispone del número de teléfono para enviar por WhatsApp.", "warning");
+      return;
+    }
+    const texto = credenciales
+      .map((c) => `Usuario: ${c.nombre_usuario}\nContraseña: ${c.password_temporal}`)
+      .join("\n");
+    const encodedText = encodeURIComponent(texto);
+    const phone = telefono.startsWith("+51") ? telefono : `+51${telefono}`;
+    const url = `https://api.whatsapp.com/send?phone=${phone}&text=${encodedText}`;
+    window.open(url, "_blank");
   };
 
   return (
@@ -53,6 +68,8 @@ const ModalCredenciales: React.FC<ModalCredencialesProps> = ({ open, onClose, ti
           action={copiarTodas}
           close={onClose}
           textoAccion="Copiar"
+          textoWhatsapp="Enviar"
+          actionWhatsapp={telefono ? enviarWhatsApp : undefined}
         />
       }
     >

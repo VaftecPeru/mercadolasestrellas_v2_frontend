@@ -459,6 +459,7 @@ const Agregar: React.FC<AgregarProps> = ({ open, handleClose, socio }) => {
         onClose={cerrarModalCredenciales}
         titulo="Socio registrado - Credenciales de acceso"
         credenciales={credenciales}
+        telefono={formData.telefono || undefined}
       />
     </>
   );

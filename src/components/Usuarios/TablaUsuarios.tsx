@@ -63,9 +63,10 @@ const TablaUsuarios: React.FC = () => {
   const [openPermisos, setOpenPermisos] = useState(false);
   const [openGenerarCuentas, setOpenGenerarCuentas] = useState(false);
 
-  const [credenciales, setCredenciales] = useState<CredencialSocio[]>([]);
-  const [resumenCredenciales, setResumenCredenciales] = useState("");
-  const [openCredenciales, setOpenCredenciales] = useState(false);
+   const [credenciales, setCredenciales] = useState<CredencialSocio[]>([]);
+   const [resumenCredenciales, setResumenCredenciales] = useState("");
+   const [openCredenciales, setOpenCredenciales] = useState(false);
+   const [telefonoCredenciales, setTelefonoCredenciales] = useState<string | undefined>(undefined);
 
   const fetchEstadisticas = async () => {
     try {
@@ -192,29 +193,30 @@ const TablaUsuarios: React.FC = () => {
     }
   };
 
-  const generarPasswordTemporal = async (usuario: UsuarioAdmin) => {
-    const confirmacion = await mostrarAlertaConfirmacion(
-      "Generar contraseña temporal",
-      `Se generará una nueva contraseña temporal para "${usuario.nombre_usuario}" y deberá cambiarla al iniciar sesión. ¿Desea continuar?`,
-      "Generar",
-      "Cancelar"
-    );
-    if (!confirmacion.isConfirmed) return;
+   const generarPasswordTemporal = async (usuario: UsuarioAdmin) => {
+     const confirmacion = await mostrarAlertaConfirmacion(
+       "Generar contraseña temporal",
+       `Se generará una nueva contraseña temporal para "${usuario.nombre_usuario}" y deberá cambiarla al iniciar sesión. ¿Desea continuar?`,
+       "Generar",
+       "Cancelar"
+     );
+     if (!confirmacion.isConfirmed) return;
 
-    try {
-      const response = await apiClient.post(
-        Api_Global_Usuarios.usuarios.generarPasswordTemporal(usuario.id_usuario)
-      );
-      setResumenCredenciales("");
-      setCredenciales([
-        { nombre_usuario: response.data.nombre_usuario, password_temporal: response.data.password_temporal },
-      ]);
-      setOpenCredenciales(true);
-      fetchUsuarios(paginaActual);
-    } catch (error) {
-      manejarError(error);
-    }
-  };
+     try {
+       const response = await apiClient.post(
+         Api_Global_Usuarios.usuarios.generarPasswordTemporal(usuario.id_usuario)
+       );
+       setResumenCredenciales("");
+       setCredenciales([
+         { nombre_usuario: response.data.nombre_usuario, password_temporal: response.data.password_temporal },
+       ]);
+       setTelefonoCredenciales(usuario.telefono ?? undefined);
+       setOpenCredenciales(true);
+       fetchUsuarios(paginaActual);
+     } catch (error) {
+       manejarError(error);
+     }
+   };
 
   const labelEstado = (estadoCuenta: string) => {
     switch (estadoCuenta) {
@@ -477,6 +479,7 @@ const TablaUsuarios: React.FC = () => {
         titulo="Credenciales de acceso"
         credenciales={credenciales}
         resumen={resumenCredenciales}
+        telefono={telefonoCredenciales}
       />
     </Contenedor>
   );

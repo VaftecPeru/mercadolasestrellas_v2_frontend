@@ -9,6 +9,8 @@ interface BotonesModalProps {
   close: (e: React.MouseEvent<HTMLButtonElement>) => void;
   textoAccion?: string;
   disabledAccion?: boolean;
+  textoWhatsapp?: string;
+  actionWhatsapp?: (e: React.MouseEvent<HTMLButtonElement>) => void;
 }
 
 const BotonesModal: React.FC<BotonesModalProps> = ({
@@ -18,6 +20,8 @@ const BotonesModal: React.FC<BotonesModalProps> = ({
   close,
   textoAccion,
   disabledAccion = false,
+  textoWhatsapp,
+  actionWhatsapp,
 }) => {
   const { isTablet, isMobile } = useResponsive();
 
@@ -49,6 +53,25 @@ const BotonesModal: React.FC<BotonesModalProps> = ({
       >
         Cerrar
       </Button>
+      {actionWhatsapp && (
+        <Button
+          variant="contained"
+          sx={{
+            width: "140px",
+            height: "45px",
+            backgroundColor: "#25D366",
+            color: "#fff",
+            mr: 1,
+            "&:hover": {
+              backgroundColor: "#128C7E",
+            },
+          }}
+          onClick={actionWhatsapp}
+          disabled={loading}
+        >
+          {textoWhatsapp ? textoWhatsapp : "Enviar"}
+        </Button>
+      )}
       <Button
         variant="contained"
         sx={{

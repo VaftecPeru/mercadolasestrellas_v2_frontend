@@ -680,6 +680,7 @@ const TablaAsociados: React.FC = () => {
         titulo="Credenciales de acceso"
         credenciales={credenciales}
         resumen={resumenCredenciales}
+        telefono={socioSeleccionado?.telefono}
       />
     </Contenedor>
   );

@@ -108,7 +108,7 @@ const Login: React.FC = () => {
                 id="usuario"
                 name="usuario"
                 autoComplete="username"
-                placeholder="Ingrese su nombre completo"
+                placeholder="Ingrese su usuario"
                 InputProps={{ style: { height: "3rem" } }}
                 value={nomUsuario}
                 onChange={(e) => setNomUsuario(e.target.value)}
@@ -161,43 +161,45 @@ const Login: React.FC = () => {
             </Button>
           </Box>
 
-          <Box sx={{ mt: "auto" }}>
-            <Typography
-              sx={{
-                mt: 3,
-                mb: "2px",
-                fontSize: isLaptop || isSmallMobile ? "16px" : "18px",
-                fontWeight: "bold",
-                color: "#0AB544",
-              }}
-            >
-              Busqueda rápida de puesto
-            </Typography>
+            {/*
+            <Box sx={{ mt: "auto" }}>
+              <Typography
+                sx={{
+                  mt: 3,
+                  mb: "2px",
+                  fontSize: isLaptop || isSmallMobile ? "16px" : "18px",
+                  fontWeight: "bold",
+                  color: "#0AB544",
+                }}
+              >
+                Busqueda rápida de puesto
+              </Typography>
 
-            <Typography sx={{ color: "#9C9C9C", fontSize: isSmallMobile ? "12px" : isLaptop ? "14px" : "auto" }}>
-              Realiza una busqueda de reporte global de cada puesto
-            </Typography>
+              <Typography sx={{ color: "#9C9C9C", fontSize: isSmallMobile ? "12px" : isLaptop ? "14px" : "auto" }}>
+                Realiza una busqueda de reporte global de cada puesto
+              </Typography>
 
-            <Button
-              variant="contained"
-              type="button"
-              sx={{
-                width: isLaptop || isSmallMobile ? "100%" : "215px",
-                mt: isLaptop || isSmallMobile ? 2 : 4,
-                p: "10px 50px",
-                textTransform: "inherit",
-                fontSize: "16px",
-                fontWeight: "500",
-                color: "#0AB544",
-                bgcolor: "#FFF",
-                border: "1px solid #0AB544",
-                "&:hover": { bgcolor: "#0AB544", color: "#FFF" }
-              }}
-              onClick={busquedaRapida}
-            >
-              Buscar puesto
-            </Button>
-          </Box>
+              <Button
+                variant="contained"
+                type="button"
+                sx={{
+                  width: isLaptop || isSmallMobile ? "100%" : "215px",
+                  mt: isLaptop || isSmallMobile ? 2 : 4,
+                  p: "10px 50px",
+                  textTransform: "inherit",
+                  fontSize: "16px",
+                  fontWeight: "500",
+                  color: "#0AB544",
+                  bgcolor: "#FFF",
+                  border: "1px solid #0AB544",
+                  "&:hover": { bgcolor: "#0AB544", color: "#FFF" }
+                }}
+                onClick={busquedaRapida}
+              >
+                Buscar puesto
+              </Button>
+            </Box>
+            */}
         </Box>
       </Box>
     </Container>

@@ -56,14 +56,19 @@ export const mostrarAlertaConfirmacion = (
 export const manejarError = (error: any) => {
     let mensajeError = "Ocurrió un error, inténtalo nuevamente.";
 
+    let data;
     if (axios.isAxiosError(error)) {
-        if (error.response?.data?.error) {
-            mensajeError = error.response.data.error;
-        } else if (error.response?.data?.message) {
-            mensajeError = error.response.data.message;
-        } else {
-            mensajeError = error.response?.data;
-        }
+        data = error.response?.data;
+    } else {
+        data = error;
+    }
+
+    if (data?.error) {
+        mensajeError = data.error;
+    } else if (data?.message) {
+        mensajeError = data.message;
+    } else if (typeof data === "string") {
+        mensajeError = data;
     }
 
     if (typeof mensajeError === "string" && mensajeError.includes("Integrity constraint violation")) {
