@@ -23,6 +23,8 @@ import { UsuarioAdmin } from "../../interface/Usuarios";
 export interface CredencialUsuario {
   nombre_usuario: string;
   password_temporal: string;
+  id_usuario?: number;
+  telefono?: string;
 }
 
 interface RegistrarUsuarioProps {
@@ -95,6 +97,8 @@ const RegistrarUsuario: React.FC<RegistrarUsuarioProps> = ({ open, usuario, hand
         onCreado({
           nombre_usuario: response.data.usuario.nombre_usuario,
           password_temporal: response.data.password_temporal,
+          id_usuario: response.data.usuario.id_usuario,
+          telefono: formData.telefono,
         });
       }
     } catch (error) {

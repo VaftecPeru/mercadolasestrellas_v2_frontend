@@ -9,6 +9,7 @@ export const Api_Global_Usuarios = {
     bloquear: (id_usuario: number) => `/usuarios/${id_usuario}/bloquear`,
     desbloquear: (id_usuario: number) => `/usuarios/${id_usuario}/desbloquear`,
     generarPasswordTemporal: (id_usuario: number) => `/usuarios/${id_usuario}/generar-password-temporal`,
+    actualizarTelefono: (id_usuario: number) => `/usuarios/${id_usuario}/telefono`,
     estadisticas: () => `/usuarios/estadisticas`,
     sociosSinCuenta: () => `/usuarios/socios-sin-cuenta`,
     generarCuentasSocios: () => `/usuarios/generar-cuentas-socios`,

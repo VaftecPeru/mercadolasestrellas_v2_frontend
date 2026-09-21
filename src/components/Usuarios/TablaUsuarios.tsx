@@ -41,6 +41,7 @@ import { Api_Global_Usuarios } from "../../service/UsuarioApi";
 import { manejarError, mostrarAlerta, mostrarAlertaConfirmacion } from "../Alerts/Registrar";
 import { useAuth } from "../../context/AuthContext";
 import { ID_ROL } from "../../Utils/roles";
+import { normalizarTelefono } from "../../Utils/telefonoUtils";
 import apiClient from "../../Utils/apliClient";
 
 const TablaUsuarios: React.FC = () => {
@@ -67,6 +68,7 @@ const TablaUsuarios: React.FC = () => {
    const [resumenCredenciales, setResumenCredenciales] = useState("");
    const [openCredenciales, setOpenCredenciales] = useState(false);
    const [telefonoCredenciales, setTelefonoCredenciales] = useState<string | undefined>(undefined);
+   const [idUsuarioCredenciales, setIdUsuarioCredenciales] = useState<number | undefined>(undefined);
 
   const fetchEstadisticas = async () => {
     try {
@@ -125,6 +127,8 @@ const TablaUsuarios: React.FC = () => {
       setCredenciales([
         { nombre_usuario: credencial.nombre_usuario, password_temporal: credencial.password_temporal },
       ]);
+      setTelefonoCredenciales(normalizarTelefono(credencial.telefono));
+      setIdUsuarioCredenciales(credencial.id_usuario);
       setOpenCredenciales(true);
     }
     handleCloseRegistrar();
@@ -140,8 +144,22 @@ const TablaUsuarios: React.FC = () => {
       `Cuentas creadas: ${resultado.total_creadas}. Socios omitidos: ${resultado.total_salteadas}.`
     );
     setCredenciales(creadas);
+    setTelefonoCredenciales(undefined);
+    setIdUsuarioCredenciales(undefined);
     setOpenCredenciales(true);
     fetchEstadisticas();
+    fetchUsuarios(paginaActual);
+  };
+
+  // Guarda el teléfono en Persona y actualiza el estado para reutilizarlo
+  const guardarTelefonoCredenciales = async (telefono: string) => {
+    if (!idUsuarioCredenciales) return;
+
+    await apiClient.put(
+      Api_Global_Usuarios.usuarios.actualizarTelefono(idUsuarioCredenciales),
+      { telefono }
+    );
+    setTelefonoCredenciales(telefono);
     fetchUsuarios(paginaActual);
   };
 
@@ -210,7 +228,8 @@ const TablaUsuarios: React.FC = () => {
        setCredenciales([
          { nombre_usuario: response.data.nombre_usuario, password_temporal: response.data.password_temporal },
        ]);
-       setTelefonoCredenciales(usuario.telefono ?? undefined);
+       setTelefonoCredenciales(normalizarTelefono(usuario.telefono));
+       setIdUsuarioCredenciales(usuario.id_usuario);
        setOpenCredenciales(true);
        fetchUsuarios(paginaActual);
      } catch (error) {
@@ -480,6 +499,7 @@ const TablaUsuarios: React.FC = () => {
         credenciales={credenciales}
         resumen={resumenCredenciales}
         telefono={telefonoCredenciales}
+        onGuardarTelefono={idUsuarioCredenciales ? guardarTelefonoCredenciales : undefined}
       />
     </Contenedor>
   );

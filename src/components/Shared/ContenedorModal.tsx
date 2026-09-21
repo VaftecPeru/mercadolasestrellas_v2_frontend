@@ -16,9 +16,10 @@ interface ContenedorModalProps {
   botonCerrar?: boolean;
   children: React.ReactNode;
   botones: React.ReactNode;
+  zIndex?: number;
 }
 
-const ContenedorModal: React.FC<ContenedorModalProps> = ({ ancho, alto, abrir, cerrar, loading, titulo, activeTab, handleTabChange, tabs, botonCerrar = false, children, botones }) => {
+const ContenedorModal: React.FC<ContenedorModalProps> = ({ ancho, alto, abrir, cerrar, loading, titulo, activeTab, handleTabChange, tabs, botonCerrar = false, children, botones, zIndex = 1200 }) => {
 
   const { isLaptop, isSmallLaptop, isTablet, isMobile } = useResponsive();
 
@@ -28,7 +29,7 @@ const ContenedorModal: React.FC<ContenedorModalProps> = ({ ancho, alto, abrir, c
       onClose={cerrar}
       aria-labelledby="modal-title"
       aria-describedby="modal-description"
-      sx={{ display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1200, }}
+      sx={{ display: "flex", alignItems: "center", justifyContent: "center", zIndex, }}
     >
       <Card
         sx={{
