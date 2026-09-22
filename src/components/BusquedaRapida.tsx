@@ -10,6 +10,7 @@ import { KeyboardReturn } from '@mui/icons-material';
 import ContenedorBotones from './Shared/ContenedorBotones';
 import apiClient from "../Utils/apliClient";
 import { Api_Global_Puestos } from "../service/PuestoApi";
+import { ordenarPuestosPorNumero } from "../Utils/ordenarPuestos";
 import { Api_Global_Reportes } from "../service/ReporteApi";
 
 interface Puesto {
@@ -69,8 +70,8 @@ const BusquedaRapida = () => {
   useEffect(() => {
     const fetchPuestos = async () => {
       try {
-        const response = await apiClient.get(Api_Global_Puestos.puestos.buscar(1, 15, "", "", ""));
-        setPuestos(response.data.data);
+        const response = await apiClient.get(Api_Global_Puestos.puestos.seleccionar());
+        setPuestos(ordenarPuestosPorNumero(response.data));
       } catch (error) {
       }
     }

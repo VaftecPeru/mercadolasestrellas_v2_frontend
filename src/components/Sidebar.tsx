@@ -29,6 +29,7 @@ import {
   Groups,
   ExpandLess,
   Close,
+  ManageAccounts,
 } from "@mui/icons-material";
 import BackupTableIcon from '@mui/icons-material/BackupTable';
 import { Link, useLocation, useNavigate } from "react-router-dom";
@@ -36,11 +37,25 @@ import LoginIcon from '@mui/icons-material/Login';
 import { useAuth } from "../context/AuthContext";
 import useResponsive from "../hooks/Responsive/useResponsive";
 import { CustomButton, mostrarAlerta, mostrarAlertaConfirmacion } from "./Alerts/Registrar";
+import apiClient from "../Utils/apliClient";
+import { ModuloWeb } from "../interface/Usuarios";
 
 interface SidebarProps {
   open: boolean;
   onClose: () => void;
 }
+
+const ICONOS: Record<string, React.ComponentType> = {
+  DashboardIcon,
+  Groups,
+  Storefront,
+  ShoppingBasket,
+  Article,
+  MonetizationOn,
+  Description,
+  ManageAccounts,
+  Assignment,
+};
 
 const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
 
@@ -48,15 +63,20 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
   const { isMobile, isTablet } = useResponsive();
   const { usuario, logout } = useAuth();
 
-  const [collapseDashboard, setCollapseDashboard] = useState(true);
-  const [collapseReportes, setCollapseReportes] = useState(false);
+  const [modulos, setModulos] = useState<ModuloWeb[]>([]);
+  const [colapsados, setColapsados] = useState<number[]>([]);
 
-  // Efecto para sincronizar el colapso con el rol del usuario
   useEffect(() => {
-    if (usuario) {
-      setCollapseReportes(isMobile || (usuario?.rol === "Socio"));
-    }
-  }, [isMobile, usuario]);
+    if (!usuario?.id_usuario) return;
+
+    apiClient.get(`/setup/modulos-web?id_usuario=${usuario.id_usuario}`)
+      .then((response) => {
+        setModulos(response.data || []);
+      })
+      .catch(() => {
+        setModulos([]);
+      });
+  }, [usuario]);
 
   const [openDialog, setOpenDialog] = useState(false);
   const [nombreUsuario, setNombreUsuario] = useState("");
@@ -66,12 +86,10 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const handleOpenPanel = () => {
-    setCollapseDashboard(!collapseDashboard);
-  };
-
-  const handleOpenReportes = () => {
-    setCollapseReportes(!collapseReportes);
+  const toggleColapso = (idModulo: number) => {
+    setColapsados((prev) =>
+      prev.includes(idModulo) ? prev.filter((id) => id !== idModulo) : [...prev, idModulo]
+    );
   };
 
   const handleOpenDialog = () => {
@@ -187,272 +205,74 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
       </Box>
 
       <Box>
+        <List>
+          {modulos.map((modulo, index) => {
+            const abierto = !colapsados.includes(modulo.id_modulo);
+            const Icono = ICONOS[modulo.icon] || DashboardIcon;
+            const esDashboard = modulo.id_modulo === 1;
 
-        {usuario?.rol !== "Socio" && (
-
-          <List>
-
-            {/* Panel de Control */}
-            <ListItemButton
-              component={Link}
-              to="/home"
-              sx={getEstilos("/home", { mt: 2 })}
-              onClick={() => {
-                if (!isMobile && !isTablet) {
-                  if (location.pathname === "/home") {
-                    handleOpenPanel();
-                  }
-                } else {
-                  if (location.pathname === "/home") {
-                    handleOpenPanel();
-                  } else {
-                    onClose();
-                  }
-                }
-              }}
-            >
-              <ListItemIcon sx={{ color: "inherit" }}>
-                <DashboardIcon />
-              </ListItemIcon>
-              {open && (
-                <ListItemText
-                  primary="Panel de Control"
-                  sx={{ ml: -3, }}
-                />
-              )}
-              {collapseDashboard ? <ExpandLess /> : <ExpandMore />}
-            </ListItemButton>
-
-            <Collapse in={collapseDashboard} timeout="auto" unmountOnExit>
-              <List component="div" disablePadding>
-
-                {/* Socios */}
+            return (
+              <React.Fragment key={modulo.id_modulo}>
                 <ListItemButton
-                  component={Link}
-                  to="socios"
-                  sx={getEstilos("/home/socios", { ml: 2 })}
-                  onClick={isTablet || isMobile ? onClose : undefined}
+                  sx={getEstilos(esDashboard ? "/home" : "", { mt: index === 0 ? 2 : 3 })}
+                  onClick={() => {
+                    if (esDashboard && location.pathname !== "/home") {
+                      navigate("/home");
+                      if (isTablet || isMobile) {
+                        onClose();
+                      }
+                    } else {
+                      toggleColapso(modulo.id_modulo);
+                    }
+                  }}
                 >
                   <ListItemIcon sx={{ color: "inherit" }}>
-                    <Groups />
+                    <Icono />
                   </ListItemIcon>
                   {open && (
                     <ListItemText
-                      primary="Socios"
-                      sx={{ ml: -3 }}
+                      primary={modulo.nombre}
+                      sx={{ ml: -3, }}
                     />
                   )}
+                  {abierto ? <ExpandLess /> : <ExpandMore />}
                 </ListItemButton>
 
-                {usuario?.rol === "Administrador" && (
-                  <>
-                    {/* Puestos */}
-                    <ListItemButton
-                      component={Link}
-                      to="puestos"
-                      sx={getEstilos("/home/puestos", { ml: 2 })}
-                      onClick={isTablet || isMobile ? onClose : undefined}
-                    >
-                      <ListItemIcon sx={{ color: "inherit" }}>
-                        <Storefront />
-                      </ListItemIcon>
-                      {open && (
-                        <ListItemText
-                          primary="Puestos"
-                          sx={{ ml: -3 }}
-                        />
-                      )}
-                    </ListItemButton>
-
-                    {/* Servicios */}
-                    <ListItemButton
-                      component={Link}
-                      to="servicios"
-                      sx={getEstilos("/home/servicios", { ml: 2 })}
-                      onClick={isTablet || isMobile ? onClose : undefined}
-                    >
-                      <ListItemIcon sx={{ color: "inherit" }}>
-                        <ShoppingBasket />
-                      </ListItemIcon>
-                      {open && (
-                        <ListItemText
-                          primary="Servicios"
-                          sx={{ ml: -3 }}
-                        />
-                      )}
-                    </ListItemButton>
-
-                    {/* Cuotas */}
-                    <ListItemButton
-                      component={Link}
-                      to="cuotas"
-                      sx={getEstilos("/home/cuotas", { ml: 2 })}
-                      onClick={isTablet || isMobile ? onClose : undefined}
-                    >
-                      <Assignment sx={{ color: "inherit" }}>
-                        <Article />
-                      </Assignment>
-                      {open && (
-                        <ListItemText
-                          primary="Generar Cuota"
-                          sx={{ ml: 1 }}
-                        />
-                      )}
-                    </ListItemButton>
-                  </>
-                )}
-
-                {/* Pagos */}
-                <ListItemButton
-                  component={Link}
-                  to="pagos"
-                  sx={getEstilos("/home/pagos", { ml: 2 })}
-                  onClick={isTablet || isMobile ? onClose : undefined}
-                >
-                  <ListItemIcon sx={{ color: "inherit" }}>
-                    <MonetizationOn />
-                  </ListItemIcon>
-                  {open && (
-                    <ListItemText
-                      primary="Pagos"
-                      sx={{ ml: -3 }}
-                    />
-                  )}
-                </ListItemButton>
-
-              </List>
-            </Collapse>
-
-          </List>
-
-        )}
-
-      </Box>
-
-      <Box>
-
-        <Divider sx={{ bgcolor: "#505155", m: 3 }} />
-
-        {/* Reportes */}
-        <ListItemButton
-          sx={getEstilos("", { mt: 3 })}
-          onClick={() => handleOpenReportes()}
-        >
-          <ListItemIcon sx={{ color: "inherit" }}>
-            <DashboardIcon />
-          </ListItemIcon>
-          {open && (
-            <ListItemText
-              primary="Reportes"
-              sx={{ ml: -3, }}
-            />
-          )}
-          {collapseReportes ? <ExpandLess /> : <ExpandMore />}
-        </ListItemButton>
-
-        <Collapse in={collapseReportes} timeout="auto" unmountOnExit>
-
-          {/* Reporte de pagos */}
-          <ListItemButton
-            component={Link}
-            to="reporte-pagos"
-            sx={getEstilos("/home/reporte-pagos", { ml: 2 })}
-            onClick={isTablet || isMobile ? onClose : undefined}
-          >
-            <ListItemIcon sx={{ color: "inherit" }}>
-              <Description />
-            </ListItemIcon>
-            {open && (
-              <ListItemText
-                primary="Reporte Pagos"
-                sx={{ ml: -3 }}
-              />
-            )}
-          </ListItemButton>
-
-          {/* Reporte de deudas */}
-          <ListItemButton
-            component={Link}
-            to="reporte-deudas"
-            sx={getEstilos("/home/reporte-deudas", { ml: 2 })}
-            onClick={isTablet || isMobile ? onClose : undefined}
-          >
-            <ListItemIcon sx={{ color: "inherit" }}>
-              <Description />
-            </ListItemIcon>
-            {open && (
-              <ListItemText
-                primary="Reporte Deudas"
-                sx={{ ml: -3 }}
-              />
-            )}
-          </ListItemButton>
-
-          {usuario?.rol !== "Socio" && (
-            <>
-              {/* Reporte de cuotas por metrado */}
-              <ListItemButton
-                component={Link}
-                to="reporte-cuotas-metrado"
-                sx={getEstilos("/home/reporte-cuotas-metrado", { ml: 2 })}
-                onClick={isTablet || isMobile ? onClose : undefined}
-              >
-                <ListItemIcon sx={{ color: "inherit" }}>
-                  <Description />
-                </ListItemIcon>
-                {open && (
-                  <ListItemText
-                    primary="Reporte de cuotas por metrado"
-                    sx={{ ml: -3 }}
-                  />
-                )}
-              </ListItemButton>
-
-              {/* Reporte de cuotas por puestos */}
-              <ListItemButton
-                component={Link}
-                to="reporte-cuotas-puesto"
-                sx={getEstilos("/home/reporte-cuotas-puesto", { ml: 2 })}
-                onClick={isTablet || isMobile ? onClose : undefined}
-              >
-                <ListItemIcon sx={{ color: "inherit" }}>
-                  <Description />
-                </ListItemIcon>
-                {open && (
-                  <ListItemText
-                    primary="Reporte de cuotas por puestos"
-                    sx={{ ml: -3 }}
-                  />
-                )}
-              </ListItemButton>
-
-              {/* Reporte de resumen */}
-              <ListItemButton
-                component={Link}
-                to="reporte-resumen"
-                sx={getEstilos("/home/reporte-resumen", { ml: 2 })}
-                onClick={isTablet || isMobile ? onClose : undefined}
-              >
-                <ListItemIcon sx={{ color: "inherit" }}>
-                  <Description />
-                </ListItemIcon>
-                {open && (
-                  <ListItemText
-                    primary="Reporte de resumen"
-                    sx={{ ml: -3 }}
-                  />
-                )}
-              </ListItemButton>
-            </>
-          )}
-
-        </Collapse>
-
-        <Divider sx={{ bgcolor: "#505155", m: 3 }} />
-
+                <Collapse in={abierto} timeout="auto" unmountOnExit>
+                  <List component="div" disablePadding>
+                    {(modulo.modulos || []).map((hijo) => {
+                      const IconoHijo = ICONOS[hijo.icon] || Description;
+                      return (
+                        <ListItemButton
+                          key={hijo.id_modulo}
+                          component={Link}
+                          to={hijo.url}
+                          sx={getEstilos(hijo.url, { ml: 2 })}
+                          onClick={isTablet || isMobile ? onClose : undefined}
+                        >
+                          <ListItemIcon sx={{ color: "inherit" }}>
+                            <IconoHijo />
+                          </ListItemIcon>
+                          {open && (
+                            <ListItemText
+                              primary={hijo.nombre}
+                              sx={{ ml: -3 }}
+                            />
+                          )}
+                        </ListItemButton>
+                      );
+                    })}
+                  </List>
+                </Collapse>
+              </React.Fragment>
+            );
+          })}
+        </List>
       </Box>
 
       <Box sx={{ mt: "auto", mb: 2 }}>
+
+        <Divider sx={{ bgcolor: "#505155", m: 3 }} />
 
         {/* Ayuda */}
         <ListItemButton

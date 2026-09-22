@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Paper,
   Table,
@@ -60,22 +60,13 @@ const optMeses = [
   { value: "12", label: "Diciembre" },
 ];
 
+const anioActual = new Date().getFullYear();
 const anios: any = [
   { value: "", label: "Año" },
-  { value: "2025", label: "2025" },
-  { value: "2024", label: "2024" },
-  { value: "2023", label: "2023" },
-  { value: "2022", label: "2022" },
-  { value: "2021", label: "2021" },
-  { value: "2020", label: "2020" },
-  { value: "2019", label: "2019" },
-  { value: "2018", label: "2018" },
-  { value: "2017", label: "2017" },
-  { value: "2016", label: "2016" },
-  { value: "2015", label: "2015" },
-  { value: "2014", label: "2014" },
-  { value: "2013", label: "2013" },
-  { value: "2012", label: "2012" },
+  ...[...Array(anioActual - 2011)].map((_, i) => {
+    const anio = String(anioActual - i);
+    return { value: anio, label: anio };
+  }),
 ];
 
 const TablaCuota: React.FC = () => {
@@ -161,8 +152,8 @@ const TablaCuota: React.FC = () => {
 
     const data = [
       ["ID CUOTA", cuota.id_cuota],
-      ["Fec. Emisión", cuota.fecha_emision],
-      ["Fec. Vencimiento", cuota.fecha_vencimiento],
+      ["Fecha Emisión", cuota.fecha_emision],
+      ["Fecha Vencimiento", cuota.fecha_vencimiento],
       ["Importe Total", cuota.importe],
       ["Puestos", puestos],
       ["Servicios", servicios],
@@ -201,6 +192,17 @@ const TablaCuota: React.FC = () => {
   useEffect(() => {
     setIMeses(optMeses);
   }, []);
+
+  // Filtros Año/Mes en tiempo real (patrón de otros módulos)
+  const esPrimerRender = useRef(true);
+  useEffect(() => {
+    if (esPrimerRender.current) {
+      esPrimerRender.current = false;
+      return;
+    }
+    listarCuotas(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [anio, mes]);
 
   return (
     <Contenedor>

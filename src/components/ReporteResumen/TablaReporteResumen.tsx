@@ -27,16 +27,19 @@ import { Api_Global_Puestos } from "../../service/PuestoApi";
 import { handleExport } from "../../Utils/exportUtils";
 import { Column, Data, Puesto } from "../../interface/ReporteResunen/resumen";
 import { mostrarAlerta } from "../Alerts/Registrar";
+import { ordenarPuestosPorNumero } from "../../Utils/ordenarPuestos";
 
 
 const columns: readonly Column[] = [
-  { id: "serie_numero", label: "N° Recibo", minWidth: 50, align: "center" },
-  { id: "importe_ingreso", label: "Ingreso", minWidth: 50, align: "center" },
-  { id: "importe_gastos_administrativo", label: "Gastos Administrativos", minWidth: 50, align: "center" },
-  { id: "importe_multas_inasistencia", label: "Multas Inasistencia", minWidth: 50, align: "center" },
-  { id: "importe_pagos_transferencia", label: "Pagos Transferencia", minWidth: 50, align: "center" },
-  { id: "importe_cuotas_extraordinarias", label: "Cuotas Extraordinarias", minWidth: 50, align: "center" },
-  { id: "importe_total", label: "Total", minWidth: 50, align: "center" },
+  { id: "serie_numero", label: "N° Recibo", minWidth: 110, align: "center" },
+  { id: "importe_ingreso", label: "Ingreso", minWidth: 100, align: "right" },
+  { id: "importe_gastos_administrativo", label: "Gastos Administrativos", minWidth: 150, align: "right" },
+  { id: "importe_otros_servicios", label: "Otros Servicios", minWidth: 130, align: "right" },
+  { id: "importe_multas_inasistencia", label: "Multas Inasistencia", minWidth: 140, align: "right" },
+  { id: "importe_pagos_banco", label: "Banco", minWidth: 100, align: "right" },
+  { id: "importe_pagos_efectivo", label: "Efectivo", minWidth: 100, align: "right" },
+  { id: "importe_cuotas_extraordinarias", label: "Cuotas Extraordinarias", minWidth: 160, align: "right" },
+  { id: "importe_total", label: "Total (S/)", minWidth: 100, align: "right" },
 ];
 
 const TablaReporteResumen = () => {
@@ -59,7 +62,7 @@ const TablaReporteResumen = () => {
     const fetchPuestos = async () => {
       try {
         const response = await apiClient.get(Api_Global_Puestos.puestos.buscar(1, 500, "", "", "", ""));
-        setPuestos(response.data.data);
+        setPuestos(ordenarPuestosPorNumero(response.data.data));
       } catch (error) {
       }
     };
@@ -90,6 +93,30 @@ const TablaReporteResumen = () => {
     const fileNamePrefix = "lista-reporte-resumen"; // Nombre del archivo
     await handleExport(exportUrl, exportFormat, fileNamePrefix, setExportFormat, `id_puesto=${puestoSeleccionado}`);
   };
+
+  const totalGeneral = resumen.reduce(
+    (acc, row) => ({
+      importe_ingreso: acc.importe_ingreso + Number(row.importe_ingreso || 0),
+      importe_gastos_administrativo: acc.importe_gastos_administrativo + Number(row.importe_gastos_administrativo || 0),
+      importe_otros_servicios: acc.importe_otros_servicios + Number(row.importe_otros_servicios || 0),
+      importe_multas_inasistencia: acc.importe_multas_inasistencia + Number(row.importe_multas_inasistencia || 0),
+      importe_pagos_banco: acc.importe_pagos_banco + Number(row.importe_pagos_banco || 0),
+      importe_pagos_efectivo: acc.importe_pagos_efectivo + Number(row.importe_pagos_efectivo || 0),
+      importe_cuotas_extraordinarias: acc.importe_cuotas_extraordinarias + Number(row.importe_cuotas_extraordinarias || 0),
+      importe_total: acc.importe_total + Number(row.importe_total || 0),
+    }),
+    {
+      importe_ingreso: 0,
+      importe_gastos_administrativo: 0,
+      importe_otros_servicios: 0,
+      importe_multas_inasistencia: 0,
+      importe_pagos_banco: 0,
+      importe_pagos_efectivo: 0,
+      importe_cuotas_extraordinarias: 0,
+      importe_total: 0,
+    }
+  );
+
   return (
     <Contenedor>
       <ContenedorBotones reporte>
@@ -186,6 +213,7 @@ const TablaReporteResumen = () => {
                           style={{ minWidth: column.minWidth }}
                           sx={{
                             fontWeight: "bold",
+                            backgroundColor: "#f5f5f5",
                           }}
                         >
                           {column.label}
@@ -307,6 +335,34 @@ const TablaReporteResumen = () => {
                     </TableRow>
                   )}
                 </TableBody>
+                {!isTablet && !isMobile && resumen.length > 0 && (
+                  <TableHead>
+                    <TableRow>
+                      <TableCell
+                        align="right"
+                        sx={{ fontWeight: "bold", backgroundColor: "#f0f0f0" }}
+                      >
+                        TOTAL:
+                      </TableCell>
+                      {columns
+                        .filter((column) => column.id !== "serie_numero")
+                        .map((column) => (
+                          <TableCell
+                            key={column.id}
+                            align="right"
+                            sx={{
+                              fontWeight: "bold",
+                              backgroundColor: "#e3f2fd",
+                              fontSize: "1rem",
+                              borderTop: "2px solid #1976d2",
+                            }}
+                          >
+                            S/ {Number((totalGeneral as any)[column.id] || 0).toFixed(2)}
+                          </TableCell>
+                        ))}
+                    </TableRow>
+                  </TableHead>
+                )}
               </Table>
             </TableContainer>
             <Box

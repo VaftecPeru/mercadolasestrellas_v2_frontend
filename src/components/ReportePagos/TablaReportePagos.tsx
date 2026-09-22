@@ -10,6 +10,7 @@ import ContenedorBotones from '../Shared/ContenedorBotones';
 import apiClient from "../../Utils/apliClient";
 import { Api_Global_Reportes } from '../../service/ReporteApi';
 import { Api_Global_Puestos } from '../../service/PuestoApi';
+import { ordenarPuestosPorNumero } from '../../Utils/ordenarPuestos';
 import { handleExport } from '../../Utils/exportUtils';
 import { Column, Data, Puesto } from '../../interface/ReportePagos/pagos';
 import { nombreMes } from '../../Utils/dateUtils';
@@ -17,12 +18,10 @@ import { useAuth } from '../../context/AuthContext';
 import { mostrarAlerta } from '../Alerts/Registrar';
 
 const columns: readonly Column[] = [
-  { id: "anio", label: "Año", minWidth: 80, align: "center" },
-  { id: "mes", label: "Mes", minWidth: 100, align: "center" },
-  { id: "fecha", label: "Fec. Pago", minWidth: 100, align: "center" },
+  { id: "fecha", label: "Fecha Pago", minWidth: 100, align: "center" },
   { id: "servicios", label: "Servicios", minWidth: 150, align: "left" },
-  { id: "montos", label: "Monto (S/)", minWidth: 100, align: "right" },
-  { id: "total", label: "Pago (S/)", minWidth: 120, align: "right" },
+  { id: "montos", label: "Total (S/)", minWidth: 100, align: "right" },
+  { id: "total", label: "Imp. Pagado (S/)", minWidth: 120, align: "right" },
 ];
 
 const TablaReportePagos: React.FC = () => {
@@ -34,7 +33,7 @@ const TablaReportePagos: React.FC = () => {
 
   const getMesNombre = (fecha: string) => {
     const mesIndex = new Date(fecha).getUTCMonth();
-    return nombreMes(mesIndex).toUpperCase();
+    return nombreMes(mesIndex);
   };
 
   const [mostrarDetalles, setMostrarDetalles] = useState<string | null>(null);
@@ -46,6 +45,10 @@ const TablaReportePagos: React.FC = () => {
   const idPuestoQuery = searchParams.get("puesto");
   const [isLoading, setIsLoading] = useState(false);
   const [totalGeneral, setTotalGeneral] = useState<number>(0);
+
+  const totalMonto = pagos.reduce((acc, pago) => {
+    return acc + pago.detalle_pagos.reduce((a, detalle) => a + Number(detalle.importe), 0);
+  }, 0);
 
   const { usuario } = useAuth();
 
@@ -60,9 +63,8 @@ const TablaReportePagos: React.FC = () => {
   useEffect(() => {
     const fetchPuestos = async () => {
       try {
-        const idSocioBusqueda = usuario?.rol === "Socio" ? usuario.id_usuario.toString() : "";
-        const response = await apiClient.get(Api_Global_Puestos.puestos.buscar(1, 1000, "", "", "", idSocioBusqueda));
-        setPuestos(response.data.data);
+        const response = await apiClient.get(Api_Global_Puestos.puestos.buscar(1, 1000, "", "", "", ""));
+        setPuestos(ordenarPuestosPorNumero(response.data.data));
       } catch (error) {
         console.error("Error al cargar puestos:", error);
       }
@@ -239,16 +241,6 @@ const TablaReportePagos: React.FC = () => {
                             )
                           ) : (
                             <>
-                              {/* Año */}
-                              <TableCell align="center" sx={{ borderRight: '1px solid #f0f0f0' }}>
-                                {getAnio(pago.fecha)}
-                              </TableCell>
-
-                              {/* Mes */}
-                              <TableCell align="center" sx={{ borderRight: '1px solid #f0f0f0' }}>
-                                {getMesNombre(pago.fecha)}
-                              </TableCell>
-
                               {/* Fecha */}
                               <TableCell align="center" sx={{ borderRight: '1px solid #f0f0f0' }}>
                                 {pago.fecha}
@@ -268,8 +260,8 @@ const TablaReportePagos: React.FC = () => {
                                 </Typography>
                               </TableCell>
 
-                              {/* Pago */}
-                              <TableCell align="right" sx={{ fontWeight: 'bold', borderLeft: '1px solid #f0f0f0', backgroundColor: '#fafafa' }}>
+                              {/* Imp. Pagado */}
+                              <TableCell align="right" sx={{ borderLeft: '1px solid #f0f0f0', backgroundColor: '#fafafa' }}>
                                 {detIdx === pago.detalle_pagos.length - 1 ? `S/ ${Number(pago.total).toFixed(2)}` : ""}
                               </TableCell>
                             </>
@@ -280,10 +272,9 @@ const TablaReportePagos: React.FC = () => {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={isTablet || isMobile ? 1 : columns.length} align="center" sx={{ py: 8 }}>
-                      <Typography variant="body1" color="textSecondary">
-                        No hay pagos registrados para este puesto.
-                      </Typography>
+                    <TableCell colSpan={isTablet || isMobile ? 1 : columns.length} align="center">
+                      No hay datos para mostrar. <br />
+                      Para generar el reporte, seleccione un puesto y de clic en el botón "GENERAR".
                     </TableCell>
                   </TableRow>
                 )}
@@ -291,8 +282,11 @@ const TablaReportePagos: React.FC = () => {
               {!isTablet && !isMobile && pagos.length > 0 && (
                 <TableHead>
                   <TableRow>
-                    <TableCell colSpan={5} align="right" sx={{ fontWeight: "bold", backgroundColor: "#f0f0f0" }}>
-                      TOTAL A PAGAR:
+                    <TableCell colSpan={2} align="right" sx={{ fontWeight: "bold", backgroundColor: "#f0f0f0" }}>
+                      TOTAL:
+                    </TableCell>
+                    <TableCell align="right" sx={{ fontWeight: "bold", backgroundColor: "#e3f2fd", fontSize: '1rem', borderTop: '2px solid #1976d2' }}>
+                      S/ {Number(totalMonto || 0).toFixed(2)}
                     </TableCell>
                     <TableCell align="right" sx={{ fontWeight: "bold", backgroundColor: "#e3f2fd", fontSize: '1rem', borderTop: '2px solid #1976d2' }}>
                       S/ {Number(totalGeneral || 0).toFixed(2)}
@@ -303,17 +297,14 @@ const TablaReportePagos: React.FC = () => {
             </Table>
           </TableContainer>
 
-          {totalPaginas > 1 && (
-            <Box sx={{ display: "flex", justifyContent: "center", py: 3, borderTop: '1px solid #eee' }}>
-              <Pagination
-                count={totalPaginas}
-                page={paginaActual}
-                onChange={cambiarPagina}
-                color="primary"
-                size={isMobile ? "small" : "medium"}
-              />
-            </Box>
-          )}
+          <Box sx={{ display: "flex", justifyContent: "center", marginTop: 3 }}>
+            <Pagination
+              count={totalPaginas}
+              page={paginaActual}
+              onChange={cambiarPagina}
+              color="primary"
+            />
+          </Box>
         </Paper>
       )}
     </Contenedor>

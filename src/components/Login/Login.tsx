@@ -6,6 +6,7 @@ import useResponsive from '../../hooks/Responsive/useResponsive';
 import { manejarError, mostrarAlerta } from "../Alerts/Registrar";
 import Cookies from 'js-cookie';
 import apiClient from "../../Utils/apliClient";
+import { ID_ROL } from "../../Utils/roles";
 
 const Login: React.FC = () => {
   const [nomUsuario, setNomUsuario] = useState<string>("");
@@ -27,8 +28,13 @@ const Login: React.FC = () => {
           Cookies.set('token', token, { path: '/' });
           login(userResponse);
 
-          mostrarAlerta('Inicio de sesión', `Bienvenido ${nomUsuario}.`, 'success');
-          navigate("/home");
+          if (userResponse.debe_cambiar_password) {
+            navigate("/cambiar-password");
+          } else {
+            const destino = userResponse.id_rol === ID_ROL.SOCIO ? "/home/reporte-deudas" : "/home";
+            mostrarAlerta('Inicio de sesión', `Bienvenido ${nomUsuario}.`, 'success');
+            navigate(destino);
+          }
         }
       })
       .catch((error) => {
@@ -102,7 +108,7 @@ const Login: React.FC = () => {
                 id="usuario"
                 name="usuario"
                 autoComplete="username"
-                placeholder="Ingrese su nombre completo"
+                placeholder="Ingrese su usuario"
                 InputProps={{ style: { height: "3rem" } }}
                 value={nomUsuario}
                 onChange={(e) => setNomUsuario(e.target.value)}
@@ -155,43 +161,45 @@ const Login: React.FC = () => {
             </Button>
           </Box>
 
-          <Box sx={{ mt: "auto" }}>
-            <Typography
-              sx={{
-                mt: 3,
-                mb: "2px",
-                fontSize: isLaptop || isSmallMobile ? "16px" : "18px",
-                fontWeight: "bold",
-                color: "#0AB544",
-              }}
-            >
-              Busqueda rápida de puesto
-            </Typography>
+            {/*
+            <Box sx={{ mt: "auto" }}>
+              <Typography
+                sx={{
+                  mt: 3,
+                  mb: "2px",
+                  fontSize: isLaptop || isSmallMobile ? "16px" : "18px",
+                  fontWeight: "bold",
+                  color: "#0AB544",
+                }}
+              >
+                Busqueda rápida de puesto
+              </Typography>
 
-            <Typography sx={{ color: "#9C9C9C", fontSize: isSmallMobile ? "12px" : isLaptop ? "14px" : "auto" }}>
-              Realiza una busqueda de reporte global de cada puesto
-            </Typography>
+              <Typography sx={{ color: "#9C9C9C", fontSize: isSmallMobile ? "12px" : isLaptop ? "14px" : "auto" }}>
+                Realiza una busqueda de reporte global de cada puesto
+              </Typography>
 
-            <Button
-              variant="contained"
-              type="button"
-              sx={{
-                width: isLaptop || isSmallMobile ? "100%" : "215px",
-                mt: isLaptop || isSmallMobile ? 2 : 4,
-                p: "10px 50px",
-                textTransform: "inherit",
-                fontSize: "16px",
-                fontWeight: "500",
-                color: "#0AB544",
-                bgcolor: "#FFF",
-                border: "1px solid #0AB544",
-                "&:hover": { bgcolor: "#0AB544", color: "#FFF" }
-              }}
-              onClick={busquedaRapida}
-            >
-              Buscar puesto
-            </Button>
-          </Box>
+              <Button
+                variant="contained"
+                type="button"
+                sx={{
+                  width: isLaptop || isSmallMobile ? "100%" : "215px",
+                  mt: isLaptop || isSmallMobile ? 2 : 4,
+                  p: "10px 50px",
+                  textTransform: "inherit",
+                  fontSize: "16px",
+                  fontWeight: "500",
+                  color: "#0AB544",
+                  bgcolor: "#FFF",
+                  border: "1px solid #0AB544",
+                  "&:hover": { bgcolor: "#0AB544", color: "#FFF" }
+                }}
+                onClick={busquedaRapida}
+              >
+                Buscar puesto
+              </Button>
+            </Box>
+            */}
         </Box>
       </Box>
     </Container>

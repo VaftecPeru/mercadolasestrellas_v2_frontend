@@ -12,35 +12,47 @@ import apiClient from "../../Utils/apliClient";
 import { Api_Global_Reportes } from '../../service/ReporteApi';
 import { Api_Global_Cuotas } from '../../service/CuotaApi';
 import { handleExport } from '../../Utils/exportUtils';
-import { mostrarAlerta } from '../Alerts/Registrar';
+import { mostrarAlerta, manejarError } from '../Alerts/Registrar';
 
 interface Cuota {
   id_cuota: string;
-  // fecha_registro: string;
   fecha_emision: string;
+  servicios?: Array<{ nombre: string }>;
 }
 
+const etiquetaCuota = (cuota: Cuota) => {
+  const servicios = (cuota.servicios ?? [])
+    .map((servicio) => servicio.nombre)
+    .filter(Boolean)
+    .join(', ');
+  return `${cuota.id_cuota} - ${servicios || "Sin servicio"}`;
+};
+
 interface Data {
+  fecha: string;
   nombre_completo: string;
   numero_puesto: string;
   area: string;
   total: string;
   importe_pagado: string;
+  importe_por_pagar?: string;
 }
 
 interface Column {
   id: keyof Data | "accion";
   label: string;
   minWidth?: number;
-  align?: "center";
+  align?: "center" | "left" | "right";
 }
 
 const columns: readonly Column[] = [
-  { id: "nombre_completo", label: "Nombre completo", minWidth: 50, align: "center" },
-  { id: "numero_puesto", label: "N° Puesto", minWidth: 50, align: "center" },
-  { id: "area", label: "Área m2", minWidth: 50, align: "center" },
-  { id: "total", label: "Total (S/)", minWidth: 50, align: "center" },
-  { id: "importe_pagado", label: "Importe pagado (S/)", minWidth: 50, align: "center" },
+  { id: "fecha", label: "Fecha Registro", minWidth: 110, align: "center" },
+  { id: "nombre_completo", label: "Nombre del socio", minWidth: 200, align: "left" },
+  { id: "numero_puesto", label: "N° Puesto", minWidth: 100, align: "center" },
+  { id: "area", label: "Área (m2)", minWidth: 100, align: "right" },
+  { id: "total", label: "Total (S/)", minWidth: 100, align: "right" },
+  { id: "importe_pagado", label: "Imp. Pagado (S/)", minWidth: 120, align: "right" },
+  { id: "importe_por_pagar", label: "Imp. Por pagar (S/)", minWidth: 130, align: "right" },
 ]
 
 const TablaReporteCuotasMetrado: React.FC = () => {
@@ -56,6 +68,12 @@ const TablaReporteCuotasMetrado: React.FC = () => {
   // Paginación
   const [paginaActual, setPaginaActual] = useState<number>(1);
   const [totalPaginas, setTotalPaginas] = useState<number>(1);
+
+  const totalGeneral = cuotas.reduce((acc, row) => ({
+    total: acc.total + parseFloat(row.total),
+    importe_pagado: acc.importe_pagado + parseFloat(row.importe_pagado),
+    importe_por_pagar: acc.importe_por_pagar + (parseFloat(row.total) - parseFloat(row.importe_pagado)),
+  }), { total: 0, importe_pagado: 0, importe_por_pagar: 0 });
 
   const cambiarPagina = (event: React.ChangeEvent<unknown>, value: number) => {
     setPaginaActual(value);
@@ -80,11 +98,13 @@ const TablaReporteCuotasMetrado: React.FC = () => {
   const listarCuotas = async (pagina: number = 1, idCuota: number) => {
     setIsLoading(true)
     try {
-      const response = await apiClient.get(Api_Global_Reportes.reportes.cuotaPorMetros(1, 500, idCuota));
+      const response = await apiClient.get(Api_Global_Reportes.reportes.cuotaPorMetros(pagina, 15, idCuota));
       setCuotas(response.data.data);
       setTotalPaginas(response.data.meta.last_page);
       setPaginaActual(response.data.meta.current_page);
     } catch (error) {
+      manejarError(error);
+      setCuotas([]);
     } finally {
       setIsLoading(false);
     }
@@ -123,7 +143,7 @@ const TablaReporteCuotasMetrado: React.FC = () => {
           >
             <Autocomplete
               options={cuotasSelect}
-              getOptionLabel={(cuota) => `${cuota.id_cuota} - ${formatDate(cuota.fecha_emision)}`}
+              getOptionLabel={(cuota) => etiquetaCuota(cuota)}
               onChange={(event, value) => {
                 if (value) {
                   setCuotaSeleccionada(Number(value.id_cuota));
@@ -144,7 +164,7 @@ const TablaReporteCuotasMetrado: React.FC = () => {
               }}
               renderOption={(props, option) => (
                 <li {...props} key={option.id_cuota}>
-                  {`${option.id_cuota} - ${formatDate(option.fecha_emision)}`}
+                  {etiquetaCuota(option)}
                 </li>
               )}
               isOptionEqualToValue={(option, value) => option.id_cuota === value.id_cuota}
@@ -153,7 +173,13 @@ const TablaReporteCuotasMetrado: React.FC = () => {
           {/* Botón "Generar Reporte" */}
           <BotonAgregar
             exportar
-            handleAction={() => listarCuotas(undefined, cuotaSeleccionada)}
+            handleAction={() => {
+              if (!cuotaSeleccionada) {
+                mostrarAlerta("Error", "Seleccione una cuota para generar el reporte.", "warning");
+                return;
+              }
+              listarCuotas(1, cuotaSeleccionada);
+            }}
             texto="Generar"
           />
         </Box>
@@ -198,6 +224,7 @@ const TablaReporteCuotasMetrado: React.FC = () => {
                           style={{ minWidth: column.minWidth }}
                           sx={{
                             fontWeight: "bold",
+                            backgroundColor: "#f5f5f5",
                           }}
                         >
                           {column.label}
@@ -239,7 +266,7 @@ const TablaReporteCuotasMetrado: React.FC = () => {
                                     }}
                                   >
                                     {columns.map((column) => {
-                                      const value = column.id === "accion" ? "" : (cuota as any)[column.id];
+                                      const value = column.id === "accion" ? "" : column.id === "fecha" ? formatDate(cuota.fecha) : column.id === "importe_por_pagar" ? (parseFloat(cuota.total) - parseFloat(cuota.importe_pagado)).toFixed(2) : (cuota as any)[column.id];
                                       return (
                                         <Box key={column.id}>
                                           {/* Mostrar titulo del campo */}
@@ -258,7 +285,7 @@ const TablaReporteCuotasMetrado: React.FC = () => {
                               </Box>
                             </TableCell>
                             : columns.map((column) => {
-                              const value = column.id === "accion" ? "" : (cuota as any)[column.id];
+                              const value = column.id === "accion" ? "" : column.id === "fecha" ? formatDate(cuota.fecha) : column.id === "importe_por_pagar" ? (parseFloat(cuota.total) - parseFloat(cuota.importe_pagado)).toFixed(2) : (cuota as any)[column.id];
                               return (
                                 <TableCell
                                   key={column.id}
@@ -278,6 +305,24 @@ const TablaReporteCuotasMetrado: React.FC = () => {
                     </TableRow>
                   }
                 </TableBody>
+                {!isTablet && !isMobile && cuotas.length > 0 && (
+                  <TableHead>
+                    <TableRow>
+                      <TableCell colSpan={4} align="right" sx={{ fontWeight: "bold", backgroundColor: "#f0f0f0" }}>
+                        TOTAL:
+                      </TableCell>
+                      <TableCell align="right" sx={{ fontWeight: "bold", backgroundColor: "#e3f2fd", fontSize: '1rem', borderTop: '2px solid #1976d2' }}>
+                        S/ {Number(totalGeneral.total || 0).toFixed(2)}
+                      </TableCell>
+                      <TableCell align="right" sx={{ fontWeight: "bold", backgroundColor: "#e3f2fd", fontSize: '1rem', borderTop: '2px solid #1976d2' }}>
+                        S/ {Number(totalGeneral.importe_pagado || 0).toFixed(2)}
+                      </TableCell>
+                      <TableCell align="right" sx={{ fontWeight: "bold", backgroundColor: "#e3f2fd", fontSize: '1rem', borderTop: '2px solid #1976d2' }}>
+                        S/ {Number(totalGeneral.importe_por_pagar || 0).toFixed(2)}
+                      </TableCell>
+                    </TableRow>
+                  </TableHead>
+                )}
               </Table>
             </TableContainer>
             <Box sx={{ display: "flex", justifyContent: "center", marginTop: 3 }}>

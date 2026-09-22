@@ -8,6 +8,9 @@ export const Api_Global_Socios = {
     registrar:()=> `/socios`,
     editar: (id_socio: number | undefined) => `/socios/${id_socio}`, 
     buscar:(page: number, per_page: number) => `/socios?page=${page}&per_page=${per_page}`,
+    seleccionar: () => `/socios/seleccionar`,
+    toggleAcceso: (id_socio: number) => `/socios/${id_socio}/toggle-acceso`,
+    regenerarCredenciales: (id_socio: number) => `/socios/${id_socio}/regenerar-credenciales`,
   },
   bloques:{
     obtenerBloques:()=> `/blocks`,
