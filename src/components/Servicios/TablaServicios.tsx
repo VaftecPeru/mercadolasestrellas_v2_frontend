@@ -263,7 +263,9 @@ const TablaServicios: React.FC = () => {
                                 ? "Ordinario"
                                 : parseInt(servicio.tipo_servicio) === 2
                                   ? "Extraordinario"
-                                  : "Por metrado"}
+                                  : parseInt(servicio.tipo_servicio) === 4
+                                    ? "Cuota Extraordinaria"
+                                    : "Por metrado"}
                             </Typography>
                             {mostrarDetalles === servicio.id_servicio && (
                               <Box
@@ -298,6 +300,10 @@ const TablaServicios: React.FC = () => {
                                             servicio.tipo_servicio
                                           ) === 2 ? (
                                             "Extraordinario (Pagos extras)"
+                                          ) : parseInt(
+                                            servicio.tipo_servicio
+                                          ) === 4 ? (
+                                            "Cuota Extraordinaria"
                                           ) : (
                                             "Por metrado (Pagos por metraje)"
                                           )
@@ -371,6 +377,8 @@ const TablaServicios: React.FC = () => {
                                   "Ordinario (Pagos fijos)"
                                 ) : parseInt(servicio.tipo_servicio) === 2 ? (
                                   "Extraordinario (Pagos extras)"
+                                ) : parseInt(servicio.tipo_servicio) === 4 ? (
+                                  "Cuota Extraordinaria"
                                 ) : (
                                   "Por metro cuadrado (Pagos por metraje)"
                                 )

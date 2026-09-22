@@ -14,8 +14,10 @@ export interface Data {
   serie_numero: string;
   importe_ingreso: string;
   importe_gastos_administrativo: string;
+  importe_otros_servicios: string;
   importe_multas_inasistencia: string;
-  importe_pagos_transferencia: string;
+  importe_pagos_banco: string;
+  importe_pagos_efectivo: string;
   importe_cuotas_extraordinarias: string;
   importe_total: string;
 }

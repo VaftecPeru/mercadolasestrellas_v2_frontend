@@ -410,6 +410,7 @@ const RegistrarServicio: React.FC<AgregarProps> = ({
                   >
                     <MenuItem value="1">Ordinario (Pagos Fijos)</MenuItem>
                     <MenuItem value="2">Extraordinario (Pagos Extras)</MenuItem>
+                    <MenuItem value="4">Cuota Extraordinaria</MenuItem>
                   </Select>
                 </FormControl>
 
