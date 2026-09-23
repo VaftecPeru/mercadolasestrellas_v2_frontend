@@ -32,6 +32,7 @@ export interface UsuarioSocio {
 interface Puesto {
   id_puesto: number;
   numero_puesto: string;
+  activo?: string;
   block: Bloque;
   gironegocio: GiroNegocio;
   nombre_inquilino: string;

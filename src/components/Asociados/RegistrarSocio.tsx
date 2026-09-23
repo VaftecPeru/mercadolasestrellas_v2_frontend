@@ -385,6 +385,38 @@ const Agregar: React.FC<AgregarProps> = ({ open, handleClose, socio }) => {
                   </Grid>
                 )}
 
+                {socio && (
+                  <Grid item xs={12} sm={12} sx={{ mb: 2 }}>
+                    <SeparadorBloque nombre="Puesto asignado" />
+
+                    {socio.puestos && socio.puestos.length > 0 ? (
+                      socio.puestos.map((puesto) => {
+                        const inactivo = String(puesto.activo) === "0";
+                        return (
+                          <TextField
+                            key={puesto.id_puesto}
+                            fullWidth
+                            disabled
+                            label="Nro. Puesto"
+                            value={`${puesto.block?.nombre ?? ""} - ${puesto.numero_puesto}`}
+                            helperText={inactivo ? "Estado: Inactivo" : undefined}
+                            sx={{ mb: 2 }}
+                            InputProps={{
+                              startAdornment: (
+                                <Abc sx={{ mr: 1, color: "gray" }} />
+                              ),
+                            }}
+                          />
+                        );
+                      })
+                    ) : (
+                      <Typography sx={{ textAlign: "center", color: "#757575" }}>
+                        El socio no tiene un puesto asignado.
+                      </Typography>
+                    )}
+                  </Grid>
+                )}
+
                 <Grid item xs={12} sm={12}>
                   <SeparadorBloque nombre="Información de registro" />
 

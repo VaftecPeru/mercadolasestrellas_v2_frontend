@@ -151,7 +151,13 @@ const ModalPermisosRol: React.FC<ModalPermisosRolProps> = ({ open, handleClose, 
       )}
 
       {rolSeleccionado && (
-        <List dense>
+        <List
+          dense
+          sx={{
+            maxHeight: { xs: "40vh", sm: "45vh", md: "50vh" },
+            overflowY: "auto",
+          }}
+        >
           {modulos.map((modulo) => {
             const esPadre = modulo.id_modulo_parent === null;
             return (

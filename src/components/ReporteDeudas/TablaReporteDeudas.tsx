@@ -225,6 +225,7 @@ const TablaReporteDeudas: React.FC = () => {
         onChange={cambiarTab}
         textColor="primary"
         indicatorColor="primary"
+        variant="fullWidth"
         sx={{ mb: 2 }}
       >
         <Tab label="Deudas Pendientes" />
