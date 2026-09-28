@@ -8,6 +8,7 @@ import apiClient from "../../Utils/apliClient";
 const useServicioState = () => {
   const [mostrarDetalles, setMostrarDetalles] = useState<string | null>(null);
   const [buscarTexto, setBuscarTexto] = useState<string>("");
+  const [tipoServicio, setTipoServicio] = useState<string>("");
   const [servicios, setServicios] = useState<Servicio[]>([]);
   const [servicioSeleccionado, setServicioSeleccionado] =
     useState<Servicio | null>(null);
@@ -22,7 +23,7 @@ const useServicioState = () => {
     async (page: number = 1) => {
       try {
         setIsLoading(true);
-        const response = await apiClient.get(API_ROUTES.servicios.fetch(page, buscarTexto));
+        const response = await apiClient.get(API_ROUTES.servicios.fetch(page, buscarTexto, tipoServicio));
         const data = response.data.data.map((item: Servicio) => ({
           id_servicio: item.id_servicio,
           nombre: item.nombre,
@@ -38,7 +39,7 @@ const useServicioState = () => {
         setIsLoading(false);
       }
     },
-    [buscarTexto] 
+    [buscarTexto, tipoServicio] 
   );
   
 
@@ -51,6 +52,8 @@ const useServicioState = () => {
     setMostrarDetalles,
     buscarTexto,
     setBuscarTexto,
+    tipoServicio,
+    setTipoServicio,
     servicios,
     setServicios,
     servicioSeleccionado,
