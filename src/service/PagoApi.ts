@@ -1,6 +1,7 @@
 export const Api_Global_Pagos = {
   pagos: {
-    listar: (page: number = 1) => `/pagos?page=${page}`,
+    listar: (page: number = 1, search: string = "", idPuesto: number | string = "") =>
+      `/pagos?page=${page}&search=${search}&id_puesto=${idPuesto}`,
     exportar: () => `/pagos/exportar`,
     registrar: () => `/pagos`,
     registrarPorBanco: () => `/pagos/por-bancos`,

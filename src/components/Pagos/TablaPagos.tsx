@@ -6,8 +6,10 @@ import {
   DeleteForever,
 } from "@mui/icons-material";
 import {
+  Autocomplete,
   Box,
   Button,
+  FormControl,
   IconButton,
   Pagination,
   Paper,
@@ -35,8 +37,11 @@ import { Pagos, Data } from "../../interface/Pagos/Pagos";
 import { columns } from "../../Columns/Pagos";
 import apiClient from "../../Utils/apliClient";
 import { Api_Global_Pagos } from "../../service/PagoApi";
+import { Api_Global_Puestos } from "../../service/PuestoApi";
 import { handleExport } from "../../Utils/exportUtils";
 import { manejarError, mostrarAlerta, mostrarAlertaConfirmacion } from "../Alerts/Registrar";
+import { ordenarPuestosPorNumero } from "../../Utils/ordenarPuestos";
+import { Puesto } from "../../interface/ReportePagos/pagos";
 
 const TablaPago: React.FC = () => {
   const { isTablet, isMobile, isSmallMobile } = useResponsive();
@@ -49,7 +54,22 @@ const TablaPago: React.FC = () => {
   const [openImport, setOpenImport] = useState(false);
   const [pagoSeleccionado, setPagoSeleccionado] = useState<Data | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState<string>(""); // Estado para búsqueda
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [puestos, setPuestos] = useState<Puesto[]>([]);
+  const [puestoSeleccionado, setPuestoSeleccionado] = useState<Puesto | null>(null);
+
+  // Cargar lista de puestos al montar
+  useEffect(() => {
+    const fetchPuestos = async () => {
+      try {
+        const response = await apiClient.get(Api_Global_Puestos.puestos.buscar(1, 1000, "", "", "", ""));
+        setPuestos(ordenarPuestosPorNumero(response.data.data));
+      } catch (error) {
+        console.error("Error al cargar puestos:", error);
+      }
+    };
+    fetchPuestos();
+  }, []);
 
   const handleOpen = (pago?: Data) => {
     setPagoSeleccionado(pago || null);
@@ -117,14 +137,14 @@ const TablaPago: React.FC = () => {
 
   }
 
-  // Método para buscar pagos por socio con useCallback
+  // Listar pagos con filtros por nombre de socio y/o puesto
   const listarPagos = useCallback(async (page: number = 1) => {
     setIsLoading(true);
     try {
-      const url = searchTerm
-        ? `${Api_Global_Pagos.pagos.listar(page)}&search=${searchTerm}`
-        : Api_Global_Pagos.pagos.listar(page);
-      const response = await apiClient.get(url);
+      const idPuesto = puestoSeleccionado ? puestoSeleccionado.id_puesto : "";
+      const response = await apiClient.get(
+        Api_Global_Pagos.pagos.listar(page, searchTerm, idPuesto)
+      );
       const data = response.data.data.map((item: Pagos) => ({
         id_pago: item.id_pago,
         puesto: item.puesto,
@@ -147,7 +167,7 @@ const TablaPago: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [searchTerm]); // Dependencia: se ejecuta cuando searchTerm cambia
+  }, [searchTerm, puestoSeleccionado]);
 
   const eliminarPago = async (id_pago: string) => {
     try {
@@ -214,7 +234,7 @@ const TablaPago: React.FC = () => {
 
       </ContenedorBotones>
 
-      {/* Buscar Pagos X Socio */}
+      {/* Filtros: Buscar por Socio y/o Puesto */}
       <Box
         sx={{
           padding: isTablet || isMobile ? "15px 0px" : "15px 35px",
@@ -222,48 +242,72 @@ const TablaPago: React.FC = () => {
           borderBottom: "1px solid rgba(0, 0, 0, 0.25)",
           display: "flex",
           flexDirection: isMobile ? "column" : "row",
-          alignItems: "center",
+          alignItems: isMobile ? "flex-start" : "center",
+          flexWrap: "wrap",
+          gap: isMobile ? 1.5 : 2,
         }}
       >
         <Typography
           sx={{
             display: isTablet || isMobile ? "none" : "inline-block",
             fontWeight: "bold",
-            mr: 2
           }}
         >
           Buscar por:
         </Typography>
 
-        {/* Input Nombre Socio con búsqueda en tiempo real */}
+        {/* Autocomplete Puesto — igual al Reporte Pagos */}
+        <FormControl
+          sx={{ width: isTablet ? "35%" : isMobile ? "100%" : "230px" }}
+        >
+          <Autocomplete
+            options={puestos}
+            getOptionLabel={(option) => option.numero_puesto || ""}
+            value={puestoSeleccionado}
+            onChange={(_event, value) => {
+              setPuestoSeleccionado(value);
+              setPaginaActual(1);
+            }}
+            renderInput={(params) => (
+              <TextField {...params} label="Puesto" variant="outlined" />
+            )}
+            renderOption={(props, option) => (
+              <li {...props} key={option.id_puesto}>
+                {option.numero_puesto}
+              </li>
+            )}
+            isOptionEqualToValue={(option, value) => option.id_puesto === value.id_puesto}
+            noOptionsText="No se encontraron puestos"
+            clearOnEscape
+          />
+        </FormControl>
+
+        {/* Input Nombre Socio */}
         <TextField
-          sx={{ 
-            width: isTablet ? "60%" : isMobile ? "100%" : "30%",
-            my: isMobile ? 1 : 0,
+          sx={{
+            width: isTablet ? "35%" : isMobile ? "100%" : "280px",
+            my: 0,
           }}
           label="Nombre del socio"
           type="text"
           value={searchTerm}
           onChange={(e) => {
             setSearchTerm(e.target.value);
-            setPaginaActual(1); // Reset a página 1 al buscar
+            setPaginaActual(1);
           }}
         />
 
-        {/* Boton Buscar */}
+        {/* Botón Buscar */}
         <Button
           variant="contained"
           startIcon={<Search />}
           sx={{
             backgroundColor: "#008001",
-            "&:hover": {
-              backgroundColor: "#2c6d33",
-            },
+            "&:hover": { backgroundColor: "#2c6d33" },
             height: "50px",
-            width: isTablet ? "40%" : isMobile ? "100%" : "170px",
-            marginLeft: isMobile ? "0" : "1rem",
+            width: isMobile ? "100%" : isTablet ? "20%" : "150px",
             borderRadius: "30px",
-            fontSize: isSmallMobile ? "0.8rem" : "auto"
+            fontSize: isSmallMobile ? "0.8rem" : "auto",
           }}
           onClick={() => listarPagos(1)}
         >
