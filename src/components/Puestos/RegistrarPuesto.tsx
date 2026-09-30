@@ -53,6 +53,7 @@ const RegistrarPuesto: React.FC<AgregarProps> = ({ open, handleClose, puesto }) 
   const [puestosSinSocio, setPuestosSinSocio] = useState<PuestoSelect[]>([]);
   const [puestosSinInquilino, setPuestosSinInquilino] = useState<PuestoSelect[]>([]);
   const [socios, setSocios] = useState<SocioSelect[]>([]);
+  const [sociosActivos, setSociosActivos] = useState<SocioSelect[]>([]);
   const [puestosSocio, setPuestosSocios] = useState<PuestoSelect[]>([]);
 
   const [bloqueSeleccionado, setBloqueSeleccionado] = useState<number | 0>(0);
@@ -185,13 +186,23 @@ const RegistrarPuesto: React.FC<AgregarProps> = ({ open, handleClose, puesto }) 
     }
   };
 
-  // Obtener socios
-  const fetchSocios = async () => {
+  // Obtener todos los socios (activos e inactivos) — para transferencia: dueño actual
+  const fetchTodosSocios = async () => {
     try {
-      const response = await apiClient.get(Api_Global_Socios.socios.buscar(1, 150));
+      const response = await apiClient.get(Api_Global_Socios.socios.buscar(1, 500));
       setSocios(ordenarSociosPorNombre(response.data.data));
     } catch (error) {
       console.error("Error al obtener el listado de socios", error);
+    }
+  };
+
+  // Obtener solo socios activos — para asignar puesto y nuevo dueño en transferencia
+  const fetchSociosActivos = async () => {
+    try {
+      const response = await apiClient.get(Api_Global_Socios.socios.buscarActivos(1, 500));
+      setSociosActivos(ordenarSociosPorNombre(response.data.data));
+    } catch (error) {
+      console.error("Error al obtener el listado de socios activos", error);
     }
   };
 
@@ -208,7 +219,8 @@ const RegistrarPuesto: React.FC<AgregarProps> = ({ open, handleClose, puesto }) 
   useEffect(() => {
     fetchBloques();
     fechGiroNegocio();
-    fetchSocios();
+    fetchTodosSocios();
+    fetchSociosActivos();
   }, []);
 
   // Manejar los cambios del formulario Registrar Puesto
@@ -742,7 +754,7 @@ const RegistrarPuesto: React.FC<AgregarProps> = ({ open, handleClose, puesto }) 
 
                 <FormControl fullWidth required>
                   <Autocomplete
-                    options={socios}
+                    options={sociosActivos}
                     getOptionLabel={(socio) => socio.nombre_completo.toString()} // Mostrar el nombre completo del socio
                     onChange={(event, newValue) => {
                       if (newValue) {
@@ -1081,7 +1093,7 @@ const RegistrarPuesto: React.FC<AgregarProps> = ({ open, handleClose, puesto }) 
 
                 <FormControl fullWidth required>
                   <Autocomplete
-                    options={socios}
+                    options={sociosActivos}
                     getOptionLabel={(socio) => socio.nombre_completo} // Mostrar el nombre completo del socio
                     onChange={(event, newValue) => {
                       if (newValue) {

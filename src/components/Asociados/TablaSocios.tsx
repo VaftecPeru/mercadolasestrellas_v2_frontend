@@ -24,6 +24,8 @@ import {
   Lock,
   LockOpen,
   VpnKey,
+  CheckCircleOutline,
+  HighlightOff,
 } from "@mui/icons-material";
 import Agregar from "./RegistrarSocio";
 import ModalReporteSocio from "./ModalReporteSocio";
@@ -177,6 +179,31 @@ const TablaAsociados: React.FC = () => {
         ]);
         setModalCredencialesAbierto(true);
       }
+    } catch (error) {
+      manejarError(error);
+    }
+  };
+
+  // Activar/desactivar socio
+  const accionEstadoSocio = async (tipo: "activar" | "desactivar", socio: Socio) => {
+    const confirmacion = await mostrarAlertaConfirmacion(
+      tipo === "activar" ? "Activar socio" : "Desactivar socio",
+      tipo === "activar"
+        ? "¿Desea activar a este socio?"
+        : "¿Desea desactivar a este socio? Sus puestos permanecerán asignados.",
+      "Confirmar",
+      "Cancelar"
+    );
+    if (!confirmacion.isConfirmed) return;
+
+    try {
+      const url =
+        tipo === "activar"
+          ? Api_Global_Socios.socios.activar(socio.id_socio)
+          : Api_Global_Socios.socios.desactivar(socio.id_socio);
+      const response = await apiClient.post(url);
+      mostrarAlerta("Acción realizada", response.data.message || (tipo === "activar" ? "Socio activado." : "Socio desactivado."), "success");
+      fetchSocios(paginaActual);
     } catch (error) {
       manejarError(error);
     }
@@ -464,6 +491,39 @@ const TablaAsociados: React.FC = () => {
                                                 <WhatsApp sx={{ mr: 1 }} />
                                                 Enviar
                                               </Button>
+                                              {socio.estado === "0" ? (
+                                                <Button
+                                                  variant="contained"
+                                                  sx={{
+                                                    width: isTablet ? "33%" : "100%",
+                                                    mt: isTablet ? 0 : 1,
+                                                    mb: isTablet ? 1 : 0,
+                                                    padding: "0.5rem 1.5rem",
+                                                    backgroundColor: "#008001",
+                                                    color: "white"
+                                                  }}
+                                                  onClick={() => accionEstadoSocio("activar", socio)}
+                                                >
+                                                  <CheckCircleOutline sx={{ mr: 1 }} />
+                                                  Activar
+                                                </Button>
+                                              ) : (
+                                                <Button
+                                                  variant="contained"
+                                                  sx={{
+                                                    width: isTablet ? "33%" : "100%",
+                                                    mt: isTablet ? 0 : 1,
+                                                    mb: isTablet ? 1 : 0,
+                                                    padding: "0.5rem 1.5rem",
+                                                    backgroundColor: "#d32f2f",
+                                                    color: "white"
+                                                  }}
+                                                  onClick={() => accionEstadoSocio("desactivar", socio)}
+                                                >
+                                                  <HighlightOff sx={{ mr: 1 }} />
+                                                  Desactivar
+                                                </Button>
+                                              )}
                                               {usuario?.id_rol === ID_ROL.ADMINISTRADOR && socio.id_usuario && (
                                                 <>
                                                   <Button
@@ -608,6 +668,23 @@ const TablaAsociados: React.FC = () => {
                                             >
                                               <WhatsApp />
                                             </IconButton>
+                                            {socio.estado === "0" ? (
+                                              <IconButton
+                                                aria-label="activar"
+                                                sx={{ color: "#008001" }}
+                                                onClick={() => accionEstadoSocio("activar", socio)}
+                                              >
+                                                <CheckCircleOutline />
+                                              </IconButton>
+                                            ) : (
+                                              <IconButton
+                                                aria-label="desactivar"
+                                                sx={{ color: "red" }}
+                                                onClick={() => accionEstadoSocio("desactivar", socio)}
+                                              >
+                                                <HighlightOff />
+                                              </IconButton>
+                                            )}
                                             {usuario?.id_rol === ID_ROL.ADMINISTRADOR && socio.id_usuario && (
                                               <IconButton
                                                 aria-label="toggle-acceso"
