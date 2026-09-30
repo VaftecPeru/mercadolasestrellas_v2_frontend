@@ -11,6 +11,7 @@ const useSocios = () => {
     const [mostrarDetalles, setMostrarDetalles] = useState<number | null>(null);
     const [nombreIngresado, setNombreIngresado] = useState<string>("");
     const [numeroPuesto, setNumeroPuesto] = useState<string>("");
+    const [estadoFiltro, setEstadoFiltro] = useState<string>("todos");
     const [socioSeleccionado, setSocioSeleccionado] = useState<Socio | null>(null);
     const [open, setOpen] = useState(false);
     const [exportFormat, setExportFormat] = useState<string>("");
@@ -20,10 +21,10 @@ const useSocios = () => {
     const [paginaActual, setPaginaActual] = useState(1);
     const navigate = useNavigate();
 
-    const fetchSocios = async (page: number = paginaActual) => {
+    const fetchSocios = async (page: number = paginaActual, estado: string = estadoFiltro) => {
         setIsLoading(true);
         try {
-            const response = await apiClient.get(Api_Global_Socios.socios.fetch(page, nombreIngresado, numeroPuesto));
+            const response = await apiClient.get(Api_Global_Socios.socios.fetch(page, nombreIngresado, numeroPuesto, estado));
             
             const data = response.data.data.map((item: Socio) => ({
                 id_socio: item.id_socio,
@@ -72,6 +73,8 @@ const useSocios = () => {
         setNombreIngresado,
         numeroPuesto,
         setNumeroPuesto,
+        estadoFiltro,
+        setEstadoFiltro,
         socioSeleccionado,
         setSocioSeleccionado,
         open,

@@ -1,8 +1,8 @@
 
 export const Api_Global_Socios = {
   socios: {
-    fetch: (page: number, nombreSocio: string, numeroPuesto: string) =>
-      `/socios?page=${page}&nombre_socio=${nombreSocio}&numero_puesto=${numeroPuesto}`,
+    fetch: (page: number, nombreSocio: string, numeroPuesto: string, estado: string = "todos") =>
+      `/socios?page=${page}&nombre_socio=${nombreSocio}&numero_puesto=${numeroPuesto}${estado && estado !== "todos" ? `&estado=${estado}` : ""}`,
     exportar: () => `/socios/exportar`,
     eliminar: (id_socio: number) => `/socios/${id_socio}`, 
     registrar:()=> `/socios`,

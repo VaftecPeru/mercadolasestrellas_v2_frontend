@@ -13,6 +13,10 @@ import {
   Pagination,
   Typography,
   TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from "@mui/material";
 import {
   Download,
@@ -69,6 +73,8 @@ const TablaAsociados: React.FC = () => {
     paginaActual,
     setPaginaActual,
     fetchSocios,
+    estadoFiltro,
+    setEstadoFiltro,
   } = useSocios();
 
   // Vista previa financiera del socio en un modal (sin salir de la pantalla)
@@ -119,7 +125,7 @@ const TablaAsociados: React.FC = () => {
     fetchSocios();
   }
 
-  // Búsqueda en tiempo real por nombre y número de puesto 
+  // Búsqueda en tiempo real por nombre, número de puesto y estado
   const esPrimerRender = React.useRef(true);
   React.useEffect(() => {
     if (esPrimerRender.current) {
@@ -128,7 +134,7 @@ const TablaAsociados: React.FC = () => {
     }
     fetchSocios(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nombreIngresado, numeroPuesto]);
+  }, [nombreIngresado, numeroPuesto, estadoFiltro]);
 
   const CambioDePagina = (event: React.ChangeEvent<unknown>, value: number) => {
     // Primero hacer fetch con el nuevo valor, luego actualizar el estado
@@ -241,6 +247,7 @@ const TablaAsociados: React.FC = () => {
           display: "flex",
           flexDirection: isMobile ? "column" : "row",
           alignItems: "center",
+          gap: isMobile ? 2 : 0,
         }}
       >
         <Typography
@@ -255,7 +262,7 @@ const TablaAsociados: React.FC = () => {
         {/* Input Nombre Socio */}
         <TextField
           sx={{
-            width: isTablet ? "40%" : isMobile ? "100%" : "30%"
+            width: isTablet ? "30%" : isMobile ? "100%" : "28%"
           }}
           label="Nombre del socio"
           value={nombreIngresado}
@@ -265,8 +272,8 @@ const TablaAsociados: React.FC = () => {
         {/* Input Numero de puesto */}
         <TextField
           sx={{
-            width: isTablet ? "40%" : isMobile ? "100%" : "200px",
-            my: isMobile ? 2 : 0,
+            width: isTablet ? "25%" : isMobile ? "100%" : "180px",
+            my: isMobile ? 0 : 0,
             ml: isMobile ? 0 : 2,
           }}
           type="text"
@@ -274,6 +281,27 @@ const TablaAsociados: React.FC = () => {
           value={numeroPuesto}
           onChange={(e) => setNumeroPuesto(e.target.value)}
         />
+
+        {/* Select Estado */}
+        <FormControl
+          sx={{
+            width: isTablet ? "25%" : isMobile ? "100%" : "160px",
+            ml: isMobile ? 0 : 2,
+            textAlign: "left",
+          }}
+        >
+          <InputLabel id="filtro-estado-socio-label">Estado</InputLabel>
+          <Select
+            labelId="filtro-estado-socio-label"
+            label="Estado"
+            value={estadoFiltro}
+            onChange={(e) => setEstadoFiltro(e.target.value as string)}
+          >
+            <MenuItem value="todos">Todos</MenuItem>
+            <MenuItem value="1">Activos</MenuItem>
+            <MenuItem value="0">Inactivos</MenuItem>
+          </Select>
+        </FormControl>
 
         {/* Boton Buscar */}
         <Button
@@ -285,7 +313,7 @@ const TablaAsociados: React.FC = () => {
               backgroundColor: "#2c6d33",
             },
             height: "50px",
-            width: isTablet ? "20%" : isMobile ? "100%" : "170px",
+            width: isTablet ? "20%" : isMobile ? "100%" : "150px",
             marginLeft: isMobile ? "0" : "1rem",
             fontSize: isSmallMobile ? "0.8rem" : "auto",
             borderRadius: "30px",
@@ -341,7 +369,17 @@ const TablaAsociados: React.FC = () => {
                 </TableHead>
                 <TableBody>
                   {socios.map((socio) => (
-                    <TableRow key={socio.id_socio} hover role="checkbox" tabIndex={-1}>
+                    <TableRow
+                      key={socio.id_socio}
+                      hover
+                      role="checkbox"
+                      tabIndex={-1}
+                      sx={{
+                        backgroundColor:
+                          socio.estado === "0" ? "rgba(0, 0, 0, 0.04)" : "inherit",
+                        opacity: socio.estado === "0" ? 0.78 : 1,
+                      }}
+                    >
                       {isTablet || isMobile
                         ? <TableCell padding="checkbox" colSpan={columns.length}>
                           <Box sx={{ display: "flex", flexDirection: "column" }}>
@@ -400,6 +438,8 @@ const TablaAsociados: React.FC = () => {
                                                 </Box>
                                               ))}
                                             </Box>
+                                          ) : column.id === "estado" ? (
+                                            socio.estado === "0" ? "Inactivo" : "Activo"
                                           ) : column.id === "deuda" ? (
                                             <Box sx={{ display: "flex", alignItems: "center" }}>
                                               <Typography
@@ -628,7 +668,9 @@ const TablaAsociados: React.FC = () => {
                                       ) : "No asignado")
                                       : column.id === "deuda"
                                         ? value === 0 ? "No existen deudas" : `S/ ${value}`
-                                        : column.id === "ver_reporte" ? (
+                                        : column.id === "estado" ? (
+                                          socio.estado === "0" ? "Inactivo" : "Activo"
+                                        ) : column.id === "ver_reporte" ? (
                                           <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
                                             <IconButton
                                               aria-label="payment"
