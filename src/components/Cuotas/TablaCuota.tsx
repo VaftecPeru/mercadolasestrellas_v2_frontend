@@ -17,6 +17,7 @@ import {
   FormControl,
   InputLabel,
   Typography,
+  TextField,
 } from "@mui/material";
 import {
   Download,
@@ -70,7 +71,7 @@ const anios: any = [
 ];
 
 const TablaCuota: React.FC = () => {
-  const { isTablet, isMobile } = useResponsive();
+  const { isTablet, isMobile, isSmallMobile } = useResponsive();
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
   const [mostrarDetalles, setMostrarDetalles] = useState<string | null>(null);
   const [iMeses, setIMeses] = useState<IMeses[]>([]);
@@ -79,6 +80,8 @@ const TablaCuota: React.FC = () => {
   const [exportFormat, setExportFormat] = useState<string>("");
   const [anio, setAnio] = useState<string>("");
   const [mes, setMes] = useState<string>("");
+  const [tipoServicio, setTipoServicio] = useState<string>("");
+  const [nombreServicio, setNombreServicio] = useState<string>("");
   const [open, setOpen] = useState(false);
   const [cuotas, setCuotas] = useState<Cuotas[]>([]);
   const [cuotaSeleccionada, setCuotaSeleccionada] = useState<Cuotas | null>(null);
@@ -102,13 +105,15 @@ const TablaCuota: React.FC = () => {
   };
 
   const handleSearchCuota = () => {
-    listarCuotas();
+    listarCuotas(1);
   }
 
   const listarCuotas = async (page: number = 1) => {
     setIsLoading(true);
     try {
-      const response = await apiClient.get(Api_Global_Cuotas.cuotas.listar(page, anio, mes));
+      const response = await apiClient.get(
+        Api_Global_Cuotas.cuotas.listar(page, anio, mes, nombreServicio, tipoServicio)
+      );
       const data = response.data.data.map((item: Cuotas) => ({
         id_cuota: item.id_cuota,
         fecha_emision: formatDate(item.fecha_emision),
@@ -193,7 +198,7 @@ const TablaCuota: React.FC = () => {
     setIMeses(optMeses);
   }, []);
 
-  // Filtros Año/Mes en tiempo real (patrón de otros módulos)
+  // Filtros Año/Mes/Servicio en tiempo real (patrón de otros módulos)
   const esPrimerRender = useRef(true);
   useEffect(() => {
     if (esPrimerRender.current) {
@@ -202,7 +207,7 @@ const TablaCuota: React.FC = () => {
     }
     listarCuotas(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [anio, mes]);
+  }, [anio, mes, nombreServicio, tipoServicio]);
 
   return (
     <Contenedor>
@@ -261,7 +266,9 @@ const TablaCuota: React.FC = () => {
             borderBottom: "1px solid rgba(0, 0, 0, 0.25)",
             display: "flex",
             flexDirection: isMobile ? "column" : "row",
-            alignItems: isMobile ? "left" : "center",
+            alignItems: isMobile ? "flex-start" : "center",
+            flexWrap: "wrap",
+            gap: isMobile ? 1.5 : 2,
           }}
         >
           <Typography
@@ -269,34 +276,60 @@ const TablaCuota: React.FC = () => {
               display: isTablet ? "none" : "block",
               textAlign: "left",
               fontWeight: "bold",
-              mr: 2,
+              mr: 1,
               mt: isMobile ? 1 : 0,
-              mb: isMobile ? 2 : 0
+              mb: isMobile ? 1 : 0,
             }}
           >
             Buscar por:
           </Typography>
+
+          {/* Select Tipo de servicio */}
           <FormControl
             sx={{
-              width: isMobile ? "100%" : "200px",
-              mr: isMobile ? 0 : 1,
+              width: isTablet ? "35%" : isMobile ? "100%" : "230px",
+              textAlign: "left",
+            }}
+          >
+            <InputLabel id="filtro-tipo-servicio-label">Tipo de servicio</InputLabel>
+            <Select
+              labelId="filtro-tipo-servicio-label"
+              label="Tipo de servicio"
+              value={tipoServicio}
+              onChange={(e) => setTipoServicio(e.target.value as string)}
+            >
+              <MenuItem value="">Todos</MenuItem>
+              <MenuItem value="1">Ordinario (Pagos fijos)</MenuItem>
+              <MenuItem value="2">Extraordinario (Pagos extras)</MenuItem>
+              <MenuItem value="3">Por metro cuadrado</MenuItem>
+              <MenuItem value="4">Cuota Extraordinaria</MenuItem>
+            </Select>
+          </FormControl>
+
+          {/* Input Nombre Servicio */}
+          <TextField
+            sx={{
+              width: isTablet ? "35%" : isMobile ? "100%" : "260px",
+              "& .MuiInputLabel-root": {
+                fontSize: isSmallMobile ? "0.9rem" : "auto",
+              },
+              "& .MuiInputBase-input": {
+                fontSize: isSmallMobile ? "0.9rem" : "auto",
+              },
+            }}
+            label="Nombre del servicio"
+            type="text"
+            value={nombreServicio}
+            onChange={(e) => setNombreServicio(e.target.value)}
+          />
+
+          <FormControl
+            sx={{
+              width: isTablet ? "25%" : isMobile ? "100%" : "150px",
+              textAlign: "left",
             }}
           >
             <InputLabel id="cuota-anio-label">Año</InputLabel>
-            {/* <Select value={anio} onChange={(e) => setAnio(e.target.value)} label="Año">
-              {[
-                "", 2025, 2024, 2023, 2022, 2021, 2020, 2019, 2018, 2017, 2016, 2015,
-                2014, 2013, 2012,
-              ].map((año) => (
-                <MenuItem
-                  sx={{ padding: "10px 25px !important" }}
-                  key={año}
-                  value={año}
-                >
-                  {año}
-                </MenuItem>
-              ))}
-            </Select> */}
             <Select value={anio} onChange={(e) => setAnio(e.target.value)} label="Año">
               {anios.map((año: any) => (
                 <MenuItem
@@ -309,12 +342,11 @@ const TablaCuota: React.FC = () => {
               ))}
             </Select>
           </FormControl>
+
           <FormControl
             sx={{
-              width: isMobile ? "100%" : "200px",
-              mr: isMobile ? 0 : 1,
-              mt: isMobile ? 2 : 0,
-              mb: isMobile ? 2 : 0,
+              width: isTablet ? "25%" : isMobile ? "100%" : "160px",
+              textAlign: "left",
             }}
           >
             <InputLabel id="cuota-mes-label">Mes</InputLabel>
@@ -326,6 +358,7 @@ const TablaCuota: React.FC = () => {
               ))}
             </Select>
           </FormControl>
+
           <Button
             variant="contained"
             startIcon={<Search />}
@@ -335,8 +368,8 @@ const TablaCuota: React.FC = () => {
                 backgroundColor: "#2c6d33",
               },
               height: "50px",
-              width: isMobile ? "100%" : "170px",
-              marginLeft: isMobile ? 0 : "1rem",
+              width: isMobile ? "100%" : isTablet ? "20%" : "150px",
+              fontSize: isSmallMobile ? "0.8rem" : "auto",
               borderRadius: "30px",
             }}
             onClick={handleSearchCuota}
