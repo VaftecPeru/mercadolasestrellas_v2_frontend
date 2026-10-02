@@ -70,14 +70,26 @@ const TablaReporteDeudas: React.FC = () => {
     setTab(nuevoTab);
   };
 
-  // Si el parametro puesto existe, obtener las deudas del puesto
+  // Si el parametro puesto existe, obtener las deudas del puesto y auto-seleccionar su socio
   useEffect(() => {
-    if (idPuesto) {
-      setPuestoSeleccionado(Number(idPuesto));
-      fetchDeudas(1, Number(idPuesto), "");
+    if (idPuesto && puestos.length > 0) {
+      const idNum = Number(idPuesto);
+      setPuestoSeleccionado(idNum);
+      const puestoEncontrado = puestos.find((p) => Number(p.id_puesto) === idNum);
+      if (puestoEncontrado && socios.length > 0) {
+        const socioDueno = socios.find((s) => {
+          const matchId = puestoEncontrado.id_socio && Number(s.id_socio) === Number(puestoEncontrado.id_socio);
+          const matchNombre = puestoEncontrado.socio && puestoEncontrado.socio !== 'No asignado' && s.nombre_completo.trim().toLowerCase() === puestoEncontrado.socio.trim().toLowerCase();
+          return matchId || matchNombre;
+        });
+        if (socioDueno) {
+          setSocioSeleccionado(socioDueno);
+        }
+      }
+      fetchDeudas(1, idNum, "");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [idPuesto]);
+  }, [idPuesto, puestos, socios]);
 
   // Para exportar
   const [exportFormat, setExportFormat] = useState<string>("");
@@ -111,6 +123,65 @@ const TablaReporteDeudas: React.FC = () => {
     }
     fetchSocios();
   }, []);
+
+  // Puestos disponibles filtrados por socio si hay uno seleccionado
+  const puestosDisponibles = React.useMemo(() => {
+    if (!socioSeleccionado) {
+      return puestos;
+    }
+    return puestos.filter((p) => {
+      const matchId = p.id_socio && Number(p.id_socio) === Number(socioSeleccionado.id_socio);
+      const matchNombre = p.socio && p.socio !== 'No asignado' && p.socio.trim().toLowerCase() === socioSeleccionado.nombre_completo.trim().toLowerCase();
+      return matchId || matchNombre;
+    });
+  }, [puestos, socioSeleccionado]);
+
+  // Al seleccionar un puesto -> auto-seleccionar el socio dueño
+  const handlePuestoChange = (value: Puesto | null) => {
+    if (value) {
+      const nuevoIdPuesto = Number(value.id_puesto);
+      setPuestoSeleccionado(nuevoIdPuesto);
+      const socioDueno = socios.find((s) => {
+        const matchId = value.id_socio && Number(s.id_socio) === Number(value.id_socio);
+        const matchNombre = value.socio && value.socio !== 'No asignado' && s.nombre_completo.trim().toLowerCase() === value.socio.trim().toLowerCase();
+        return matchId || matchNombre;
+      });
+      if (socioDueno) {
+        setSocioSeleccionado(socioDueno);
+      }
+    } else {
+      setPuestoSeleccionado(0);
+      if (idPuesto) {
+        setSearchParams({}, { replace: true });
+      }
+    }
+  };
+
+  // Al seleccionar un socio -> filtrar puestos y auto-seleccionar si tiene 1 solo
+  const handleSocioChange = (value: Socio | null) => {
+    setSocioSeleccionado(value);
+    if (value) {
+      const puestosDelSocio = puestos.filter((p) => {
+        const matchId = p.id_socio && Number(p.id_socio) === Number(value.id_socio);
+        const matchNombre = p.socio && p.socio !== 'No asignado' && p.socio.trim().toLowerCase() === value.nombre_completo.trim().toLowerCase();
+        return matchId || matchNombre;
+      });
+
+      if (puestosDelSocio.length === 1) {
+        setPuestoSeleccionado(Number(puestosDelSocio[0].id_puesto));
+      } else {
+        const puestoActualPertenece = puestosDelSocio.some((p) => Number(p.id_puesto) === puestoSeleccionado);
+        if (!puestoActualPertenece) {
+          setPuestoSeleccionado(0);
+        }
+      }
+    } else {
+      setPuestoSeleccionado(0);
+      if (idPuesto) {
+        setSearchParams({}, { replace: true });
+      }
+    }
+  };
 
   // Metodo para obtener las deudas pendientes de la pestaña actual
   const fetchDeudas = async (pagina: number = 1, idPuestoOverride?: number, nombreSocioOverride?: string) => {
@@ -251,14 +322,11 @@ const TablaReporteDeudas: React.FC = () => {
             }}
           >
             <Autocomplete
-              options={puestos}
+              options={puestosDisponibles}
               getOptionLabel={(puesto) => puesto.numero_puesto}
               value={puestos.find(p => Number(p.id_puesto) === puestoSeleccionado) || null}
-              onChange={(event, value) => {
-                setPuestoSeleccionado(value ? Number(value.id_puesto) : 0);
-                if (!value && idPuesto) {
-                  setSearchParams({}, { replace: true });
-                }
+              onChange={(_event, value) => {
+                handlePuestoChange(value);
               }}
               renderInput={(params) => (
                 <TextField
@@ -279,6 +347,7 @@ const TablaReporteDeudas: React.FC = () => {
                 },
               }}
               isOptionEqualToValue={(option, value) => option.id_puesto === value.id_puesto}
+              noOptionsText="No se encontraron puestos"
             />
           </FormControl>
           {/* Seleccionar socio */}
@@ -291,8 +360,8 @@ const TablaReporteDeudas: React.FC = () => {
               options={socios}
               getOptionLabel={(socio) => socio.nombre_completo}
               value={socioSeleccionado}
-              onChange={(event, value) => {
-                setSocioSeleccionado(value);
+              onChange={(_event, value) => {
+                handleSocioChange(value);
               }}
               renderInput={(params) => (
                 <TextField

@@ -1,6 +1,8 @@
 export interface Puesto {
   id_puesto: string;
   numero_puesto: string;
+  id_socio?: number | string | null;
+  socio?: string;
 }
 
 export interface Socio {
