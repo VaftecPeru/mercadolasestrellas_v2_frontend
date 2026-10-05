@@ -1,4 +1,4 @@
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { createBrowserRouter } from "react-router-dom";
 import Principal from "../Layout/Principal";
 import Tabla from "../components/Asociados/TablaSocios";
 import Dashboard from "../components/Dashboard";
@@ -9,7 +9,6 @@ import TablaPuestos from "../components/Puestos/TablaPuestos";
 import TablaReportePagos from "../components/ReportePagos/TablaReportePagos";
 import TablaReporteDeudas from "../components/ReporteDeudas/TablaReporteDeudas";
 import Login from "../components/Login/Login";
-import { AuthProvider } from "../context/AuthContext";
 import ProtectedRoute from "./ProtectedRoute";
 import TablaReporteCuotasMetrado from "../components/ReporteCuotasMetrado/TablaCuotasMetrado";
 import TablaCuotasPuesto from "../components/ReporteCuotasPuesto/TablaCuotasPuesto";
@@ -22,20 +21,23 @@ import { ID_ROL } from "../Utils/roles";
 export const router = createBrowserRouter([
   {
     path: "/",
-    element: <Login />
+    element: <Login />,
   },
   {
     path: "/cambiar-password",
-    element: <CambiarPassword />
+    element: <CambiarPassword />,
   },
   {
     path: "/busqueda-rapida",
-    element: <BusquedaRapida />
+    element: (
+      <ProtectedRoute>
+        <BusquedaRapida />
+      </ProtectedRoute>
+    ),
   },
   {
     path: "/home",
     element: (
-    
       <ProtectedRoute>
         <Principal />
       </ProtectedRoute>
@@ -69,7 +71,7 @@ export const router = createBrowserRouter([
         path: "puestos",
         element: (
           <ProtectedRoute requiredRoles={[ID_ROL.ADMINISTRADOR]}>
-            <TablaPuestos />,
+            <TablaPuestos />
           </ProtectedRoute>
         ),
       },
@@ -94,13 +96,13 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute requiredRoles={[ID_ROL.CAJERO, ID_ROL.ADMINISTRADOR]}>
             <TablaPagos />
-          </ProtectedRoute>  
+          </ProtectedRoute>
         ),
       },
       {
         path: "reporte-pagos",
         element: (
-          <ProtectedRoute requiredRoles={[ID_ROL.CAJERO, ID_ROL.ADMINISTRADOR]}>
+          <ProtectedRoute requiredRoles={[ID_ROL.SOCIO, ID_ROL.CAJERO, ID_ROL.ADMINISTRADOR]}>
             <TablaReportePagos />
           </ProtectedRoute>
         ),
@@ -136,15 +138,7 @@ export const router = createBrowserRouter([
             <TablaReporteResumen />
           </ProtectedRoute>
         ),
-      }
+      },
     ],
   },
 ]);
-
-const App = () => {
-  <AuthProvider>
-    <RouterProvider router={router} />
-  </AuthProvider>
-}
-
-export default App;
