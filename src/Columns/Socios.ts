@@ -9,8 +9,9 @@ export const columns: readonly Column[] = [
   { id: "numero_puesto", label: "Puesto", minWidth: 40 }, 
   { id: "giro_negocio", label: "Giro", minWidth: 50 },
   { id: "inquilino", label: "Inquilino", minWidth: 50 },
-  { id: "fecha_registro", label: "Fec. Registro", minWidth: 40 },
+  { id: "fecha_registro", label: "Fecha Registro", minWidth: 40 },
+  { id: "estado", label: "Estado", minWidth: 35 },
   // { id: "deuda", label: "Deuda Total", minWidth: 30 },
   { id: "ver_reporte", label: "Deudas / Pagos", minWidth: 10 },
-  { id: "accion", label: "Acción", minWidth: 20 },
+  { id: "accion", label: "Acciones", minWidth: 20 },
 ];

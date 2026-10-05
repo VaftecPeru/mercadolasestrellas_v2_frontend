@@ -12,31 +12,10 @@ import {
 
 import useResponsive from "../hooks/Responsive/useResponsive";
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
-import { manejarError, mostrarAlerta, mostrarAlertaConfirmacion } from './Alerts/Registrar';
+import { manejarError, mostrarAlerta } from './Alerts/Registrar';
 
 import apiClient from "../Utils/apliClient";
 import { Api_Global_Reportes } from "../service/ReporteApi";
-
-const data = [
-  { name: 'Enero', uv: 40, pv: 24, amt: 24 },
-  { name: 'Febrero', uv: 30, pv: 14, amt: 22 },
-  { name: 'Marzo', uv: 20, pv: 48, amt: 22 },
-  { name: 'Abril', uv: 28, pv: 39, amt: 20 },
-  { name: 'Mayo', uv: 18, pv: 48, amt: 21 },
-  { name: 'Junio', uv: 23, pv: 38, amt: 25 },
-  { name: 'Julio', uv: 23, pv: 38, amt: 25 },
-  { name: 'Agosto', uv: 34, pv: 43, amt: 21 },
-  { name: 'Septiembre', uv: 34, pv: 43, amt: 21 },
-  { name: 'Octubre', uv: 34, pv: 43, amt: 21 },
-  { name: 'Noviembre', uv: 34, pv: 43, amt: 21 },
-  { name: 'Diciembre', uv: 34, pv: 43, amt: 21 },
-];
-
-const chartData = [
-  { name: 'Deudores', value: 80 },
-  { name: 'Pago', value: 20 }
-];
 
 const COLORS = ['#82ca9d', '#8884d8'];
 
@@ -45,10 +24,23 @@ interface PieData {
   value: number;
 }
 
-interface Resultado {
+interface HistoricoItem {
+  name: string;
+  pagos: number;
+  deudas: number;
+}
+
+interface Resultado2 {
   acumulacion_deuda: string;
   acumulacion_pago: string;
-  cantidad_socios_activos: string;
+  acumulacion_deuda_raw: number;
+  acumulacion_pago_raw: number;
+  cantidad_socios_activos: number;
+  porcentajes: {
+    pagos: number;
+    deudas: number;
+  };
+  historico: HistoricoItem[];
 }
 
 const Dashboard: React.FC = () => {
@@ -58,31 +50,32 @@ const Dashboard: React.FC = () => {
 
   const [itemData, setItemData] = React.useState<PieData | null>(null);
   const formatTooltipValue = (value: number) => `${value}%`;
-  const [resultado, setResultado] = useState<Resultado>();
-  const [resultado2, setResultado2] = useState({
-    acumulacion_deuda: "",
-    acumulacion_pago: "",
-    cantidad_socios_activos: "",
+  const [resultado2, setResultado2] = useState<Resultado2>({
+    acumulacion_deuda: "0.00",
+    acumulacion_pago: "0.00",
+    acumulacion_deuda_raw: 0,
+    acumulacion_pago_raw: 0,
+    cantidad_socios_activos: 0,
+    porcentajes: {
+      pagos: 0,
+      deudas: 0
+    },
+    historico: []
   });
 
   // reporte dashboard
   const reporteDashboard = async () => {
-    
+
     try {
       const response = await apiClient.get(Api_Global_Reportes.reportes.dashboard());
 
       if (response.status === 200) {
-        setResultado2({
-          acumulacion_deuda: response.data.acumulacion_deuda,
-          acumulacion_pago: response.data.acumulacion_pago,
-          cantidad_socios_activos: response.data.cantidad_socios_activos,
-        });
+        setResultado2(response.data);
       } else {
         mostrarAlerta("Error");
       }
     } catch (error) {
       manejarError(error);
-    } finally {
     }
   };
 
@@ -90,6 +83,11 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     reporteDashboard();
   }, []);
+
+  const chartData = [
+    { name: 'Deudores', value: resultado2.porcentajes.deudas },
+    { name: 'Pago', value: resultado2.porcentajes.pagos }
+  ];
 
   return (
     <Box
@@ -100,7 +98,7 @@ const Dashboard: React.FC = () => {
         mt: isSmallTablet ? 10 : isSmallMobile ? 8 : isMobile ? 10 : 5,
         backgroundColor: "#f0f0f0",
         minHeight: "93vh",
-        display: "-ms-flexbox",
+        display: "flex",
         flexDirection: "column",
       }}
     >
@@ -108,7 +106,7 @@ const Dashboard: React.FC = () => {
         sx={{
           display: "flex",
           flexDirection: isMobile || isSmallLaptop ? "column" : "row",
-          flexWrap: isMobile ? "none" : "wrap",
+          flexWrap: isMobile ? "nowrap" : "wrap",
           justifyContent: "space-between",
           mb: 3,
           gap: "1rem",
@@ -116,38 +114,42 @@ const Dashboard: React.FC = () => {
       >
         <Box
           sx={{
-            backgroundColor: "#ffffff", // Fondo blanco
-            color: "black", // Letra negra
+            backgroundColor: "#ffffff",
+            color: "black",
             "&:hover": {
-              backgroundColor: "#008001", // Fondo verde al pasar el cursor
-              color: "white", // Letra blanca al pasar el cursor
+              backgroundColor: "#008001",
+              color: "white",
+              "& .MuiSvgIcon-root.icon-main": {
+                color: "white",
+                backgroundColor: "rgba(255,255,255,0.2)"
+              }
             },
             padding: "1rem",
             borderRadius: "30px",
-            width: isSmallLaptop || isTablet || isMobile ? "100%" : "32%", // Ancho del card
+            width: isSmallLaptop || isTablet || isMobile ? "100%" : "32%",
             textAlign: "left",
             position: "relative",
-            transition: "all 0.3s ease", // Suaviza la transición de colores
-            boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)', // Sombra para un diseño más elegante
+            transition: "all 0.3s ease",
+            boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
           }}
         >
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <NextWeek className="icon"
+              <NextWeek className="icon-main"
                 sx={{
                   fontSize: "35px",
                   marginRight: "20px",
-                  borderRadius: "25%", // Borde redondeado
-                  padding: "10px", // Espacio alrededor del ícono
-                  backgroundColor: "#f0f0f0", // Fondo claro para el ícono
-                  boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)', // Sombra para un diseño más elegante
-                  color: "green", // Color del ícono
-                  transition: "all 0.3s ease", // Suaviza la transición de colores
+                  borderRadius: "25%",
+                  padding: "10px",
+                  backgroundColor: "#f0f0f0",
+                  boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
+                  color: "green",
+                  transition: "all 0.3s ease",
                 }} />
               <Box>
                 <Typography variant="h6">Reporte de Pago</Typography>
                 <Typography variant="subtitle2" sx={{ fontSize: '12px', color: 'gray' }}>
-                  Últimos pagos
+                  Pagos del mes
                 </Typography>
               </Box>
             </Box>
@@ -158,29 +160,12 @@ const Dashboard: React.FC = () => {
             S/{resultado2.acumulacion_pago}
           </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', marginTop: '10px' }}>
-            <TrendingUpIcon sx={{
-              fontSize: "20px", color: "bold",
-              "&:hover": {
-                backgroundColor: "green",
-                color: "white",
-              }
-            }} />
-            <Typography variant="subtitle2" sx={{
-              marginLeft: "5px", color: "bold",
-              "&:hover": {
-                backgroundColor: "green",
-                color: "white",
-              }
-            }}>
+            <TrendingUpIcon sx={{ fontSize: "20px", color: "inherit" }} />
+            <Typography variant="subtitle2" sx={{ marginLeft: "5px", color: "inherit" }}>
               +15.6%
             </Typography>
-            <Typography variant="subtitle2"
-              sx={{
-                marginLeft: "auto",
-                marginRight: "10px",
-                color: 'gray'
-              }}>
-              Consolidado por semana
+            <Typography variant="subtitle2" sx={{ marginLeft: "auto", marginRight: "10px", color: 'gray' }}>
+              Consolidado mensual
             </Typography>
           </Box>
         </Box>
@@ -192,10 +177,14 @@ const Dashboard: React.FC = () => {
             "&:hover": {
               backgroundColor: "#008001",
               color: "white",
+              "& .MuiSvgIcon-root.icon-main": {
+                color: "white",
+                backgroundColor: "rgba(255,255,255,0.2)"
+              }
             },
             padding: "1rem",
             borderRadius: "30px",
-            width: isSmallLaptop || isTablet || isMobile ? "100%" : "32%", // Ancho del card
+            width: isSmallLaptop || isTablet || isMobile ? "100%" : "32%",
             textAlign: "left",
             position: "relative",
             transition: "all 0.3s ease",
@@ -204,7 +193,7 @@ const Dashboard: React.FC = () => {
         >
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <Person sx={{
+              <Person className="icon-main" sx={{
                 fontSize: "35px",
                 marginRight: "20px",
                 borderRadius: "25%",
@@ -217,7 +206,7 @@ const Dashboard: React.FC = () => {
               <Box>
                 <Typography variant="h6">Reporte de Deuda</Typography>
                 <Typography variant="subtitle2" sx={{ fontSize: '12px', color: 'gray' }}>
-                  Ciclo 2012-2024
+                  Deudas del mes
                 </Typography>
               </Box>
             </Box>
@@ -227,29 +216,12 @@ const Dashboard: React.FC = () => {
             S/{resultado2.acumulacion_deuda}
           </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', marginTop: '10px' }}>
-            <TrendingUpIcon sx={{
-              fontSize: "20px", color: "bold",
-              "&:hover": {
-                backgroundColor: "green",
-                color: "white",
-              }
-            }} />
-            <Typography variant="subtitle2" sx={{
-              marginLeft: "5px", color: "bold",
-              "&:hover": {
-                backgroundColor: "green",
-                color: "white",
-              }
-            }}>
-              +15.6%
+            <TrendingUpIcon sx={{ fontSize: "20px", color: "inherit" }} />
+            <Typography variant="subtitle2" sx={{ marginLeft: "5px", color: "inherit" }}>
+              +5.2%
             </Typography>
-            <Typography variant="subtitle2"
-              sx={{
-                marginLeft: "auto",
-                marginRight: "10px",
-                color: 'gray'
-              }}>
-              +1.4k por año
+            <Typography variant="subtitle2" sx={{ marginLeft: "auto", marginRight: "10px", color: 'gray' }}>
+              Proyección anual
             </Typography>
           </Box>
         </Box>
@@ -261,10 +233,14 @@ const Dashboard: React.FC = () => {
             "&:hover": {
               backgroundColor: "#008001",
               color: "white",
+              "& .MuiSvgIcon-root.icon-main": {
+                color: "white",
+                backgroundColor: "rgba(255,255,255,0.2)"
+              }
             },
             padding: "1rem",
             borderRadius: "30px",
-            width: isSmallLaptop || isTablet || isMobile ? "100%" : "32%", // Ancho del card
+            width: isSmallLaptop || isTablet || isMobile ? "100%" : "32%",
             textAlign: "left",
             position: "relative",
             transition: "all 0.3s ease",
@@ -273,7 +249,7 @@ const Dashboard: React.FC = () => {
         >
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <Wysiwyg sx={{
+              <Wysiwyg className="icon-main" sx={{
                 fontSize: "35px",
                 marginRight: "20px",
                 borderRadius: "25%",
@@ -292,32 +268,14 @@ const Dashboard: React.FC = () => {
             <ExpandMoreIcon sx={{ fontSize: "24px" }} />
           </Box>
           <Typography variant="h4" sx={{ marginTop: '20px', fontWeight: 'bold' }}>
-            {/* S/110 */}
             +{resultado2.cantidad_socios_activos}
           </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', marginTop: '10px' }}>
-            <TrendingUpIcon sx={{
-              fontSize: "20px", color: "bold",
-              "&:hover": {
-                backgroundColor: "green",
-                color: "white",
-              }
-            }} />
-            <Typography variant="subtitle2" sx={{
-              marginLeft: "5px", color: "bold",
-              "&:hover": {
-                backgroundColor: "green",
-                color: "white",
-              }
-            }}>
-              +15.6%
+            <TrendingUpIcon sx={{ fontSize: "20px", color: "inherit" }} />
+            <Typography variant="subtitle2" sx={{ marginLeft: "5px", color: "inherit" }}>
+              En crecimiento
             </Typography>
-            <Typography variant="subtitle2"
-              sx={{
-                marginLeft: "auto",
-                marginRight: "10px",
-                color: 'gray'
-              }}>
+            <Typography variant="subtitle2" sx={{ marginLeft: "auto", marginRight: "10px", color: 'gray' }}>
               Ver más
             </Typography>
           </Box>
@@ -327,7 +285,7 @@ const Dashboard: React.FC = () => {
         sx={{
           display: "flex",
           justifyContent: "space-between",
-          alignItems: "flex-start", // Alinea ambos cards en la parte superior
+          alignItems: "flex-start",
           flexWrap: "wrap",
           mb: 3,
           gap: "1rem",
@@ -341,29 +299,19 @@ const Dashboard: React.FC = () => {
         }}>
           <CardContent>
             <Box sx={{ textAlign: 'left', mb: 4 }}>
-              <Typography variant="h5"
-                sx={{
-                  fontWeight: 'bold',
-                  marginLeft: "10px",
-                  marginTop: isMobile ? "10px" : "0",
-                }}
-              >
-                Rendimiento de los pagos
+              <Typography variant="h5" sx={{ fontWeight: 'bold', marginLeft: "10px", marginTop: isMobile ? "10px" : "0" }}>
+                Rendimiento Histórico
               </Typography>
             </Box>
-            <ResponsiveContainer
-              width="100%"
-              height={300}
-              style={{ marginLeft: "-25px" }}
-            >
-              <LineChart data={data}>
+            <ResponsiveContainer width="100%" height={300} style={{ marginLeft: "-25px" }}>
+              <LineChart data={resultado2.historico}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" />
                 <YAxis />
                 <Tooltip />
                 <Legend />
-                <Line type="monotone" dataKey="pv" stroke="#8884d8" activeDot={{ r: 8 }} />
-                <Line type="monotone" dataKey="uv" stroke="#82ca9d" />
+                <Line type="monotone" dataKey="pagos" stroke="#82ca9d" name="Pagos (S/)" activeDot={{ r: 8 }} />
+                <Line type="monotone" dataKey="deudas" stroke="#8884d8" name="Deudas (S/)" />
               </LineChart>
             </ResponsiveContainer>
           </CardContent>
@@ -374,16 +322,15 @@ const Dashboard: React.FC = () => {
             width: isSmallLaptop || isTablet || isMobile ? "100%" : "28%",
             borderRadius: '30px',
             boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
-            display: "-ms-inline-flexbox"
           }}
         >
           <CardContent>
             <Box sx={{ textAlign: 'center', mb: 2 }}>
               <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                Reporte pagos
+                Resumen del Mes
               </Typography>
             </Box>
-            <ResponsiveContainer width="100%" height={200}>
+            <ResponsiveContainer width="100%" height={240}>
               <PieChart>
                 <Pie
                   data={chartData}
@@ -406,35 +353,19 @@ const Dashboard: React.FC = () => {
             <Box sx={{ mt: 2 }}>
               <Stack direction="column" sx={{ width: '100%' }}>
                 <Box sx={{ display: 'flex', justifyContent: 'center', mb: 1 }}>
-                  <Box
-                    sx={{
-                      width: '20px',
-                      height: '20px',
-                      borderRadius: '50%',
-                      backgroundColor: COLORS[0],
-                      mr: 1,
-                    }}
-                  />
-                  <Typography variant="subtitle2">Deudores</Typography>
+                  <Box sx={{ width: '20px', height: '20px', borderRadius: '50%', backgroundColor: COLORS[0], mr: 1 }} />
+                  <Typography variant="subtitle2">Deudas ({resultado2.porcentajes.deudas}%)</Typography>
                 </Box>
                 <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-                  <Box
-                    sx={{
-                      width: '20px',
-                      height: '20px',
-                      borderRadius: '50%',
-                      backgroundColor: COLORS[1],
-                      mr: 1,
-                    }}
-                  />
-                  <Typography variant="subtitle2">Pago</Typography>
+                  <Box sx={{ width: '20px', height: '20px', borderRadius: '50%', backgroundColor: COLORS[1], mr: 1 }} />
+                  <Typography variant="subtitle2">Pagos ({resultado2.porcentajes.pagos}%)</Typography>
                 </Box>
               </Stack>
             </Box>
             {itemData && (
-              <Box sx={{ mt: 2, p: 2, border: '1px solid #ddd', borderRadius: '8px' }}>
-                <Typography variant="body2">
-                  {`${itemData.value}%`}
+              <Box sx={{ mt: 2, p: 2, border: '1px solid #ddd', borderRadius: '8px', textAlign: 'center' }}>
+                <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                  {itemData.name}: {itemData.value}%
                 </Typography>
               </Box>
             )}

@@ -12,6 +12,7 @@ import { Api_Global_Reportes } from "../../service/ReporteApi";
 import { Api_Global_Puestos } from "../../service/PuestoApi";
 import { handleExport } from "../../Utils/exportUtils";
 import { mostrarAlerta } from "../Alerts/Registrar";
+import { ordenarPuestosPorNumero } from "../../Utils/ordenarPuestos";
 
 interface Puesto {
   id_puesto: number;
@@ -20,6 +21,7 @@ interface Puesto {
 
 interface Data {
   anio: string;
+  nombre_completo: string;
   servicio_descripcion: string;
   aprobado: string;
   pagado: string;
@@ -31,17 +33,15 @@ interface Column {
   id: keyof Data | "mes" | "dia" | "accion";
   label: string;
   minWidth?: number;
-  align?: "center";
+  align?: "center" | "left" | "right";
 }
 
 const columns: readonly Column[] = [
-  { id: "anio", label: "Año", minWidth: 50, align: "center" },
-  { id: "mes", label: "Mes", minWidth: 50, align: "center" },
-  { id: "dia", label: "Día", minWidth: 50, align: "center" },
-  { id: "servicio_descripcion", label: "Descripción del servicio", minWidth: 50, align: "center" },
-  { id: "aprobado", label: "Imp. Aprobado", minWidth: 50, align: "center" },
-  { id: "pagado", label: "Imp. Pagado (S/)", minWidth: 50, align: "center" },
-  { id: "por_pagar", label: "Imp. Por pagar (S/)", minWidth: 50, align: "center" },
+  { id: "fecha", label: "Fecha Registro", minWidth: 110, align: "center" },
+  { id: "servicio_descripcion", label: "Servicios", minWidth: 200, align: "left" },
+  { id: "aprobado", label: "Total (S/)", minWidth: 100, align: "right" },
+  { id: "pagado", label: "Imp. Pagado (S/)", minWidth: 110, align: "right" },
+  { id: "por_pagar", label: "Imp. Por pagar (S/)", minWidth: 120, align: "right" },
 ]
 
 const TablaCuotasPuesto: React.FC = () => {
@@ -58,6 +58,12 @@ const TablaCuotasPuesto: React.FC = () => {
   // Paginación
   const [paginaActual, setPaginaActual] = useState(1);
   const [totalPaginas, setTotalPaginas] = useState(1);
+
+  const totalGeneral = cuotas.reduce((acc, row) => ({
+    aprobado: acc.aprobado + parseFloat(row.aprobado),
+    pagado: acc.pagado + parseFloat(row.pagado),
+    por_pagar: acc.por_pagar + parseFloat(row.por_pagar),
+  }), { aprobado: 0, pagado: 0, por_pagar: 0 });
 
   const cambiarPagina = (event: React.ChangeEvent<unknown>, value: number) => {
     setPaginaActual(value);
@@ -85,7 +91,7 @@ const TablaCuotasPuesto: React.FC = () => {
     const fetchPuestos = async () => {
       try {
         const response = await apiClient.get(Api_Global_Puestos.puestos.buscar(1, 500, "", "", "", ""));
-        setPuestos(response.data.data);
+        setPuestos(ordenarPuestosPorNumero(response.data.data));
       } catch (error) {
         console.log(error);
       }
@@ -216,6 +222,7 @@ const TablaCuotasPuesto: React.FC = () => {
                           style={{ minWidth: column.minWidth }}
                           sx={{
                             fontWeight: "bold",
+                            backgroundColor: "#f5f5f5",
                           }}
                         >
                           {column.label}
@@ -308,6 +315,24 @@ const TablaCuotasPuesto: React.FC = () => {
                     </TableRow>
                   }
                 </TableBody>
+                {!isTablet && !isMobile && cuotas.length > 0 && (
+                  <TableHead>
+                    <TableRow>
+                      <TableCell colSpan={2} align="right" sx={{ fontWeight: "bold", backgroundColor: "#f0f0f0" }}>
+                        TOTAL:
+                      </TableCell>
+                      <TableCell align="right" sx={{ fontWeight: "bold", backgroundColor: "#e3f2fd", fontSize: '1rem', borderTop: '2px solid #1976d2' }}>
+                        S/ {Number(totalGeneral.aprobado || 0).toFixed(2)}
+                      </TableCell>
+                      <TableCell align="right" sx={{ fontWeight: "bold", backgroundColor: "#e3f2fd", fontSize: '1rem', borderTop: '2px solid #1976d2' }}>
+                        S/ {Number(totalGeneral.pagado || 0).toFixed(2)}
+                      </TableCell>
+                      <TableCell align="right" sx={{ fontWeight: "bold", backgroundColor: "#e3f2fd", fontSize: '1rem', borderTop: '2px solid #1976d2' }}>
+                        S/ {Number(totalGeneral.por_pagar || 0).toFixed(2)}
+                      </TableCell>
+                    </TableRow>
+                  </TableHead>
+                )}
               </Table>
             </TableContainer>
             <Box sx={{ display: "flex", justifyContent: "center", marginTop: 3 }}>

@@ -20,20 +20,20 @@ import {
   Autocomplete,
   Button,
 } from "@mui/material";
-import axios from "axios";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import useResponsive from "../../hooks/Responsive/useResponsive";
 import {
   manejarError,
   mostrarAlerta,
+  mostrarAlertaConfirmacion,
 } from "../Alerts/Registrar";
 import jsPDF from "jspdf";
 import { AvisoFormulario } from "../Shared/ElementosFormulario";
 import { formatDate, nombreMes } from "../../Utils/dateUtils";
-import { AgregarProps, Column, Data, Deuda, Puesto, Socio, DeudaPendiente } from "../../interface/Pagos/RegistrarPagos";
+import { AgregarProps, Column, Puesto, Socio, RegistroPagoCompartido } from "../../interface/Pagos/RegistrarPagos";
 import { Api_Global_Pagos } from "../../service/PagoApi";
 import apiClient from "../../Utils/apliClient";
-import { Api_Global_Cuotas } from "../../service/CuotaApi";
+import ContenedorMini from "../Shared/ContenedorMini";
 
 const columns: readonly Column[] = [
   { id: "anio", label: "Año", minWidth: 50, align: "center" },
@@ -45,219 +45,115 @@ const columns: readonly Column[] = [
   { id: "accion", label: "", minWidth: 30, align: "center" },
 ];
 
-const RegistrarPago: React.FC<AgregarProps> = ({ open, handleClose }) => {
+const RegistrarPago: React.FC<AgregarProps & RegistroPagoCompartido> = ({
+  pago,
+  socios,
+  puestos,
+  idSocioSeleccionado,
+  idPuestoSeleccionado,
+  valueAC,
+  setValueAC,
+  deudas,
+  setDeudas,
+  setIdSocioSeleccionado,
+  setIdPuestoSeleccionado,
+  montoPagar,
+  totalPagar,
+  fechaPago,
+  setFechaPago,
+  formData,
+  setFormData,
+  fetchPuestos,
+  fetchDeudaPuesto,
+  handleCheckBoxChange,
+  actualizarMontoPagar,
+  calcularTotalSeleccionado,
+  handleCloseModal,
+}) => {
   const { isMobile } = useResponsive();
-  const [socios, setSocios] = useState<Socio[]>([]);
-  const [puestos, setPuestos] = useState<Puesto[]>([]);
-  const [idSocioSeleccionado, setIdSocioSeleccionado] = useState("");
-  const [idPuestoSeleccionado, setIdPuestoSeleccionado] = useState("");
-  const [deudas, setDeudas] = useState<DeudaPendiente[]>([]);
-  const [filasSeleccionadas, setFilasSeleccionadas] = useState<({ [key: string]: boolean; })>({});
-  const [montoPagar, setMontoPagar] = useState<{ [key: number]: number }>({});
-  const [totalPagar, setTotalPagar] = useState(0);
-  const [totalDeuda, setTotalDeuda] = useState(0);
-  const [activeTab, setActiveTab] = useState(0);
+  const [activeTab] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [valueAC, setValueAC] = React.useState(null);
 
-  // Para registrar el pago
-  const [formData, setFormData] = useState({
-    id_socio: "",
-    nombre_socio: "",
-    nombre_block: "",
-    numero_puesto: "",
-    deudas: [{
-      id_deuda_cuota: 0,
-      importe: 0,
-      servicio: "",
-    }]
-  });
-
-  // Obtener Lista Socios
-  useEffect(() => {
-    const fetchSocios = async () => {
-      try {
-        const response = await apiClient.get(Api_Global_Pagos.socios.listar());
-        const data = response.data.data.map((item: Socio) => ({
-          id_socio: item.id_socio,
-          nombre_completo: item.nombre_completo,
-        }));
-        setSocios(data);
-      } catch (error) {
-      }
-    };
-
-    fetchSocios();
-  }, []);
-
-  // Obtener Lista Puestos
-  const fetchPuestos = async (idSocio: string) => {
-    try {
-      const response = await apiClient.get(Api_Global_Pagos.puestos.listarPorSocio(idSocio));
-      const data = response.data.data.map((item: Puesto) => ({
-        id_puesto: item.id_puesto,
-        numero_puesto: item.numero_puesto,
-        block: {
-          nombre: item.block?.nombre || 'S/N',
-        }
-      }));
-      setPuestos(data);
-    } catch (error) {
+  // Validar formulario antes de registrar
+  const validarFormulario = () => {
+    if (!idSocioSeleccionado) {
+      mostrarAlerta("Atención", "Seleccione un socio.", "warning");
+      return false;
     }
+    if (!idPuestoSeleccionado) {
+      mostrarAlerta("Atención", "Seleccione un puesto.", "warning");
+      return false;
+    }
+    if (formData.deudas.length === 0) {
+      mostrarAlerta("Atención", "Seleccione al menos una deuda a pagar.", "warning");
+      return false;
+    }
+    if (totalPagar <= 0) {
+      mostrarAlerta("Atención", "El monto a pagar debe ser mayor a cero.", "warning");
+      return false;
+    }
+    return true;
   };
 
-  // Obtener Deudas Pendientes por Puesto
-  const fetchDeudaPuesto = async (idSocio: string, idPuesto: string) => {
-    try {
-      const response = await apiClient.get(Api_Global_Pagos.cuotas.pendientesPorPuesto(idSocio, idPuesto));
-      const data = response.data.data.map((item: any) => ({
-        id_deuda: item.id_deuda,
-        id_deuda_cuota: item.id_deuda_cuota,
-        total: item.total,
-        servicio_descripcion: item.nombre_servicio,
-        anio: item.anio,
-        mes: item.mes,
-        a_cuenta: item.a_cuenta,
-        deuda: item.por_pagar,
-        checked: false,
-      }));
-      setDeudas(data);
-      setFilasSeleccionadas({});
-      setMontoPagar({});
-      setTotalPagar(0);
+  // REGISTRAR PAGO
+  const registrarPago = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
 
-      // Calcular deuda total inicial
-      const total = data.reduce((sum: number, item: any) => sum + parseFloat(item.deuda), 0);
-      setTotalDeuda(total);
-    } catch (error) {
-      // manejarError(error);
+    if (!pago && !validarFormulario()) {
+      return;
     }
-  };
 
-  const handleSocioChange = (event: any, newValue: Socio | null) => {
-    setValueAC(newValue as any);
-    if (newValue) {
-      setIdSocioSeleccionado(newValue.id_socio.toString());
-      setIdPuestoSeleccionado("");
-      setDeudas([]);
-      fetchPuestos(newValue.id_socio.toString());
+    if (!pago) {
+      const confirmHTML = `
+        <div style="text-align:left; line-height:1.8;">
+          <strong>Socio:</strong> ${formData.nombre_socio}<br/>
+          <strong>Puesto:</strong> ${formData.nombre_block} - ${formData.numero_puesto}<br/>
+          <strong>Monto total:</strong> S/ ${totalPagar.toFixed(2)}
+        </div>`;
 
-      setFormData({
-        ...formData,
-        id_socio: newValue.id_socio.toString(),
-        nombre_socio: newValue.nombre_completo,
-      })
-
-    } else {
-      setIdSocioSeleccionado("");
-      setPuestos([]);
-      setIdPuestoSeleccionado("");
-      setDeudas([]);
-    }
-  };
-
-  const handlePuestoChange = (event: any) => {
-    const idPuesto = event.target.value;
-    setIdPuestoSeleccionado(idPuesto);
-    fetchDeudaPuesto(idSocioSeleccionado, idPuesto);
-
-    const puestoSeleccionado = puestos.find((puesto) => puesto.id_puesto.toString() === idPuesto);
-    if (puestoSeleccionado) {
-      setFormData({
-        ...formData,
-        nombre_block: puestoSeleccionado.block.nombre,
-        numero_puesto: puestoSeleccionado.numero_puesto,
-      })
-    }
-  };
-
-  const handleCheckBoxChange = (checked: boolean, idDeudaCuota: number) => {
-    const updatedFilas = { ...filasSeleccionadas, [idDeudaCuota]: checked };
-    setFilasSeleccionadas(updatedFilas);
-
-    const deuda = deudas.find((d) => d.id_deuda_cuota === idDeudaCuota);
-    if (deuda) {
-      const updatedMontoPagar = { ...montoPagar };
-      if (checked) {
-        updatedMontoPagar[idDeudaCuota] = parseFloat(deuda.deuda);
-      } else {
-        delete updatedMontoPagar[idDeudaCuota];
-      }
-      setMontoPagar(updatedMontoPagar);
-      calcularTotal(updatedMontoPagar);
-    }
-  };
-
-  const handleMontoPagarChange = (idDeudaCuota: number, valor: string) => {
-    // Si la fila no está seleccionada, no permitir cambios
-    if (!filasSeleccionadas[idDeudaCuota]) return;
-
-    const monto = parseFloat(valor) || 0;
-    const deuda = deudas.find((d) => d.id_deuda_cuota === idDeudaCuota);
-
-    if (deuda) {
-      // Validar que el monto no exceda la deuda pendiente
-      if (monto > parseFloat(deuda.deuda)) {
-        mostrarAlerta("Error", "El monto a pagar no puede exceder la deuda pendiente", "error");
+      const result = await mostrarAlertaConfirmacion(
+        "Confirmar pago",
+        "Verifique los datos antes de continuar",
+        "Confirmar",
+        "Cancelar",
+        confirmHTML
+      );
+      if (!result.isConfirmed) {
         return;
       }
-
-      const updatedMontoPagar = { ...montoPagar, [idDeudaCuota]: monto };
-      setMontoPagar(updatedMontoPagar);
-      calcularTotal(updatedMontoPagar);
-    }
-  };
-
-  const calcularTotal = (montos: { [key: number]: number }) => {
-    const total = Object.values(montos).reduce((sum, current) => sum + current, 0);
-    setTotalPagar(total);
-  };
-
-  const handleCloseModal = () => {
-    setIdSocioSeleccionado("");
-    setPuestos([]);
-    setIdPuestoSeleccionado("");
-    setDeudas([]);
-    setFilasSeleccionadas({});
-    setMontoPagar({});
-    setTotalPagar(0);
-    setValueAC(null);
-    handleClose();
-  };
-
-  // Registrar Pago
-  const registrarPago = async () => {
-    if (!idSocioSeleccionado) {
-      mostrarAlerta("Error", "Debe seleccionar un socio", "error");
-      return;
-    }
-
-    const deudasSeleccionadas = deudas
-      .filter((d) => filasSeleccionadas[d.id_deuda_cuota])
-      .map((d) => ({
-        id_deuda_cuota: d.id_deuda_cuota,
-        importe: montoPagar[d.id_deuda_cuota],
-        servicio: d.servicio_descripcion
-      }));
-
-    if (deudasSeleccionadas.length === 0) {
-      mostrarAlerta("Error", "Debe seleccionar al menos una deuda para pagar", "error");
-      return;
     }
 
     setLoading(true);
+
+    // Extraemos los datos necesarios para enviar
+    const { nombre_socio, nombre_block, numero_puesto, deudas, ...rest } = formData;
+    const filteredDeudas = deudas.map(({ servicio, ...deudaRest }) => deudaRest); // Filtramos el servicio de las deudas
+    const dataToSend: {
+      id_socio: string;
+      deudas: { id_deuda_cuota: number; importe: number; }[] // Solo enviamos el id_deuda y el importe
+    } = { ...rest, deudas: filteredDeudas }; // Retornamos el id_socio y las deudas sin el servicio
+
     try {
-      const response = await apiClient.post(Api_Global_Pagos.pagos.registrar(), {
-        id_socio: idSocioSeleccionado,
-        deudas: deudasSeleccionadas,
-      });
+      let response;
+      if (pago) {
+        // En modo edición solo permitimos actualizar la fecha por ahora según backend
+        response = await apiClient.put(Api_Global_Pagos.pagos.editar(pago.id_pago), {
+          fecha_registro: fechaPago
+        });
+      } else {
+        response = await apiClient.post(Api_Global_Pagos.pagos.registrar(), dataToSend);
+      }
 
       if (response.status === 200) {
-        mostrarAlerta("Éxito", "El pago se ha registrado correctamente", "success");
-        // GENERAR RECIBO
-        generatePDF(deudasSeleccionadas, response.data.data.serie, response.data.data.numero_pago);
-
-        handleCloseModal();
+        const mensaje = response.data.message || (pago ? "El pago fue actualizado correctamente" : "El pago fue registrado correctamente");
+        if (!pago) {
+          generarTicketPDF(formData, response.data.data);
+        }
+        mostrarAlerta(pago ? "Actualización exitosa" : "Registro exitoso", mensaje, "success").then(() => {
+          handleCloseModal();
+        });
+      } else {
+        mostrarAlerta("Error", "Ocurrió un error inesperado.", "error");
       }
     } catch (error) {
       manejarError(error);
@@ -266,109 +162,106 @@ const RegistrarPago: React.FC<AgregarProps> = ({ open, handleClose }) => {
     }
   };
 
-  // GENERAR RECIBO PDF
-  const generatePDF = (servicios: any[], serie: string, numero_pago: string) => {
-    const doc = jsPDF as any;
-    const pdf = new doc({
-      orientation: "portrait",
-      unit: "mm",
-      format: [80, 150], // Formato de ticket (Ancho: 80mm)
+  const generarTicketPDF = async (data: typeof formData, pago: any) => {
+    const ticket = new jsPDF();
+    const pageWidth = ticket.internal.pageSize.getWidth(); // Ancho de la página
+
+    const response = await fetch("/logoBase64.txt");
+    const imagenLogo = await response.text();
+
+    const centerText = (text: string, y: number) => {
+      const textWidth = ticket.getTextWidth(text);
+      const x = (pageWidth - textWidth) / 2 + 20;
+      ticket.text(text, x, y);
+    };
+
+    const rightText = (text: string, y: number) => {
+      const textWidth = ticket.getTextWidth(text);
+      const x = pageWidth - textWidth - 20;
+      ticket.text(text, x, y);
+    };
+
+    const textoMezclado = (textoNegrita: string, textoNormal: string, x: number, y: number, ticket: jsPDF) => {
+      const textoNegritaWidth = ticket.getTextWidth(textoNegrita);
+      ticket.setFont("helvetica", "bold");
+      ticket.text(textoNegrita, x, y);
+      ticket.setFont("helvetica", "normal");
+      ticket.text(textoNormal, x + textoNegritaWidth, y);
+    };
+
+    ticket.setFontSize(12);
+    ticket.setFont("helvetica", "bold");
+
+    ticket.addImage(imagenLogo, "JPEG", 20, 10, 30, 30);
+    centerText("Asociación comercial de Propietarios del Mercado", 18);
+    centerText('"Nstra. Sra.de Las Estrellas"', 25);
+
+    ticket.setFontSize(10);
+    centerText('Fundado el 07 de Abril de 1977 Inscrito en la Sunarp Partida N°11012575.', 32);
+    centerText('Calle 9 Asociación de Viv. "Hijos de Apurimac Primera Etapa - Santa Clara - Ate', 36);
+
+    textoMezclado("N° Recibo: ", pago.numero_pago, 20, 50, ticket);
+    textoMezclado("Socio:  ", data.nombre_socio, 20, 60, ticket);
+
+    const posTextoCompleto = pageWidth - ticket.getTextWidth(`Block:  ${data.nombre_block} - Puesto:  ${data.numero_puesto}`) - 20;
+    const anchoPuesto = ticket.getTextWidth(`Puesto:  ${data.numero_puesto}`);
+    textoMezclado('Block:  ', `${data.nombre_block} - `, posTextoCompleto, 50, ticket);
+    textoMezclado('Puesto:  ', data.numero_puesto, pageWidth - anchoPuesto - 20, 50, ticket);
+
+    const fechaHora = new Date().toLocaleString();
+
+    const anchoFechaHora = ticket.getTextWidth(`Fecha y hora:  ${fechaHora.toString()}`);
+    textoMezclado('Fecha y Hora:  ', fechaHora.toString(), pageWidth - anchoFechaHora - 20, 60, ticket);
+
+    ticket.setFont("helvetica", "bold");
+
+    ticket.text("DESCRIPCIÓN", 30, 80);
+    rightText("IMPORTE", 80);
+
+    let y = 90;
+
+    data.deudas.forEach((deuda, index) => {
+
+      ticket.text(`#${index + 1}`, 20, y);
+      ticket.text(`${deuda.servicio}`, 30, y);
+      rightText(`S/${deuda.importe.toFixed(2)}`, y);
+
+      y += 5; // Espaciado entre las deudas
+
+      // Dibujar una línea semi visible de separación
+      ticket.setDrawColor(200, 200, 200); // Color gris claro
+      ticket.line(20, y, pageWidth - 20, y);
+
+      y += 8; // Espaciado adicional después de la línea
+
     });
 
-    const marginX = 5;
-    let currentY = 10;
+    rightText(`Total a pagar: S/${totalPagar.toFixed(2)}`, y + 10);
 
-    // Título / Empresa
-    pdf.setFontSize(12);
-    pdf.setFont("helvetica", "bold");
-    pdf.text("MERCADO LAS ESTRELLAS", 40, currentY, { align: "center" });
+    const date = new Date();
+    const mes = date.getMonth();
+    const dia = date.getDate();
+    const año = date.getFullYear();
 
-    currentY += 6;
-    pdf.setFontSize(8);
-    pdf.setFont("helvetica", "normal");
-    pdf.text("RUC: 20600123456", 40, currentY, { align: "center" });
+    rightText(`Lima, ${dia} de ${nombreMes(mes)} del ${año}`, y + 30);
 
-    currentY += 4;
-    pdf.text("AV. LAS ESTRELLAS NRO. 123", 40, currentY, { align: "center" });
+    // Generar el PDF
+    const pdfBlob = ticket.output('blob');
+    const pdfUrl = URL.createObjectURL(pdfBlob);
+    const ticketLink = document.createElement('a');
 
-    currentY += 4;
-    pdf.text("SANTA ANITA - LIMA - LIMA", 40, currentY, { align: "center" });
+    const fecha = formatDate(date.toString())
 
-    currentY += 6;
-    pdf.setFontSize(10);
-    pdf.setFont("helvetica", "bold");
-    pdf.text("RECIBO DE PAGO", 40, currentY, { align: "center" });
+    ticketLink.href = pdfUrl;
+    ticketLink.target = "_blank"; // Abrir en una nueva pestaña
+    ticketLink.click();
 
-    currentY += 5;
-    pdf.text(`${serie}-${numero_pago}`, 40, currentY, { align: "center" });
+    ticketLink.download = `Recibo-Pago-${data.nombre_socio}-${fecha}.pdf`; // Nombre personalizado
+    ticketLink.click();
 
-    // Separador
-    currentY += 4;
-    pdf.setLineWidth(0.2);
-    pdf.line(marginX, currentY, 75, currentY);
-
-    // Información del Socio y Puesto
-    currentY += 6;
-    pdf.setFontSize(8);
-    pdf.setFont("helvetica", "bold");
-    pdf.text(`Socio:`, marginX, currentY);
-    pdf.setFont("helvetica", "normal");
-    pdf.text(`${formData.nombre_socio}`, 15, currentY);
-
-    currentY += 4;
-    pdf.setFont("helvetica", "bold");
-    pdf.text(`Block:`, marginX, currentY);
-    pdf.setFont("helvetica", "normal");
-    pdf.text(`${formData.nombre_block}`, 15, currentY);
-
-    currentY += 4;
-    pdf.setFont("helvetica", "bold");
-    pdf.text(`Puesto:`, marginX, currentY);
-    pdf.setFont("helvetica", "normal");
-    pdf.text(`${formData.numero_puesto}`, 18, currentY);
-
-    currentY += 4;
-    pdf.setFont("helvetica", "bold");
-    pdf.text(`Fecha:`, marginX, currentY);
-    pdf.setFont("helvetica", "normal");
-    pdf.text(`${formatDate(new Date().toISOString())}`, 15, currentY);
-
-    // Detalle de servicios
-    currentY += 6;
-    pdf.line(marginX, currentY, 75, currentY);
-
-    currentY += 5;
-    pdf.setFont("helvetica", "bold");
-    pdf.text("SERVICIO", marginX, currentY);
-    pdf.text("IMPORTE", 75, currentY, { align: "right" });
-
-    currentY += 4;
-    pdf.setFont("helvetica", "normal");
-    servicios.forEach((s) => {
-      pdf.text(`${s.servicio}`, marginX, currentY);
-      pdf.text(`S/ ${s.importe.toFixed(2)}`, 75, currentY, { align: "right" });
-      currentY += 4;
-    });
-
-    // Total
-    pdf.line(marginX, currentY, 75, currentY);
-    currentY += 6;
-    pdf.setFontSize(10);
-    pdf.setFont("helvetica", "bold");
-    pdf.text("TOTAL:", marginX, currentY);
-    pdf.text(`S/ ${totalPagar.toFixed(2)}`, 75, currentY, { align: "right" });
-
-    currentY += 10;
-    pdf.setFontSize(8);
-    pdf.setFont("helvetica", "italic");
-    pdf.text("Gracias por su pago", 40, currentY, { align: "center" });
-
-    // Descargar el PDF (se puede abrir en una nueva pestaña o descargar automáticamente)
-    const blob = pdf.output("blob");
-    const url = URL.createObjectURL(blob);
-    window.open(url);
+    // Limpiar la URL temporal después de abrirla
+    URL.revokeObjectURL(pdfUrl);
   };
-
 
   // Contenido del modal
   const renderTabContent = () => {
@@ -378,28 +271,41 @@ const RegistrarPago: React.FC<AgregarProps> = ({ open, handleClose }) => {
           <>
             <AvisoFormulario />
 
-            <Grid container spacing={2}>
+            {/* <pre>{JSON.stringify(formData, null, 2)}</pre> */}
+
+            <Grid container spacing={1}>
               <Grid item xs={12} sm={12} marginTop={1}
                 display="flex" flexDirection={isMobile ? "column" : "row"} gap={1}>
                 {/* Seleccionar socio */}
-                <Box
+                <FormControl
                   sx={{
-                    flexGrow: 1,
-                    width: isMobile ? "100%" : "50%",
+                    width: isMobile ? "100%" : (pago ? "35%" : "50%"),
+                    mb: isMobile ? "15px" : "0px",
                   }}
                 >
                   <Autocomplete
                     value={valueAC}
-                    id="combo-box-demo"
                     options={socios}
-                    getOptionLabel={(option) => option.nombre_completo}
-                    onChange={handleSocioChange}
-                    sx={{ width: "100%" }}
+                    getOptionLabel={(socio: Socio) => socio.nombre_completo}
+                    onChange={(event, newValue: any) => {
+                      if (newValue) {
+                        const socioId = String(newValue.id_socio); // Convertimos id_socio a string
+                        setIdSocioSeleccionado(socioId); // Asignamos el string
+                        setFormData({
+                          ...formData,
+                          id_socio: socioId,
+                          nombre_socio: newValue.nombre_completo,
+                        }); // Mantenemos el string en formData
+                        fetchPuestos(socioId); // Pasamos el id_socio como string
+                        setIdPuestoSeleccionado(""); // Limpiamos el puesto seleccionado
+                        setDeudas([]); // Limpiamos las deudas
+                        setValueAC(newValue);
+                      }
+                    }}
                     renderInput={(params) => (
                       <TextField
                         {...params}
-                        label="Seleccionar Socio *"
-                        variant="outlined"
+                        label="Seleccionar Socio"
                         InputProps={{
                           ...params.InputProps,
                           startAdornment: (
@@ -411,131 +317,239 @@ const RegistrarPago: React.FC<AgregarProps> = ({ open, handleClose }) => {
                         }}
                       />
                     )}
+                    ListboxProps={{
+                      style: {
+                        maxHeight: 270,
+                        overflow: "auto",
+                      },
+                    }}
+                    isOptionEqualToValue={(option, value) =>
+                      option.id_socio === Number(value)
+                    } // Convertimos value a número para la comparación
                   />
-                </Box>
+                </FormControl>
+
+                {pago && (
+                  <TextField
+                    label="Fecha de Pago"
+                    type="date"
+                    value={fechaPago}
+                    onChange={(e) => setFechaPago(e.target.value)}
+                    sx={{ width: isMobile ? "100%" : "20%" }}
+                    InputLabelProps={{ shrink: true }}
+                    size="small"
+                  />
+                )}
 
                 {/* Seleccionar puesto */}
-                <Box
-                  sx={{
-                    flexGrow: 1,
-                    width: isMobile ? "100%" : "50%",
-                  }}
+                <FormControl
+                  sx={{ width: isMobile ? "100%" : "50%" }}
                 >
-                  <FormControl fullWidth required>
-                    <InputLabel id="puesto-label">Seleccionar Puesto *</InputLabel>
-                    <Select
-                      labelId="puesto-label"
-                      id="puesto-select"
-                      value={idPuestoSeleccionado}
-                      label="Seleccionar Puesto *"
-                      onChange={handlePuestoChange}
-                      startAdornment={<Business sx={{ mr: 1, color: "gray" }} />}
-                      disabled={!idSocioSeleccionado}
-                    >
-                      {puestos.map((puesto) => (
-                        <MenuItem key={puesto.id_puesto} value={puesto.id_puesto.toString()}>
-                          {puesto.numero_puesto}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Box>
+                  <InputLabel id="seleccionar-puesto-label">
+                    Seleccionar Puesto
+                  </InputLabel>
+                  <Select
+                    labelId="seleccionar-puesto-label"
+                    label="Seleccionar Puesto"
+                    id="select-puesto"
+                    value={idPuestoSeleccionado}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setIdPuestoSeleccionado(value);
+                      setFormData({
+                        ...formData,
+                        numero_puesto:
+                          puestos.find((p) => p.id_puesto === Number(value))
+                            ?.numero_puesto || "",
+                        nombre_block:
+                          puestos.find((p) => p.id_puesto === Number(value))
+                            ?.block.nombre || "",
+                      });
+                      fetchDeudaPuesto(idSocioSeleccionado, value);
+                    }}
+                    startAdornment={<Business sx={{ mr: 1, color: "gray" }} />}
+                  >
+                    {puestos.map((puesto: Puesto) => (
+                      <MenuItem key={puesto.id_puesto} value={puesto.id_puesto}>
+                        {puesto.numero_puesto}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
               </Grid>
 
-              {/* Detalle de deudas */}
-              <Grid item xs={12}>
-                <TableContainer component={Paper}
+              {/* Tabla deudas */}
+              <Grid item xs={12} sm={12}>
+                <Paper
                   sx={{
-                    height: "200px",
-                    mb: "5px",
-                    borderRadius: "10px",
-                    border: "1px solid #202123",
+                    width: "100%",
+                    overflow: "hidden",
+                    boxShadow: "none",
                   }}
                 >
-                  <Table stickyHeader aria-label="sticky table" size="small">
-                    <TableHead>
-                      <TableRow>
-                        {columns.map((column) => (
-                          <TableCell
-                            key={column.id}
-                            align={column.align}
-                            style={{ minWidth: column.minWidth, backgroundColor: "#202123", color: "white" }}
-                          >
-                            <Typography sx={{ fontWeight: "bold", fontSize: "14px" }}>
+                  <TableContainer
+                    sx={{
+                      height: "130px",
+                      borderRadius: "10px",
+                      border: "1px solid #202123",
+                    }}
+                  >
+                    <Table>
+                      <TableHead sx={{ backgroundColor: "#202123" }}>
+                        <TableRow>
+                          {columns.map((column) => (
+                            <TableCell
+                              key={column.id}
+                              align={column.align}
+                              style={{ minWidth: column.minWidth }}
+                              sx={{ color: "white" }}
+                            >
                               {column.label}
-                            </Typography>
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {deudas.length > 0 ? (
-                        deudas.map((deuda) => (
-                          <TableRow hover role="checkbox" tabIndex={-1} key={deuda.id_deuda_cuota}>
-                            <TableCell align="center">{deuda.anio}</TableCell>
-                            <TableCell align="center">{nombreMes(parseInt(deuda.mes))}</TableCell>
-                            <TableCell align="center">{deuda.servicio_descripcion}</TableCell>
-                            <TableCell align="center">{deuda.total}</TableCell>
-                            <TableCell align="center">{deuda.a_cuenta}</TableCell>
-                            <TableCell align="center">
-                              <TextField
-                                type="number"
-                                size="small"
-                                value={filasSeleccionadas[deuda.id_deuda_cuota] ? (montoPagar[deuda.id_deuda_cuota] || "") : ""}
-                                onChange={(e) => handleMontoPagarChange(deuda.id_deuda_cuota, e.target.value)}
-                                disabled={!filasSeleccionadas[deuda.id_deuda_cuota]}
-                                sx={{
-                                  width: "80px",
-                                  "& .MuiInputBase-input": {
-                                    textAlign: "center",
-                                  },
-                                }}
-                              />
                             </TableCell>
-                            <TableCell align="center">
-                              <Checkbox
-                                color="primary"
-                                checked={!!filasSeleccionadas[deuda.id_deuda_cuota]}
-                                onChange={(e) => handleCheckBoxChange(e.target.checked, deuda.id_deuda_cuota)}
-                              />
+                          ))}
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {idPuestoSeleccionado !== "" && deudas.length === 0 ? (
+                          <TableRow>
+                            <TableCell
+                              colSpan={columns.length}
+                              align="center"
+                              sx={{ color: "#888", fontStyle: "italic", padding: "25px" }}
+                            >
+                              Este socio no tiene deudas pendientes para el puesto seleccionado.
                             </TableCell>
                           </TableRow>
-                        ))
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={7} align="center">
-                            No hay deudas pendientes para este puesto
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
+                        ) : (
+                        deudas.map((deuda) => {
+                          const montoInicial = parseFloat(deuda.total) - parseFloat(deuda.a_cuenta);
+
+                          // Si el monto a pagar se a cambiado, usamos el nuevo monto; si no, usamos el monto inicial
+                          const nuevoMonto =
+                            montoPagar[deuda.id_deuda] !== undefined
+                              ? montoPagar[deuda.id_deuda]
+                              : montoInicial;
+
+                          return (
+                            <TableRow hover tabIndex={-1} key={deuda.id_deuda_cuota}>
+                              {columns.map((column) => {
+                                let value =
+                                  column.id === "accion"
+                                    ? ""
+                                    : (deuda as any)[column.id];
+
+                                if (column.id === "pago") {
+                                  value = nuevoMonto;
+                                }
+
+                                return (
+                                  <TableCell
+                                    key={column.id}
+                                    align="center"
+                                    padding="checkbox"
+                                  >
+                                    {column.id === "accion" ? (
+                                      <Box
+                                        sx={{
+                                          display: "flex",
+                                          gap: 1,
+                                          justifyContent: "center",
+                                        }}
+                                      >
+                                        <IconButton
+                                          aria-label="select_row"
+                                          sx={{ color: "#840202" }}
+                                        >
+                                          <Checkbox
+                                            checked={deuda.checked}
+                                            onChange={(e) =>
+                                              handleCheckBoxChange(
+                                                e.target.checked,
+                                                deuda.id_deuda,
+                                                deuda.id_deuda_cuota,
+                                                deuda.servicio_descripcion,
+                                                montoInicial,
+                                                montoInicial
+                                              )
+                                            }
+                                          />
+                                        </IconButton>
+                                      </Box>
+                                    ) : column.id === "pago" ? (
+                                      <TextField
+                                        id={`pago-${deuda.id_deuda_cuota}`}
+                                        type="number"
+                                        name="pago"
+                                        value={deuda.deuda}
+                                        onChange={(e) => {
+                                          const value =
+                                            parseFloat(e.target.value) || 0;
+                                          actualizarMontoPagar(
+                                            deuda.id_deuda_cuota,
+                                            value,
+                                            montoInicial
+                                          );
+                                          calcularTotalSeleccionado();
+                                        }}
+                                        InputProps={{
+                                          // Si no esta seleccionado no se puede editar el monto a pagar
+                                          readOnly: !deuda.checked,
+                                        }}
+                                        sx={{
+                                          width: "100px",
+                                        }}
+                                      />
+                                    ) : (
+                                      value
+                                    )}
+                                  </TableCell>
+                                );
+                              })}
+                            </TableRow>
+                          );
+                        })
+                        )}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </Paper>
               </Grid>
 
-              {/* Totales */}
-              <Grid item xs={12} display="flex" justifyContent="flex-end" sx={{ mt: 1 }}>
-                <Box
-                  sx={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 1,
-                    width: isMobile ? "100%" : "auto",
+              {/* Monto a pagar */}
+              <Box
+                sx={{
+                  m: "10px 0 0 auto",
+                  pl: isMobile ? "16px" : "0px",
+                }}
+              >
+                {/* <TextField
+                  label="Total deuda"
+                  value={totalDeuda}
+                  focused
+                  InputProps={{
+                    readOnly: true,
+                    startAdornment: <Typography sx={{ mr: 1 }}>S/</Typography>,
                   }}
-                >
-                  <TextField
-                    label="Monto Total a Pagar"
-                    value={totalPagar.toFixed(2)}
-                    InputProps={{
-                      readOnly: true,
-                      startAdornment: <Typography sx={{ mr: 1 }}>S/</Typography>,
-                    }}
-                    sx={{
-                      width: isMobile ? "100%" : "200px",
-                    }}
-                  />
-                </Box>
-              </Grid>
+                  sx={{
+                    mr: 2,
+                    mb: isMobile ? "15px" : "0px",
+                    width: isMobile ? "100%" : "200px",
+                  }}
+                /> */}
+                <TextField
+                  color="success"
+                  label="Monto a pagar"
+                  value={totalPagar}
+                  focused
+                  InputProps={{
+                    readOnly: true,
+                    startAdornment: <Typography sx={{ mr: 1 }}>S/</Typography>,
+                  }}
+                  sx={{
+                    width: isMobile ? "100%" : "200px",
+                  }}
+                />
+              </Box>
             </Grid>
           </>
         );
@@ -545,13 +559,13 @@ const RegistrarPago: React.FC<AgregarProps> = ({ open, handleClose }) => {
   };
 
   return (
-    <Box sx={{ p: 1 }}>
+    <ContenedorMini>
       {renderTabContent()}
-      <div style={{ textAlign: "center", marginTop: "15px" }}>
+      <div style={{ textAlign: "right", marginTop: "15px" }}>
         <Button
           variant="contained"
           sx={{
-            width: "200px",
+            width: "140px",
             height: "45px",
             mr: 1,
             backgroundColor: "#008001",
@@ -562,15 +576,17 @@ const RegistrarPago: React.FC<AgregarProps> = ({ open, handleClose }) => {
           }}
           onClick={registrarPago}
         >
-          Registrar
+          {pago ? "Actualizar" : "Registrar"}
         </Button>
         <Button
+          style={{ marginLeft: "auto", marginRight: "auto" }}
           variant="contained"
           sx={{
-            width: "200px",
+            width: "140px",
             height: "45px",
             backgroundColor: "#202123",
             color: "#fff",
+            mr: 1,
             "&:hover": {
               backgroundColor: "#3F4145",
             },
@@ -580,7 +596,7 @@ const RegistrarPago: React.FC<AgregarProps> = ({ open, handleClose }) => {
           Cerrar
         </Button>
       </div>
-    </Box>
+    </ContenedorMini>
   );
 };
 

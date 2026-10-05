@@ -6,6 +6,7 @@ import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import GenerarCuota from "./GenerarCuota";
 import GenerarCuotaPorPuesto from "./GenerarCuotaPorPuesto";
+import GenerarCuotaPorMultiplesPuestos from "./GenerarCuotaPorMultiplesPuestos";
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -25,7 +26,7 @@ function CustomTabPanel(props: TabPanelProps) {
       aria-labelledby={`simple-tab-${index}`}
       {...other}
     >
-      {value === index && <Box sx={{ p: 0.5 }}>{children}</Box>}
+      {value === index && <Box sx={{ p: 1 }}>{children}</Box>}
     </div>
   );
 }
@@ -37,7 +38,7 @@ function a11yProps(index: number) {
   };
 }
 
-const GenerarCuotaTabs: React.FC<AgregarProps> = ({ open, handleClose }) => {
+const GenerarCuotaTabs: React.FC<AgregarProps> = ({ open, handleClose, cuota }) => {
   const [activeTab, setActiveTab] = useState(0);
   const [loading, setLoading] = useState(false);
 
@@ -59,25 +60,25 @@ const GenerarCuotaTabs: React.FC<AgregarProps> = ({ open, handleClose }) => {
       abrir={open}
       cerrar={handleCloseModal}
       loading={loading}
-      titulo="Generar Cuota"
+      titulo={cuota ? "Editar Cuota" : "Generar Cuota"}
       botones={
-        <Box sx={{ display: "flex", justifyContent: "center", width: "100%", mt: 1 }}>
-          <Button
-            variant="contained"
-            sx={{
-              width: "200px",
-              height: "45px",
-              backgroundColor: "#202123",
-              color: "#fff",
-              "&:hover": {
-                backgroundColor: "#3F4145",
-              },
-            }}
-            onClick={handleCloseModal}
-          >
-            Cerrar
-          </Button>
-        </Box>
+        <Button
+          style={{ marginLeft: "auto", marginRight: "auto" }}
+          variant="contained"
+          sx={{
+            width: "140px",
+            height: "45px",
+            backgroundColor: "#202123",
+            color: "#fff",
+            mr: 1,
+            "&:hover": {
+              backgroundColor: "#3F4145",
+            },
+          }}
+          onClick={handleCloseModal}
+        >
+          Cerrar
+        </Button>
       }
     >
 
@@ -85,15 +86,17 @@ const GenerarCuotaTabs: React.FC<AgregarProps> = ({ open, handleClose }) => {
         <Tabs value={value} onChange={handleChange}>
           <Tab label="Para todos" {...a11yProps(0)} />
           <Tab label="Por puesto" {...a11yProps(1)} />
+          <Tab label="Por múltiples puestos" {...a11yProps(2)} />
         </Tabs>
       </Box>
       <CustomTabPanel value={value} index={0}>
-        <GenerarCuota
-        ></GenerarCuota>
+        <GenerarCuota cuota={cuota}></GenerarCuota>
       </CustomTabPanel>
       <CustomTabPanel value={value} index={1}>
-        <GenerarCuotaPorPuesto
-        ></GenerarCuotaPorPuesto>
+        <GenerarCuotaPorPuesto cuota={cuota}></GenerarCuotaPorPuesto>
+      </CustomTabPanel>
+      <CustomTabPanel value={value} index={2}>
+        <GenerarCuotaPorMultiplesPuestos cuota={cuota}></GenerarCuotaPorMultiplesPuestos>
       </CustomTabPanel>
     </ContenedorModal>
   );

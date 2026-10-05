@@ -6,6 +6,8 @@ export interface Socio {
 export interface Puesto {
   id_puesto: string;
   numero_puesto: string;
+  id_socio?: number | string | null;
+  socio?: string;
 }
 
 export interface Column {
@@ -19,6 +21,7 @@ export interface Column {
 export interface DetallePago {
   descripcion: string;
   importe: string;
+  puesto?: string;
 }
 
 export interface Data {

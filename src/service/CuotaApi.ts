@@ -1,13 +1,20 @@
 export const Api_Global_Cuotas = {
   cuotas: {
-    listar: (page: number = 1, anio: string, mes: string) =>
-      `/cuotas?page=${page}&anio=${anio}&mes=${mes}`,
+    listar: (page: number = 1, anio?: string, mes?: string, nombreServicio?: string, tipoServicio?: string) => {
+      const params = new URLSearchParams({ page: page.toString() });
+      if (anio && anio.trim() !== '') params.append('anio', anio);
+      if (mes && mes.trim() !== '') params.append('mes', mes);
+      if (nombreServicio && nombreServicio.trim() !== '') params.append('nombre_servicio', nombreServicio);
+      if (tipoServicio && tipoServicio.trim() !== '') params.append('tipo_servicio', tipoServicio);
+      return `/cuotas?${params.toString()}`;
+    },
     registrar: () => `/cuotas`,
     registrarPorPuesto: () => `/cuotas/por-puestos`,
+    registrarPorMultiplesPuestos: () => `/cuotas/por-multiples-puestos`,
     exportar: () => `cuotas/exportar`,
     buscar: (page: number, per_page: number) => `/cuotas?page=${page}&per_page=${per_page}`,
-    actualizar: (id: number | string) => `/cuotas/${id}`,
-    eliminar: (id: number | string) => `/cuotas/${id}`,
+    editar: (id_cuota: string | undefined) => `/cuotas/${id_cuota}`,
+    eliminar: (id_cuota: string | undefined) => `/cuotas/${id_cuota}`,
   },
   servicio: {
     listar: () => `/servicios?per_page=1000`,

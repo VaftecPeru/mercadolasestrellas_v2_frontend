@@ -28,6 +28,8 @@ import ContenedorModal from '../Shared/ContenedorModal';
 import { AvisoFormulario, SeparadorBloque, TxtFormulario } from '../Shared/ElementosFormulario';
 import { reFormatDate } from '../../Utils/dateUtils';
 import apiClient from '../../Utils/apliClient';
+import { ordenarPuestosPorNumero } from '../../Utils/ordenarPuestos';
+import { ordenarSociosPorNombre } from '../../Utils/ordenarSocios';
 import { Api_Global_Puestos } from '../../service/PuestoApi';
 import { Api_Global_Blocks } from '../../service/BlocksApi';
 import { Api_Global_GiroNegocio } from '../../service/GiroNegocioApi';
@@ -51,6 +53,7 @@ const RegistrarPuesto: React.FC<AgregarProps> = ({ open, handleClose, puesto }) 
   const [puestosSinSocio, setPuestosSinSocio] = useState<PuestoSelect[]>([]);
   const [puestosSinInquilino, setPuestosSinInquilino] = useState<PuestoSelect[]>([]);
   const [socios, setSocios] = useState<SocioSelect[]>([]);
+  const [sociosActivos, setSociosActivos] = useState<SocioSelect[]>([]);
   const [puestosSocio, setPuestosSocios] = useState<PuestoSelect[]>([]);
 
   const [bloqueSeleccionado, setBloqueSeleccionado] = useState<number | 0>(0);
@@ -109,25 +112,25 @@ const RegistrarPuesto: React.FC<AgregarProps> = ({ open, handleClose, puesto }) 
     if (puesto) {
       setActiveTab(0);
       setFormDataPuesto({
-        id_gironegocio: puesto.giro_negocio?.id_gironegocio || 0,
-        id_block: puesto.block?.id_block || 0,
+        id_gironegocio: puesto.giro_negocio.id_gironegocio || 0,
+        id_block: puesto.block.id_block || 0,
         numero_puesto: puesto.numero_puesto || "",
         area: puesto.area || "",
         fecha_registro: reFormatDate(puesto.fecha_registro) || "",
       });
       setformDataInquilino({
-        id_inquilino: puesto.inquilino?.id_inquilino || "",
-        nombre: puesto.inquilino?.nombre || "",
-        apellido_paterno: puesto.inquilino?.apellido_paterno || "",
-        apellido_materno: puesto.inquilino?.apellido_materno || "",
-        dni: puesto.inquilino?.dni || "",
-        telefono: puesto.inquilino?.telefono || "",
-        bloque: puesto.block?.id_block || 0,
+        id_inquilino: puesto.inquilino.id_inquilino || "",
+        nombre: puesto.inquilino.nombre || "",
+        apellido_paterno: puesto.inquilino.apellido_paterno || "",
+        apellido_materno: puesto.inquilino.apellido_materno || "",
+        dni: puesto.inquilino.dni || "",
+        telefono: puesto.inquilino.telefono || "",
+        bloque: puesto.block.id_block || 0,
         id_puesto: puesto.id_puesto || 0,
       });
-      setBloqueInqSeleccionado(puesto.block?.id_block || "");
+      setBloqueInqSeleccionado(puesto.block.id_block);
       setPuestoInqSeleccionado(puesto.id_puesto);
-      setGiroSeleccionado(puesto.giro_negocio?.id_gironegocio || 0);
+      setGiroSeleccionado(puesto.giro_negocio.id_gironegocio);
     }
   }, [puesto]);
 
@@ -167,7 +170,7 @@ const RegistrarPuesto: React.FC<AgregarProps> = ({ open, handleClose, puesto }) 
   const fetchPuestosSinSocio = async (id_block: number) => {
     try {
       const response = await apiClient.get(Api_Global_Puestos.puestos.sinSocio(id_block));
-      setPuestosSinSocio(response.data);
+      setPuestosSinSocio(ordenarPuestosPorNumero(response.data));
     } catch (error) {
       console.error("Error al obtener los puestos", error);
     }
@@ -177,19 +180,29 @@ const RegistrarPuesto: React.FC<AgregarProps> = ({ open, handleClose, puesto }) 
   const fetchPuestosSinInquilino = async (id_block: number) => {
     try {
       const response = await apiClient.get(Api_Global_Puestos.puestos.sinInquilino(id_block));
-      setPuestosSinInquilino(response.data);
+      setPuestosSinInquilino(ordenarPuestosPorNumero(response.data));
     } catch (error) {
       console.error("Error al obtener los puestos", error);
     }
   };
 
-  // Obtener socios
-  const fetchSocios = async () => {
+  // Obtener todos los socios (activos e inactivos) — para transferencia: dueño actual
+  const fetchTodosSocios = async () => {
     try {
-      const response = await apiClient.get(Api_Global_Socios.socios.buscar(1, 150));
-      setSocios(response.data.data);
+      const response = await apiClient.get(Api_Global_Socios.socios.buscar(1, 500));
+      setSocios(ordenarSociosPorNombre(response.data.data));
     } catch (error) {
       console.error("Error al obtener el listado de socios", error);
+    }
+  };
+
+  // Obtener solo socios activos — para asignar puesto y nuevo dueño en transferencia
+  const fetchSociosActivos = async () => {
+    try {
+      const response = await apiClient.get(Api_Global_Socios.socios.buscarActivos(1, 500));
+      setSociosActivos(ordenarSociosPorNombre(response.data.data));
+    } catch (error) {
+      console.error("Error al obtener el listado de socios activos", error);
     }
   };
 
@@ -197,7 +210,7 @@ const RegistrarPuesto: React.FC<AgregarProps> = ({ open, handleClose, puesto }) 
   const fetchPuestosSocio = async (idSocio: string) => {
     try {
       const response = await apiClient.get(Api_Global_Puestos.puestos.buscar(1, 500, "", "", "", idSocio));
-      setPuestosSocios(response.data.data);
+      setPuestosSocios(ordenarPuestosPorNumero(response.data.data));
     } catch (error) {
       console.error("Error al obtener los puestos", error);
     }
@@ -206,7 +219,8 @@ const RegistrarPuesto: React.FC<AgregarProps> = ({ open, handleClose, puesto }) 
   useEffect(() => {
     fetchBloques();
     fechGiroNegocio();
-    fetchSocios();
+    fetchTodosSocios();
+    fetchSociosActivos();
   }, []);
 
   // Manejar los cambios del formulario Registrar Puesto
@@ -376,7 +390,7 @@ const RegistrarPuesto: React.FC<AgregarProps> = ({ open, handleClose, puesto }) 
     try {
       const response = await apiClient.put(Api_Global_Puestos.puestos.editar(puesto?.id_puesto), dataToSend);
       if (response.status === 200) {
-        const mensaje = response.data.message || `Los datos del puesto:¿ fueron actualizados con éxito`;
+        const mensaje = response.data.message ||`Los datos del puesto:¿ fueron actualizados con éxito`;
         mostrarAlerta("Actualización exitosa", mensaje, "success").then(() => {
           handleCloseModal();
         });
@@ -384,7 +398,7 @@ const RegistrarPuesto: React.FC<AgregarProps> = ({ open, handleClose, puesto }) 
         mostrarAlerta("Error");
       }
     } catch (error) {
-      manejarError(error);
+      manejarError(error);  
     } finally {
       setLoading(false);
     }
@@ -418,7 +432,7 @@ const RegistrarPuesto: React.FC<AgregarProps> = ({ open, handleClose, puesto }) 
     setLoading(true);
     const { id_inquilino, bloque, ...dataToSend } = formDataInquilino;
     try {
-      const response = await apiClient.post(Api_Global_Puestos.inquilinos.registrar(), dataToSend);
+      const response = await apiClient.post(Api_Global_Puestos.inquilinos.registrar(), dataToSend); 
       if (response.status === 200) {
         const mensaje = response.data.message || "El inquilino se registró correctamente";
         mostrarAlerta("Registro exitoso", mensaje, "success").then(() => {
@@ -440,7 +454,7 @@ const RegistrarPuesto: React.FC<AgregarProps> = ({ open, handleClose, puesto }) 
     setLoading(true);
     const { bloque, ...dataToSend } = formDataInquilino;
     try {
-      const response = await apiClient.put(Api_Global_Puestos.inquilinos.editar((puesto?.inquilino?.id_inquilino)), dataToSend);
+      const response = await apiClient.put(Api_Global_Puestos.inquilinos.editar((puesto?.inquilino?.id_inquilino)), dataToSend); 
       if (response.status === 200) {
         const mensaje = response.data.message || "Los datos del inqulino se fueron actualizados correctamente";
         mostrarAlerta("Registro exitoso", mensaje, "success").then(() => {
@@ -740,7 +754,7 @@ const RegistrarPuesto: React.FC<AgregarProps> = ({ open, handleClose, puesto }) 
 
                 <FormControl fullWidth required>
                   <Autocomplete
-                    options={socios}
+                    options={sociosActivos}
                     getOptionLabel={(socio) => socio.nombre_completo.toString()} // Mostrar el nombre completo del socio
                     onChange={(event, newValue) => {
                       if (newValue) {
@@ -890,7 +904,7 @@ const RegistrarPuesto: React.FC<AgregarProps> = ({ open, handleClose, puesto }) 
                             puestoSelect.numero_puesto.toString()
                           } // Convertir numero_puesto a string para mostrarlo correctamente
                           value={
-                            puestoInqSeleccionado
+                            puestoInqSeleccionado 
                               ? puestosSinInquilino.find((puesto) => puesto.id_puesto === puestoInqSeleccionado
                               ) || null : null
                           }
@@ -934,7 +948,7 @@ const RegistrarPuesto: React.FC<AgregarProps> = ({ open, handleClose, puesto }) 
                     </>
                   )}
 
-                  {puesto && puesto.inquilino?.id_inquilino && (
+                  {puesto && puesto.inquilino.id_inquilino && (
                     <Button
                       fullWidth
                       variant="contained"
@@ -996,9 +1010,9 @@ const RegistrarPuesto: React.FC<AgregarProps> = ({ open, handleClose, puesto }) 
           </>
         );
       case 5: // PAGO TRANSFERENCIA PUESTO
-        return (
+        return(
           <>
-            <AvisoFormulario />
+            <AvisoFormulario/>
             {/* <pre>{JSON.stringify(formDataTransferencia, null, 2)}</pre> */}
             <Grid container spacing={2}>
               <Grid item xs={12} sm={6}>
@@ -1079,7 +1093,7 @@ const RegistrarPuesto: React.FC<AgregarProps> = ({ open, handleClose, puesto }) 
 
                 <FormControl fullWidth required>
                   <Autocomplete
-                    options={socios}
+                    options={sociosActivos}
                     getOptionLabel={(socio) => socio.nombre_completo} // Mostrar el nombre completo del socio
                     onChange={(event, newValue) => {
                       if (newValue) {
@@ -1135,11 +1149,11 @@ const RegistrarPuesto: React.FC<AgregarProps> = ({ open, handleClose, puesto }) 
       activeTab={activeTab}
       handleTabChange={handleTabChange}
       tabs={[
-        puesto ? "Editar Puesto" : "Registrar Puesto",
-        "Asignar Puesto",
-        puesto ? "Editar Inquilino" : "Asignar Inquilino",
-        "Registrar Bloque",
-        "Registrar Giro de Negocio",
+        puesto ? "Editar Puesto" : "Registrar Puesto", 
+        "Asignar Puesto", 
+        puesto ? "Editar Inquilino" : "Asignar Inquilino", 
+        "Registrar Bloque", 
+        "Registrar Giro de Negocio", 
         "Pagos transferencia de puestos"
       ]}
       botones={(
@@ -1147,15 +1161,15 @@ const RegistrarPuesto: React.FC<AgregarProps> = ({ open, handleClose, puesto }) 
           loading={loading}
           obj={puesto}
           action={async (e) => {
-            let result;
+            let result; 
             if (activeTab === 0) {
-              const mensaje = puesto ? "¿Está seguro de editar este Puesto?" : "¿Está seguro de registrar un nuevo Puesto?";
-              const result = await mostrarAlertaConfirmacion(mensaje);
+              const mensaje = puesto? "¿Está seguro de editar este Puesto?" : "¿Está seguro de registrar un nuevo Puesto?";
+              const result = await mostrarAlertaConfirmacion(mensaje); 
               if (result.isConfirmed) {
                 if (puesto) {
                   editarPuesto(e);
                 } else {
-                  registrarPuesto(e);
+                  registrarPuesto(e); 
                 }
               }
             }

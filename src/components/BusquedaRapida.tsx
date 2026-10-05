@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react'
 import { Autocomplete, Box, Button, FormControl, Pagination, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from '@mui/material';
 import useResponsive from '../hooks/Responsive/useResponsive';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import LoadingSpinner from './PogressBar/ProgressBarV1';
 import BotonAgregar from './Shared/BotonAgregar';
 import BotonExportar from './Shared/BotonExportar';
@@ -10,6 +9,7 @@ import { KeyboardReturn } from '@mui/icons-material';
 import ContenedorBotones from './Shared/ContenedorBotones';
 import apiClient from "../Utils/apliClient";
 import { Api_Global_Puestos } from "../service/PuestoApi";
+import { ordenarPuestosPorNumero } from "../Utils/ordenarPuestos";
 import { Api_Global_Reportes } from "../service/ReporteApi";
 
 interface Puesto {
@@ -54,7 +54,6 @@ const BusquedaRapida = () => {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
-  // Paginación
   const [paginaActual, setPaginaActual] = useState(1);
   const [totalPaginas, setTotalPaginas] = useState(1);
 
@@ -70,8 +69,8 @@ const BusquedaRapida = () => {
   useEffect(() => {
     const fetchPuestos = async () => {
       try {
-        const response = await apiClient.get(Api_Global_Puestos.puestos.buscar(1, 15, "", "", ""));
-        setPuestos(response.data.data);
+        const response = await apiClient.get(Api_Global_Puestos.puestos.seleccionar());
+        setPuestos(ordenarPuestosPorNumero(response.data));
       } catch (error) {
       }
     }
@@ -94,42 +93,44 @@ const BusquedaRapida = () => {
 
   // Metodo para exportar el reporte de deudas
   const handleExportReporteDeudas = async (e: React.MouseEvent<HTMLButtonElement>) => {
-
     e.preventDefault();
 
-    try {
-      const response = await apiClient.get(Api_Global_Reportes.reportes.deudasExportar(),
-        { responseType: 'blob' }
-      );
-
-      // Si no hay problemas
-      if (response.status === 200) {
-        if (exportFormat === "1") { // PDF
-          alert("En proceso de actualizacion. Intentelo más tarde.");
-        } else if (exportFormat === "2") { // Excel
-          alert("El reporte de deudas se descargará en breve.");
-          const url = window.URL.createObjectURL(new Blob([response.data]));
-          const link = document.createElement('a');
-          link.href = url;
-          const hoy = new Date();
-          const formatDate = hoy.toISOString().split('T')[0];
-          link.setAttribute('download', `reporte-deudas-${formatDate}.xlsx`); // Nombre del archivo
-          document.body.appendChild(link);
-          link.click();
-          link.parentNode?.removeChild(link);
-          setExportFormat("");
-        } else {
-          alert("Formato de exportación no válido.");
-        }
-      } else {
-        alert("Ocurrio un error al exportar. Intentelo nuevamente más tarde.");
-      }
-
-    } catch (error) {
-      console.log("Error:", error);
-      alert("Ocurrio un error al exportar. Intentelo nuevamente más tarde.");
+    if (!puestoSeleccionado) {
+      alert("Seleccione un puesto antes de exportar.");
+      return;
     }
 
+    if (exportFormat !== "1" && exportFormat !== "2") {
+      alert("Seleccione un formato de exportación.");
+      return;
+    }
+
+    const formato = exportFormat === "1" ? "pdf" : "xlsx";
+
+    try {
+      const response = await apiClient.get(
+        Api_Global_Reportes.reportes.deudasExportar(formato),
+        {
+          params: { id_puesto: puestoSeleccionado },
+          responseType: "blob",
+        }
+      );
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      const fecha = new Date().toISOString().split("T")[0];
+
+      link.href = url;
+      link.setAttribute("download", `reporte-deudas-${fecha}.${formato}`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      setExportFormat("");
+    } catch (error) {
+      console.error("Error al exportar reporte de deudas:", error);
+      alert("Ocurrió un error al exportar. Inténtelo nuevamente.");
+    }
   };
 
   return (
@@ -251,18 +252,20 @@ const BusquedaRapida = () => {
                     <TableHead>
                       <TableRow>
                         {isTablet || isMobile
-                          ? <Typography
-                            sx={{
-                              mt: 2,
-                              mb: 1,
-                              fontSize: "1.5rem",
-                              fontWeight: "bold",
-                              textTransform: "uppercase",
-                              textAlign: "center",
-                            }}
-                          >
-                            Lista de Deudas
-                          </Typography>
+                          ? <TableCell colSpan={columns.length}>
+                            <Typography
+                              sx={{
+                                mt: 2,
+                                mb: 1,
+                                fontSize: "1.5rem",
+                                fontWeight: "bold",
+                                textTransform: "uppercase",
+                                textAlign: "center",
+                              }}
+                            >
+                              Lista de Deudas
+                            </Typography>
+                          </TableCell>
                           : columns.map((column) => (
                             <TableCell
                               key={column.id}
@@ -281,7 +284,7 @@ const BusquedaRapida = () => {
                       {deudas.length > 0
                         ? deudas
                           .map((deuda) => (
-                            <TableRow hover role="checkbox" tabIndex={-1}>
+                            <TableRow key={deuda.id_cuota} hover role="checkbox" tabIndex={-1}>
                               {isTablet || isMobile
                                 ? <TableCell padding="checkbox" colSpan={columns.length}>
                                   <Box sx={{ display: "flex", flexDirection: "column" }}>
@@ -313,7 +316,7 @@ const BusquedaRapida = () => {
                                         {columns.map((column) => {
                                           const value = column.id === "accion" ? "" : (deuda as any)[column.id];
                                           return (
-                                            <Box>
+                                            <Box key={column.id}>
                                               {/* Mostrar titulo del campo */}
                                               <Typography sx={{ fontWeight: "bold", mb: 1 }}>
                                                 {column.label}
