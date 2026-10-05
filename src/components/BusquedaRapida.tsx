@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react'
 import { Autocomplete, Box, Button, FormControl, Pagination, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from '@mui/material';
 import useResponsive from '../hooks/Responsive/useResponsive';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import LoadingSpinner from './PogressBar/ProgressBarV1';
 import BotonAgregar from './Shared/BotonAgregar';
 import BotonExportar from './Shared/BotonExportar';
@@ -94,42 +93,44 @@ const BusquedaRapida = () => {
 
   // Metodo para exportar el reporte de deudas
   const handleExportReporteDeudas = async (e: React.MouseEvent<HTMLButtonElement>) => {
-
     e.preventDefault();
 
-    try {
-      const response = await apiClient.get(Api_Global_Reportes.reportes.deudasExportar(),
-        { responseType: 'blob' }
-      );
-
-      // Si no hay problemas
-      if (response.status === 200) {
-        if (exportFormat === "1") { // PDF
-          alert("En proceso de actualizacion. Intentelo más tarde.");
-        } else if (exportFormat === "2") { // Excel
-          alert("El reporte de deudas se descargará en breve.");
-          const url = window.URL.createObjectURL(new Blob([response.data]));
-          const link = document.createElement('a');
-          link.href = url;
-          const hoy = new Date();
-          const formatDate = hoy.toISOString().split('T')[0];
-          link.setAttribute('download', `reporte-deudas-${formatDate}.xlsx`); // Nombre del archivo
-          document.body.appendChild(link);
-          link.click();
-          link.parentNode?.removeChild(link);
-          setExportFormat("");
-        } else {
-          alert("Formato de exportación no válido.");
-        }
-      } else {
-        alert("Ocurrio un error al exportar. Intentelo nuevamente más tarde.");
-      }
-
-    } catch (error) {
-      console.log("Error:", error);
-      alert("Ocurrio un error al exportar. Intentelo nuevamente más tarde.");
+    if (!puestoSeleccionado) {
+      alert("Seleccione un puesto antes de exportar.");
+      return;
     }
 
+    if (exportFormat !== "1" && exportFormat !== "2") {
+      alert("Seleccione un formato de exportación.");
+      return;
+    }
+
+    const formato = exportFormat === "1" ? "pdf" : "xlsx";
+
+    try {
+      const response = await apiClient.get(
+        Api_Global_Reportes.reportes.deudasExportar(formato),
+        {
+          params: { id_puesto: puestoSeleccionado },
+          responseType: "blob",
+        }
+      );
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      const fecha = new Date().toISOString().split("T")[0];
+
+      link.href = url;
+      link.setAttribute("download", `reporte-deudas-${fecha}.${formato}`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      setExportFormat("");
+    } catch (error) {
+      console.error("Error al exportar reporte de deudas:", error);
+      alert("Ocurrió un error al exportar. Inténtelo nuevamente.");
+    }
   };
 
   return (
