@@ -69,7 +69,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
   useEffect(() => {
     if (!usuario?.id_usuario) return;
 
-    apiClient.get(`/setup/modulos-web?id_usuario=${usuario.id_usuario}`)
+    apiClient.get("/setup/modulos-web")
       .then((response) => {
         setModulos(response.data || []);
       })
