@@ -4,6 +4,6 @@ export interface AuthContextType {
   autenticado: boolean;
   usuario: Usuario | null;
   login: (user: Usuario) => void;
-  logout: () => void;
-  getDataSesion: () => void;
+  logout: () => Promise<void>;
+  getDataSesion: () => Promise<Usuario | undefined>;
 }
