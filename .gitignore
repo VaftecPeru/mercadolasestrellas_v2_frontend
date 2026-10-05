@@ -7,7 +7,7 @@ build/
 .next/
 out/
 
-# Variables de entorno 
+# Variables de entorno (seguridad: nunca subas tus llaves API)
 .env
 .env.local
 .env.development.local
@@ -18,3 +18,6 @@ yarn-debug.log*
 yarn-error.log*
 .DS_Store
 Thumbs.db
+*.yaml
+
+*.md

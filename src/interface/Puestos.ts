@@ -4,16 +4,9 @@ export interface Puesto {
     area: string;
     estado: string;
     fecha_registro: string;
-    socio: {
-        id_socio: number;
-        persona: {
-            nombre: string;
-            apellido_paterno: string;
-            apellido_materno: string;
-        }
-    } | null;
-    giro_negocio: GiroNegocio | null;
-    block: Bloque | null;
+    socio: string;
+    giro_negocio: GiroNegocio
+    block: Bloque;
     inquilino: {
         id_inquilino: string,
         nombre: string,
@@ -21,7 +14,7 @@ export interface Puesto {
         apellido_paterno: string,
         dni: string,
         telefono: string,
-    } | null;
+    };
 }
 
 export interface Bloque {

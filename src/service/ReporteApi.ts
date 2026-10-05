@@ -16,7 +16,15 @@ export const Api_Global_Reportes = {
   
     deudas: (page: number, per_page: number, idPuesto: number) =>
       `/reportes/deudas?page=${page}&per_page=${per_page}&id_puesto=${idPuesto}`,
-    deudasExportar: () => `/reporte-deudas/exportar`,
+    deudasExportar: (formato: "xlsx" | "pdf" = "xlsx") =>
+      formato === "pdf" ? `/reportes/deudas/exportar-pdf` : `/reportes/deudas/exportar`,
+    deudasPendientes: (page: number, per_page: number, idPuesto: number, nombreSocio: string) => {
+      let url = `/deudas/pendientes?page=${page}&per_page=${per_page}&nombre_socio=${encodeURIComponent(nombreSocio)}`;
+      if (idPuesto) {
+        url += `&id_puesto=${idPuesto}`;
+      }
+      return url;
+    },
 
     cuotaPorMetros: (page: number, per_page: number, idCuota: number) =>
       `/reportes/cuota-por-metros?page=${page}&per_page=${per_page}&id_cuota=${idCuota}`,
@@ -24,8 +32,22 @@ export const Api_Global_Reportes = {
       `/reportes/cuota-por-puestos?page=${page}&per_page=${per_page}&id_puesto=${idPuesto}`,
 
     
-    pagos: (page: number, per_page: number, idPuesto: number) =>
-      `/reportes/pagos?page=${page}&per_page=${per_page}&id_puesto=${idPuesto}`,
+    pagos: (page: number, per_page: number, idPuesto: number, nombreSocio: string = "", idSocio: number | string = "") => {
+      let url = `/reportes/pagos?page=${page}&per_page=${per_page}`;
+      if (idPuesto) {
+        url += `&id_puesto=${idPuesto}`;
+      }
+      if (idSocio) {
+        url += `&id_socio=${idSocio}`;
+      }
+      if (nombreSocio) {
+        url += `&nombre_socio=${encodeURIComponent(nombreSocio)}`;
+      }
+      return url;
+    },
+
+    socioDeudas: (idSocio: number) => `/deudas/pendientes?per_page=500&id_socio=${idSocio}`,
+    socioPagos: (idSocio: number) => `/reportes/pagos?per_page=500&id_socio=${idSocio}`,
 
     resumenPorPuestos: (page: number, per_page: number, idPuesto: number) =>
       `/reportes/resumen-por-puestos?page=${page}&per_page=${per_page}&id_puesto=${idPuesto}`,

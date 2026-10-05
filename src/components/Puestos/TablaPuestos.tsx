@@ -376,8 +376,8 @@ const TablaPuestos: React.FC = () => {
                                 )
                               }
                             >
-                              {puesto.block?.nombre || 'S/N'} - {puesto.numero_puesto} - {" "}
-                              {puesto.giro_negocio?.nombre || 'S/N'}
+                              {puesto.block.nombre} - {puesto.numero_puesto} - {" "}
+                              {puesto.giro_negocio.nombre}
                             </Typography>
                             {mostrarDetalles === puesto.id_puesto && (
                               <Box
@@ -402,13 +402,11 @@ const TablaPuestos: React.FC = () => {
                                         {column.label}
                                       </Typography>
                                       {/* Mostrar los detalles del puesto */}
-                                      <Box>
+                                      <Typography>
                                         {column.id === "giro_negocio" ? (
-                                          puesto.giro_negocio?.nombre || 'S/N'
+                                          puesto.giro_negocio.nombre
                                         ) : column.id === "block" ? (
-                                          puesto.block?.nombre || 'S/N'
-                                        ) : column.id === "socio" ? (
-                                          puesto.socio?.persona?.nombre ? `${puesto.socio.persona?.nombre} ${puesto.socio.persona?.apellido_paterno}` : 'Sin socio'
+                                          puesto.block.nombre
                                         ) : column.id === "accion" ? (
                                           <Box
                                             sx={{
@@ -452,7 +450,7 @@ const TablaPuestos: React.FC = () => {
                                         ) : (
                                           value
                                         )}
-                                      </Box>
+                                      </Typography>
                                     </Box>
                                   );
                                 })}
@@ -473,15 +471,13 @@ const TablaPuestos: React.FC = () => {
                             >
                               {/* Acciones */}
                               {column.id === "giro_negocio" ? (
-                                puesto.giro_negocio?.nombre || 'S/N'
+                                puesto.giro_negocio.nombre
                               ) : column.id === "block" ? (
-                                puesto.block?.nombre || 'S/N'
+                                puesto.block.nombre
                               ) : column.id === "inquilino" ? (
-                                puesto.inquilino?.nombre
+                                puesto.inquilino.nombre
                                   ? `${puesto.inquilino.nombre} ${puesto.inquilino.apellido_paterno} ${puesto.inquilino.apellido_materno}`
                                   : "No asignado"
-                              ) : column.id === "socio" ? (
-                                puesto.socio?.persona?.nombre ? `${puesto.socio.persona?.nombre} ${puesto.socio.persona?.apellido_paterno}` : 'Sin socio'
                               ) : column.id === "estado" ? (
                                 parseInt(value) === 2 ? "Ocupado" : "Libre"
                               ) : column.id === "accion" ? (

@@ -25,9 +25,11 @@ import { SelectChangeEvent } from "@mui/material/Select";
 import { manejarError, mostrarAlerta, mostrarAlertaConfirmacion } from "../Alerts/Registrar";
 import BotonesModal from "../Shared/BotonesModal";
 import ContenedorModal from "../Shared/ContenedorModal";
+import ModalCredenciales, { CredencialSocio } from "./ModalCredenciales";
 import { AvisoFormulario, SeparadorBloque, TxtFormulario } from "../Shared/ElementosFormulario";
 import { reFormatDate } from "../../Utils/dateUtils";
 import apiClient from "../../Utils/apliClient";
+import { ordenarPuestosPorNumero } from "../../Utils/ordenarPuestos";
 import { Api_Global_Socios } from "../../service/SocioApi";
 import { Bloque, Puesto } from "../../interface/Puestos";
 import { AgregarProps } from "../../interface/Socios";
@@ -42,6 +44,10 @@ const Agregar: React.FC<AgregarProps> = ({ open, handleClose, socio }) => {
   const [activeTab] = useState(0)
 
   const [loading, setLoading] = useState(false); // Estado de loading
+
+  // Credenciales generadas al registrar un nuevo socio (mostradas una sola vez)
+  const [credenciales, setCredenciales] = useState<CredencialSocio[]>([]);
+  const [modalCredencialesAbierto, setModalCredencialesAbierto] = useState(false);
 
   const [formData, setFormData] = useState({
     nombre: "",
@@ -114,7 +120,7 @@ const Agregar: React.FC<AgregarProps> = ({ open, handleClose, socio }) => {
   const fetchPuestos = async (id_block: number) => {
     try {
       const response = await apiClient.get(Api_Global_Socios.puestos.obtenerPuestos(id_block)); // publico
-      setPuestos(response.data);
+      setPuestos(ordenarPuestosPorNumero(response.data));
     } catch (error) {
     }
   };
@@ -141,9 +147,19 @@ const Agregar: React.FC<AgregarProps> = ({ open, handleClose, socio }) => {
       const response = await apiClient.post(Api_Global_Socios.socios.registrar(), dataToSend);
       if (response.status === 200) {
         const mensaje = response.data.message;
-        mostrarAlerta("Registro exitoso", mensaje, "success").then(() => {
-          handleCloseModal();
-        });
+        if (response.data.acceso) {
+          setCredenciales([
+            {
+              nombre_usuario: response.data.acceso.nombre_usuario,
+              password_temporal: response.data.acceso.password_temporal,
+            },
+          ]);
+          setModalCredencialesAbierto(true);
+        } else {
+          mostrarAlerta("Registro exitoso", mensaje, "success").then(() => {
+            handleCloseModal();
+          });
+        }
       } else {
         mostrarAlerta(
           "error"
@@ -180,6 +196,11 @@ const Agregar: React.FC<AgregarProps> = ({ open, handleClose, socio }) => {
   const handleCloseModal = () => {
     limpiarCamposSocio();
     handleClose();
+  };
+
+  const cerrarModalCredenciales = () => {
+    setModalCredencialesAbierto(false);
+    handleCloseModal();
   };
 
   const renderTabContent = () => {
@@ -364,6 +385,38 @@ const Agregar: React.FC<AgregarProps> = ({ open, handleClose, socio }) => {
                   </Grid>
                 )}
 
+                {socio && (
+                  <Grid item xs={12} sm={12} sx={{ mb: 2 }}>
+                    <SeparadorBloque nombre="Puesto asignado" />
+
+                    {socio.puestos && socio.puestos.length > 0 ? (
+                      socio.puestos.map((puesto) => {
+                        const inactivo = String(puesto.activo) === "0";
+                        return (
+                          <TextField
+                            key={puesto.id_puesto}
+                            fullWidth
+                            disabled
+                            label="Nro. Puesto"
+                            value={`${puesto.block?.nombre ?? ""} - ${puesto.numero_puesto}`}
+                            helperText={inactivo ? "Estado: Inactivo" : undefined}
+                            sx={{ mb: 2 }}
+                            InputProps={{
+                              startAdornment: (
+                                <Abc sx={{ mr: 1, color: "gray" }} />
+                              ),
+                            }}
+                          />
+                        );
+                      })
+                    ) : (
+                      <Typography sx={{ textAlign: "center", color: "#757575" }}>
+                        El socio no tiene un puesto asignado.
+                      </Typography>
+                    )}
+                  </Grid>
+                )}
+
                 <Grid item xs={12} sm={12}>
                   <SeparadorBloque nombre="Información de registro" />
 
@@ -402,35 +455,45 @@ const Agregar: React.FC<AgregarProps> = ({ open, handleClose, socio }) => {
   };
 
   return (
-    <ContenedorModal
-      ancho="740px"
-      alto="auto"
-      abrir={open}
-      cerrar={handleCloseModal}
-      titulo={socio ? "Editar socio" : "Registrar socio"}
-      loading={loading}
-      botones={
-        <BotonesModal
-          loading={loading}
-          obj={socio}
-          action={async (e) => {
-            const result = await mostrarAlertaConfirmacion(
-              "¿Está seguro de registrar un nuevo socio?"
-            );
-            if (result.isConfirmed) {
-              if (socio) {
-                editarSocio(e);
-              } else {
-                registrarSocio(e);
+    <>
+      <ContenedorModal
+        ancho="740px"
+        alto="auto"
+        abrir={open}
+        cerrar={handleCloseModal}
+        titulo={socio ? "Editar socio" : "Registrar socio"}
+        loading={loading}
+        botones={
+          <BotonesModal
+            loading={loading}
+            obj={socio}
+            action={async (e) => {
+              const result = await mostrarAlertaConfirmacion(
+                "¿Está seguro de registrar un nuevo socio?"
+              );
+              if (result.isConfirmed) {
+                if (socio) {
+                  editarSocio(e);
+                } else {
+                  registrarSocio(e);
+                }
               }
-            }
-          }}
-          close={handleCloseModal}
-        />
-      }
-    >
-      {renderTabContent()}
-    </ContenedorModal>
+            }}
+            close={handleCloseModal}
+          />
+        }
+      >
+        {renderTabContent()}
+      </ContenedorModal>
+
+      <ModalCredenciales
+        open={modalCredencialesAbierto}
+        onClose={cerrarModalCredenciales}
+        titulo="Socio registrado - Credenciales de acceso"
+        credenciales={credenciales}
+        telefono={formData.telefono || undefined}
+      />
+    </>
   );
 };
 

@@ -1,4 +1,5 @@
-import { Box, Card, LinearProgress, Modal, Tab, Tabs, Typography } from '@mui/material'
+import { Box, Card, IconButton, LinearProgress, Modal, Tab, Tabs, Typography } from '@mui/material'
+import CloseIcon from '@mui/icons-material/Close';
 import React from 'react'
 import useResponsive from '../../hooks/Responsive/useResponsive';
 
@@ -12,11 +13,13 @@ interface ContenedorModalProps {
   activeTab?: number;
   handleTabChange?: (event: React.SyntheticEvent, newValue: number) => void;
   tabs?: string[];
+  botonCerrar?: boolean;
   children: React.ReactNode;
   botones: React.ReactNode;
+  zIndex?: number;
 }
 
-const ContenedorModal: React.FC<ContenedorModalProps> = ({ ancho, alto, abrir, cerrar, loading, titulo, activeTab, handleTabChange, tabs, children, botones }) => {
+const ContenedorModal: React.FC<ContenedorModalProps> = ({ ancho, alto, abrir, cerrar, loading, titulo, activeTab, handleTabChange, tabs, botonCerrar = false, children, botones, zIndex = 1200 }) => {
 
   const { isLaptop, isSmallLaptop, isTablet, isMobile } = useResponsive();
 
@@ -26,19 +29,19 @@ const ContenedorModal: React.FC<ContenedorModalProps> = ({ ancho, alto, abrir, c
       onClose={cerrar}
       aria-labelledby="modal-title"
       aria-describedby="modal-description"
-      sx={{ display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1200, }}
+      sx={{ display: "flex", alignItems: "center", justifyContent: "center", zIndex, }}
     >
       <Card
         sx={{
           width: isTablet ? "90%" : isMobile ? "95%" : `${ancho}`,
           height: isSmallLaptop || isTablet || isMobile ? "90%" : `${alto}`,
-          p: isMobile ? 2 : "15px",
+          p: isMobile ? 2 : 3,
           bgcolor: "white",
           boxShadow: 24,
           borderRadius: 2,
           display: "flex",
           flexDirection: "column",
-          gap: 2,
+          gap: 1,
           overflowY: "auto",
         }}
       >
@@ -48,6 +51,7 @@ const ContenedorModal: React.FC<ContenedorModalProps> = ({ ancho, alto, abrir, c
             p: 1,
             color: "#fff",
             borderRadius: 1,
+            position: "relative",
           }}
         >
           <Typography
@@ -58,6 +62,22 @@ const ContenedorModal: React.FC<ContenedorModalProps> = ({ ancho, alto, abrir, c
           >
             {titulo}
           </Typography>
+          {botonCerrar && (
+            <IconButton
+              onClick={cerrar}
+              aria-label="Cerrar"
+              size="small"
+              sx={{
+                position: "absolute",
+                top: 4,
+                right: 4,
+                color: "#fff",
+                "&:hover": { backgroundColor: "rgba(255,255,255,0.15)" },
+              }}
+            >
+              <CloseIcon />
+            </IconButton>
+          )}
         </Box>
         {loading && (
           <div style={{ textAlign: "center", marginBottom: "5px" }}>

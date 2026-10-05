@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Paper,
   Table,
@@ -17,6 +17,7 @@ import {
   FormControl,
   InputLabel,
   Typography,
+  TextField,
 } from "@mui/material";
 import {
   Download,
@@ -24,12 +25,12 @@ import {
   WhatsApp,
   ExpandLess,
   ExpandMore,
-  Edit,
-  Delete,
+  SaveAs,
+  DeleteForever,
 } from "@mui/icons-material";
 import * as XLSX from 'xlsx';
+// import GenerarCuota from "./GenerarCuota";
 import GenerarCuotaTabs from "./GenerarCuotaTabs";
-import ModalEditarCuota from "./ModalEditarCuota";
 import useResponsive from "../../hooks/Responsive/useResponsive";
 import LoadingSpinner from "../PogressBar/ProgressBarV1";
 import Contenedor from "../Shared/Contenedor";
@@ -42,7 +43,7 @@ import { Api_Global_Cuotas } from "../../service/CuotaApi";
 import { handleExport } from "../../Utils/exportUtils";
 import apiClient from "../../Utils/apliClient";
 import { Cuotas, IMeses } from "../../interface/Cuota";
-import { mostrarAlerta, manejarError, mostrarAlertaConfirmacion } from "../Alerts/Registrar";
+import { manejarError, mostrarAlerta, mostrarAlertaConfirmacion } from "../Alerts/Registrar";
 
 const optMeses = [
   { value: "", label: "Mes" },
@@ -60,26 +61,17 @@ const optMeses = [
   { value: "12", label: "Diciembre" },
 ];
 
+const anioActual = new Date().getFullYear();
 const anios: any = [
   { value: "", label: "Año" },
-  { value: "2025", label: "2025" },
-  { value: "2024", label: "2024" },
-  { value: "2023", label: "2023" },
-  { value: "2022", label: "2022" },
-  { value: "2021", label: "2021" },
-  { value: "2020", label: "2020" },
-  { value: "2019", label: "2019" },
-  { value: "2018", label: "2018" },
-  { value: "2017", label: "2017" },
-  { value: "2016", label: "2016" },
-  { value: "2015", label: "2015" },
-  { value: "2014", label: "2014" },
-  { value: "2013", label: "2013" },
-  { value: "2012", label: "2012" },
+  ...[...Array(anioActual - 2011)].map((_, i) => {
+    const anio = String(anioActual - i);
+    return { value: anio, label: anio };
+  }),
 ];
 
 const TablaCuota: React.FC = () => {
-  const { isTablet, isMobile } = useResponsive();
+  const { isTablet, isMobile, isSmallMobile } = useResponsive();
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
   const [mostrarDetalles, setMostrarDetalles] = useState<string | null>(null);
   const [iMeses, setIMeses] = useState<IMeses[]>([]);
@@ -88,17 +80,22 @@ const TablaCuota: React.FC = () => {
   const [exportFormat, setExportFormat] = useState<string>("");
   const [anio, setAnio] = useState<string>("");
   const [mes, setMes] = useState<string>("");
+  const [tipoServicio, setTipoServicio] = useState<string>("");
+  const [nombreServicio, setNombreServicio] = useState<string>("");
   const [open, setOpen] = useState(false);
-  const [openEdit, setOpenEdit] = useState(false);
-  const [selectedCuota, setSelectedCuota] = useState<Cuotas | null>(null);
   const [cuotas, setCuotas] = useState<Cuotas[]>([]);
+  const [cuotaSeleccionada, setCuotaSeleccionada] = useState<Cuotas | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleOpen = () => setOpen(true);
+  const handleOpen = (cuota?: Cuotas) => {
+    setCuotaSeleccionada(cuota || null);
+    setOpen(true);
+  };
   const handleClose = () => {
     setOpen(false);
+    setCuotaSeleccionada(null);
     listarCuotas();
-  };
+  }
 
   const handleExportCuotas = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
@@ -108,14 +105,14 @@ const TablaCuota: React.FC = () => {
   };
 
   const handleSearchCuota = () => {
-    listarCuotas();
-  };
+    listarCuotas(1);
+  }
 
   const listarCuotas = async (page: number = 1) => {
     setIsLoading(true);
     try {
       const response = await apiClient.get(
-        Api_Global_Cuotas.cuotas.listar(page, anio, mes)
+        Api_Global_Cuotas.cuotas.listar(page, anio, mes, nombreServicio, tipoServicio)
       );
       const data = response.data.data.map((item: Cuotas) => ({
         id_cuota: item.id_cuota,
@@ -129,7 +126,6 @@ const TablaCuota: React.FC = () => {
       setTotalPages(response.data.meta.last_page);
       setPaginaActual(response.data.meta.current_page);
     } catch (error) {
-      console.error("Error al traer datos", error);
     } finally {
       setIsLoading(false);
     }
@@ -137,82 +133,60 @@ const TablaCuota: React.FC = () => {
 
   const CambioDePagina = (event: React.ChangeEvent<unknown>, value: number) => {
     setPaginaActual(value);
-    listarCuotas(value);
+    listarCuotas(value)
   };
 
-  const handleDeleteCuota = async (id: number | string) => {
-    mostrarAlertaConfirmacion(
-      "¿Estás seguro?",
-      "Esta acción no se puede deshacer.",
-      "Eliminar",
-      "Cancelar"
-    ).then(async (result) => {
-      if (result.isConfirmed) {
-        setIsLoading(true);
-        try {
-          await apiClient.delete(Api_Global_Cuotas.cuotas.eliminar(id));
-          mostrarAlerta("Eliminado", "La cuota ha sido eliminada.", "success");
-          listarCuotas(paginaActual);
-        } catch (error) {
-          manejarError(error);
-        } finally {
-          setIsLoading(false);
-        }
+  const eliminarCuota = async (id_cuota: string) => {
+    try {
+      const response = await apiClient.delete(Api_Global_Cuotas.cuotas.eliminar(id_cuota));
+      if (response.status === 200) {
+        mostrarAlerta("Éxito", "La cuota ha sido eliminada correctamente", "success");
+        listarCuotas(paginaActual);
       }
-    });
+    } catch (error) {
+      manejarError(error);
+    }
   };
 
-  const handleEditCuota = (cuota: Cuotas) => {
-    setSelectedCuota(cuota);
-    setOpenEdit(true);
-  };
+  const handleAccionesCuota = async (accion: number, cuota: Cuotas) => {
+    const puestos = cuota.puestos_asignados
+      ? cuota.puestos_asignados.map(p => p.numero).join(", ")
+      : "Todos los puestos";
 
-  const handleCloseEdit = () => {
-    setOpenEdit(false);
-    setSelectedCuota(null);
-    listarCuotas(paginaActual);
-  };
+    const servicios = cuota.servicios.map(s => `${s.nombre} (S/ ${s.costo_unitario})`).join("\n");
 
-  const handleAccionCuota = async (accion: number, cuota: Cuotas) => {
     const data = [
-      ["ID Cuota", cuota.id_cuota],
+      ["ID CUOTA", cuota.id_cuota],
       ["Fecha Emisión", cuota.fecha_emision],
       ["Fecha Vencimiento", cuota.fecha_vencimiento],
-      ["Importe", cuota.importe],
+      ["Importe Total", cuota.importe],
+      ["Puestos", puestos],
+      ["Servicios", servicios],
     ];
-
-    if (cuota.servicios && cuota.servicios.length > 0) {
-      data.push(["Servicios", ""]);
-      cuota.servicios.forEach((serv) => {
-        data.push([serv.nombre, serv.costo_unitario]);
-      });
-    }
 
     const ws = XLSX.utils.aoa_to_sheet(data);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Cuota");
+    XLSX.utils.book_append_sheet(wb, ws, "Cuota Detalle");
 
-    const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
-    const blob = new Blob([excelBuffer], {
-      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    });
+    ws['!cols'] = [{ wch: 20 }, { wch: 30 }];
+
+    const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     const url = URL.createObjectURL(blob);
 
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", `Cuota-${cuota.id_cuota}.xlsx`);
-    document.body.appendChild(link);
-
     if (accion === 1) {
+      // Descargar
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `Cuota-${cuota.id_cuota}.xlsx`);
+      document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
     } else {
-      const mensaje = `¡Hola! Aquí tienes el detalle de tu cuota ID: ${cuota.id_cuota}. Puedes descargar el archivo aquí: ${url}`;
-      const urlWhatsApp = `https://api.whatsapp.com/send?text=${encodeURIComponent(
-        mensaje
-      )}`;
-      window.open(urlWhatsApp, "_blank");
-      document.body.removeChild(link);
+      // WhatsApp
+      const mensaje = `Detalle de la Cuota #${cuota.id_cuota}:\nEmisión: ${cuota.fecha_emision}\nVencimiento: ${cuota.fecha_vencimiento}\nImporte: S/ ${cuota.importe}\nServicios:\n${servicios}\n\nPuedes descargar el detalle aquí: ${url}`;
+      const urlWhatsApp = `https://api.whatsapp.com/send?text=${encodeURIComponent(mensaje)}`;
+      window.open(urlWhatsApp, '_blank');
     }
   };
 
@@ -224,15 +198,32 @@ const TablaCuota: React.FC = () => {
     setIMeses(optMeses);
   }, []);
 
+  // Filtros Año/Mes/Servicio en tiempo real (patrón de otros módulos)
+  const esPrimerRender = useRef(true);
+  useEffect(() => {
+    if (esPrimerRender.current) {
+      esPrimerRender.current = false;
+      return;
+    }
+    listarCuotas(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [anio, mes, nombreServicio, tipoServicio]);
+
   return (
     <Contenedor>
       <ContenedorBotones>
-        <BotonAgregar handleAction={handleOpen} texto="Generar Cuota" />
-        <GenerarCuotaTabs open={open} handleClose={handleClose} />
-        <ModalEditarCuota
-          open={openEdit}
-          handleClose={handleCloseEdit}
-          cuota={selectedCuota}
+        <BotonAgregar
+          handleAction={() => handleOpen()}
+          texto="Generar Cuota"
+        />
+        {/* <GenerarCuota
+          open={open}
+          handleClose={handleClose}
+        /> */}
+        <GenerarCuotaTabs
+          open={open}
+          handleClose={handleClose}
+          cuota={cuotaSeleccionada}
         />
         <BotonExportar
           exportFormat={exportFormat}
@@ -245,9 +236,7 @@ const TablaCuota: React.FC = () => {
           sx={{
             width: "100%",
             borderTop: "1px solid rgba(0, 0, 0, 0.25)",
-            borderBottom: !mostrarFiltros
-              ? "1px solid rgba(0, 0, 0, 0.25)"
-              : "none",
+            borderBottom: !mostrarFiltros ? "1px solid rgba(0, 0, 0, 0.25)" : "none",
             pt: "1rem",
           }}
         >
@@ -260,7 +249,9 @@ const TablaCuota: React.FC = () => {
               mb: "1rem",
             }}
             onClick={() => setMostrarFiltros(!mostrarFiltros)}
-            endIcon={mostrarFiltros ? <ExpandLess /> : <ExpandMore />}
+            endIcon={mostrarFiltros
+              ? <ExpandLess />
+              : <ExpandMore />}
           >
             {mostrarFiltros ? "Ocultar Filtros" : "Mostrar Filtros"}
           </Button>
@@ -275,7 +266,9 @@ const TablaCuota: React.FC = () => {
             borderBottom: "1px solid rgba(0, 0, 0, 0.25)",
             display: "flex",
             flexDirection: isMobile ? "column" : "row",
-            alignItems: isMobile ? "left" : "center",
+            alignItems: isMobile ? "flex-start" : "center",
+            flexWrap: "wrap",
+            gap: isMobile ? 1.5 : 2,
           }}
         >
           <Typography
@@ -283,25 +276,61 @@ const TablaCuota: React.FC = () => {
               display: isTablet ? "none" : "block",
               textAlign: "left",
               fontWeight: "bold",
-              mr: 2,
+              mr: 1,
               mt: isMobile ? 1 : 0,
-              mb: isMobile ? 2 : 0,
+              mb: isMobile ? 1 : 0,
             }}
           >
             Buscar por:
           </Typography>
+
+          {/* Select Tipo de servicio */}
           <FormControl
             sx={{
-              width: isMobile ? "100%" : "200px",
-              mr: isMobile ? 0 : 1,
+              width: isTablet ? "35%" : isMobile ? "100%" : "230px",
+              textAlign: "left",
+            }}
+          >
+            <InputLabel id="filtro-tipo-servicio-label">Tipo de servicio</InputLabel>
+            <Select
+              labelId="filtro-tipo-servicio-label"
+              label="Tipo de servicio"
+              value={tipoServicio}
+              onChange={(e) => setTipoServicio(e.target.value as string)}
+            >
+              <MenuItem value="">Todos</MenuItem>
+              <MenuItem value="1">Ordinario (Pagos fijos)</MenuItem>
+              <MenuItem value="2">Extraordinario (Pagos extras)</MenuItem>
+              <MenuItem value="3">Por metro cuadrado</MenuItem>
+              <MenuItem value="4">Cuota Extraordinaria</MenuItem>
+            </Select>
+          </FormControl>
+
+          {/* Input Nombre Servicio */}
+          <TextField
+            sx={{
+              width: isTablet ? "35%" : isMobile ? "100%" : "260px",
+              "& .MuiInputLabel-root": {
+                fontSize: isSmallMobile ? "0.9rem" : "auto",
+              },
+              "& .MuiInputBase-input": {
+                fontSize: isSmallMobile ? "0.9rem" : "auto",
+              },
+            }}
+            label="Nombre del servicio"
+            type="text"
+            value={nombreServicio}
+            onChange={(e) => setNombreServicio(e.target.value)}
+          />
+
+          <FormControl
+            sx={{
+              width: isTablet ? "25%" : isMobile ? "100%" : "150px",
+              textAlign: "left",
             }}
           >
             <InputLabel id="cuota-anio-label">Año</InputLabel>
-            <Select
-              value={anio}
-              onChange={(e) => setAnio(e.target.value)}
-              label="Año"
-            >
+            <Select value={anio} onChange={(e) => setAnio(e.target.value)} label="Año">
               {anios.map((año: any) => (
                 <MenuItem
                   sx={{ padding: "10px 25px !important" }}
@@ -313,20 +342,15 @@ const TablaCuota: React.FC = () => {
               ))}
             </Select>
           </FormControl>
+
           <FormControl
             sx={{
-              width: isMobile ? "100%" : "200px",
-              mr: isMobile ? 0 : 1,
-              mt: isMobile ? 2 : 0,
-              mb: isMobile ? 2 : 0,
+              width: isTablet ? "25%" : isMobile ? "100%" : "160px",
+              textAlign: "left",
             }}
           >
             <InputLabel id="cuota-mes-label">Mes</InputLabel>
-            <Select
-              value={mes}
-              onChange={(e) => setMes(e.target.value)}
-              label="Mes"
-            >
+            <Select value={mes} onChange={(e) => setMes(e.target.value)} label="Mes">
               {iMeses.map((iMes: IMeses) => (
                 <MenuItem key={iMes.value} value={iMes.value}>
                   {iMes.label}
@@ -334,6 +358,7 @@ const TablaCuota: React.FC = () => {
               ))}
             </Select>
           </FormControl>
+
           <Button
             variant="contained"
             startIcon={<Search />}
@@ -343,8 +368,8 @@ const TablaCuota: React.FC = () => {
                 backgroundColor: "#2c6d33",
               },
               height: "50px",
-              width: isMobile ? "100%" : "170px",
-              marginLeft: isMobile ? 0 : "1rem",
+              width: isMobile ? "100%" : isTablet ? "20%" : "150px",
+              fontSize: isSmallMobile ? "0.8rem" : "auto",
               borderRadius: "30px",
             }}
             onClick={handleSearchCuota}
@@ -352,6 +377,7 @@ const TablaCuota: React.FC = () => {
             Buscar
           </Button>
         </Box>
+
       )}
       {isLoading ? (
         <LoadingSpinner />
@@ -364,8 +390,8 @@ const TablaCuota: React.FC = () => {
               <Table stickyHeader aria-label="sticky table">
                 <TableHead>
                   <TableRow>
-                    {isTablet || isMobile ? (
-                      <TableCell colSpan={columns.length}>
+                    {isTablet || isMobile
+                      ? <TableCell colSpan={columns.length}>
                         <Typography
                           sx={{
                             mt: 2,
@@ -379,13 +405,10 @@ const TablaCuota: React.FC = () => {
                           Listado de Cuotas
                         </Typography>
                       </TableCell>
-                    ) : (
-                      columns.map((column) => (
+                      : columns.map((column) => (
                         <TableCell
                           key={column.id}
-                          align={
-                            column.id === "accion" ? "center" : column.align
-                          }
+                          align={column.id === "accion" ? "center" : column.align} // Alinear 'accion' a la derecha
                           style={{ minWidth: column.minWidth }}
                           sx={{
                             fontWeight: "bold",
@@ -393,39 +416,31 @@ const TablaCuota: React.FC = () => {
                         >
                           {column.label}
                         </TableCell>
-                      ))
-                    )}
+                      ))}
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {cuotas.map((cuota) => (
                     <TableRow key={cuota.id_cuota} hover role="checkbox" tabIndex={-1}>
-                      {isTablet || isMobile ? (
-                        <TableCell padding="checkbox" colSpan={columns.length}>
-                          <Box
-                            sx={{ display: "flex", flexDirection: "column" }}
-                          >
+                      {isTablet || isMobile
+                        ? <TableCell padding="checkbox" colSpan={columns.length}>
+                          <Box sx={{ display: "flex", flexDirection: "column" }}>
                             <Typography
                               sx={{
                                 p: 2,
-                                bgcolor:
-                                  mostrarDetalles === cuota.id_cuota
-                                    ? "#f0f0f0"
-                                    : "inherit",
+                                // Seleccionar la cuota y cambiar el color de fondo
+                                bgcolor: mostrarDetalles === cuota.id_cuota ? "#f0f0f0" : "inherit",
                                 "&:hover": {
                                   cursor: "pointer",
                                   bgcolor: "#f0f0f0",
-                                },
+                                }
                               }}
-                              onClick={() =>
-                                setMostrarDetalles(
-                                  mostrarDetalles === cuota.id_cuota
-                                    ? null
-                                    : cuota.id_cuota
-                                )
-                              }
+                              onClick={() => setMostrarDetalles(
+                                // Si la cuota seleccionada es igual a la cuota actual, ocultar detalles
+                                mostrarDetalles === cuota.id_cuota ? null : cuota.id_cuota
+                              )}
                             >
-                              {cuota.id_cuota}
+                              {cuota.id_cuota} - {cuota.id_cuota}
                             </Typography>
                             {mostrarDetalles === cuota.id_cuota && (
                               <Box
@@ -433,21 +448,18 @@ const TablaCuota: React.FC = () => {
                                   p: 2,
                                   display: "flex",
                                   flexDirection: "column",
-                                  gap: 1,
+                                  gap: 1
                                 }}
                               >
                                 {columns.map((column) => {
-                                  const value =
-                                    column.id === "accion"
-                                      ? ""
-                                      : (cuota as any)[column.id];
+                                  const value = column.id === "accion" ? "" : (cuota as any)[column.id];
                                   return (
                                     <Box key={column.id}>
-                                      <Typography
-                                        sx={{ fontWeight: "bold", mb: 1 }}
-                                      >
+                                      {/* Mostrar titulo del campo */}
+                                      <Typography sx={{ fontWeight: "bold", mb: 1 }}>
                                         {column.label}
                                       </Typography>
+                                      {/* Mostrar los detalles de la cuota */}
                                       <Box>
                                         {column.id === "accion" ? (
                                           <Box
@@ -456,132 +468,91 @@ const TablaCuota: React.FC = () => {
                                               display: "flex",
                                               flexDirection: "column",
                                               justifyContent: "center",
+                                              gap: 1
                                             }}
                                           >
-                                            <Box
+                                            <Button
+                                              variant="contained"
                                               sx={{
-                                                display: "flex",
-                                                gap: 1,
-                                                mt: 1,
+                                                padding: "0.5rem 1.5rem",
+                                                backgroundColor: "#0478E3",
+                                                color: "white"
                                               }}
+                                              onClick={() => handleOpen(cuota)}
                                             >
-                                              <Button
-                                                variant="contained"
-                                                sx={{
-                                                  flex: 1,
-                                                  backgroundColor: "#1976d2",
-                                                  color: "white",
-                                                  "&:hover": {
-                                                    backgroundColor: "#1565c0",
-                                                  },
-                                                }}
-                                                onClick={() =>
-                                                  handleEditCuota(cuota)
-                                                }
-                                              >
-                                                <Edit sx={{ mr: 1 }} />
-                                                Editar
-                                              </Button>
-                                              <Button
-                                                variant="contained"
-                                                sx={{
-                                                  flex: 1,
-                                                  backgroundColor: "#202123",
-                                                  color: "white",
-                                                  "&:hover": {
-                                                    backgroundColor: "#3F4145",
-                                                  },
-                                                }}
-                                                onClick={() =>
-                                                  handleAccionCuota(1, cuota)
-                                                }
-                                              >
-                                                <Download sx={{ mr: 1 }} />
-                                                Descargar
-                                              </Button>
-                                            </Box>
-                                            <Box
+                                              <SaveAs sx={{ mr: 1 }} />
+                                              Editar
+                                            </Button>
+                                            <Button
+                                              variant="contained"
                                               sx={{
-                                                display: "flex",
-                                                gap: 1,
-                                                mt: 1,
+                                                padding: "0.5rem 1.5rem",
+                                                backgroundColor: "black",
+                                                color: "white"
                                               }}
+                                              onClick={() => handleAccionesCuota(1, cuota)}
                                             >
-                                              <Button
-                                                variant="contained"
-                                                sx={{
-                                                  flex: 1,
-                                                  backgroundColor: "#008001",
-                                                  color: "white",
-                                                  "&:hover": {
-                                                    backgroundColor: "#006400",
-                                                  },
-                                                }}
-                                                onClick={() =>
-                                                  handleAccionCuota(2, cuota)
+                                              <Download sx={{ mr: 1 }} />
+                                              Descargar
+                                            </Button>
+                                            <Button
+                                              variant="contained"
+                                              sx={{
+                                                padding: "0.5rem 1.5rem",
+                                                backgroundColor: "green",
+                                                color: "white"
+                                              }}
+                                              onClick={() => handleAccionesCuota(2, cuota)}
+                                            >
+                                              <WhatsApp sx={{ mr: 1 }} />
+                                              Enviar
+                                            </Button>
+                                            <Button
+                                              variant="contained"
+                                              sx={{
+                                                padding: "0.5rem 1.5rem",
+                                                backgroundColor: "crimson",
+                                                color: "white"
+                                              }}
+                                              onClick={() => mostrarAlertaConfirmacion(
+                                                "Eliminar cuota",
+                                                "¿Estás seguro de eliminar esta cuota?",
+                                                "Eliminar",
+                                                "Cancelar"
+                                              ).then((result) => {
+                                                if (result.isConfirmed) {
+                                                  eliminarCuota(cuota.id_cuota);
                                                 }
-                                              >
-                                                <WhatsApp sx={{ mr: 1 }} />
-                                                WhatsApp
-                                              </Button>
-                                              <Button
-                                                variant="contained"
-                                                sx={{
-                                                  flex: 1,
-                                                  backgroundColor: "#d32f2f",
-                                                  color: "white",
-                                                  "&:hover": {
-                                                    backgroundColor: "#b71c1c",
-                                                  },
-                                                }}
-                                                onClick={() =>
-                                                  handleDeleteCuota(
-                                                    cuota.id_cuota
-                                                  )
-                                                }
-                                              >
-                                                <Delete sx={{ mr: 1 }} />
-                                                Eliminar
-                                              </Button>
-                                            </Box>
+                                              })}
+                                            >
+                                              <DeleteForever sx={{ mr: 1 }} />
+                                              Eliminar
+                                            </Button>
                                           </Box>
                                         ) : column.id === "servicios" ? (
-                                          cuota.servicios.map((servicio) => (
-                                            <Typography key={servicio.id_servicio}>
-                                              {`${servicio.nombre} - S/ ${servicio.costo_unitario}`}
-                                            </Typography>
+                                          cuota.servicios.map((servicio, index) => (
+                                            <Typography key={servicio.id_servicio || index}>{`${servicio.nombre} - S/ ${servicio.costo_unitario}`}</Typography>
                                           ))
                                         ) : column.id === "puestos_asignados" ? (
-                                          cuota.puestos_asignados ? (
-                                            cuota.puestos_asignados.map(
-                                              (puesto) => (
-                                                <Typography key={puesto.numero}>
-                                                  {puesto.numero}
-                                                </Typography>
-                                              )
-                                            )
-                                          ) : (
-                                            <Typography>
-                                              Todos los puestos
-                                            </Typography>
-                                          )
+                                          cuota.puestos_asignados ? cuota.puestos_asignados.map((puesto, index) => (
+                                            <Typography key={puesto.id_puesto || index}>{puesto.numero}</Typography>
+                                          )) : <Typography>Todos los puestos</Typography>
+                                        ) : column.id === "importe" ? (
+                                          <Typography>{parseFloat(cuota.importe).toFixed(2)}</Typography>
                                         ) : (
-                                          value
+                                          <Typography>{value}</Typography>
                                         )}
                                       </Box>
                                     </Box>
-                                  );
+                                  )
                                 })}
                               </Box>
                             )}
                           </Box>
                         </TableCell>
-                      ) : (
-                        columns.map((column) => {
+                        : columns.map((column) => {
                           const value =
-                            column.id === "accion"
-                              ? ""
-                              : (cuota as any)[column.id];
+                            column.id === "accion" ? "" : (cuota as any)[column.id];
                           return (
                             <TableCell
                               key={column.id}
@@ -590,80 +561,65 @@ const TablaCuota: React.FC = () => {
                               }
                             >
                               {column.id === "servicios" ? (
-                                cuota.servicios.map((servicio) => (
-                                  <Typography key={servicio.id_servicio}>
-                                    {`${servicio.nombre} - S/ ${servicio.costo_unitario}`}
-                                  </Typography>
+                                cuota.servicios.map((servicio, index) => (
+                                  <Typography key={servicio.id_servicio || index}>{`${servicio.nombre} - S/ ${servicio.costo_unitario}`}</Typography>
                                 ))
                               ) : column.id === "puestos_asignados" ? (
-                                cuota.puestos_asignados ? (
-                                  cuota.puestos_asignados.map((puesto) => (
-                                    <Typography key={puesto.numero}>
-                                      {puesto.numero}
-                                    </Typography>
-                                  ))
-                                ) : (
-                                  <Typography>Todos los puestos</Typography>
-                                )
-                              ) : column.id === "importe" ? (
+                                cuota.puestos_asignados ? cuota.puestos_asignados.map((puesto, index) => (
+                                  <Typography key={puesto.id_puesto || index}>{puesto.numero}</Typography>
+                                )) : <Typography>Todos los puestos</Typography>
+                              ) : column.id === "importe" ?
                                 parseFloat(cuota.importe).toFixed(2)
-                              ) : column.id === "accion" ? (
-                                <Box
-                                  sx={{
-                                    display: "flex",
-                                    justifyContent: "center",
-                                  }}
-                                >
+                                : column.id === "accion" ? (
                                   <Box
                                     sx={{
                                       display: "flex",
-                                      gap: 0.5,
                                       justifyContent: "center",
                                     }}
                                   >
+                                    {/* Alinea los íconos a la derecha */}
                                     <IconButton
                                       aria-label="edit"
-                                      sx={{ color: "#1976d2" }}
-                                      onClick={() => handleEditCuota(cuota)}
+                                      sx={{ color: "#0478E3" }}
+                                      onClick={() => handleOpen(cuota)}
                                     >
-                                      <Edit />
+                                      <SaveAs />
                                     </IconButton>
                                     <IconButton
-                                      aria-label="download"
-                                      sx={{ color: "#202123" }}
-                                      onClick={() =>
-                                        handleAccionCuota(1, cuota)
-                                      }
+                                      aria-label="copy"
+                                      sx={{ color: "black" }}
+                                      onClick={() => handleAccionesCuota(1, cuota)}
                                     >
                                       <Download />
                                     </IconButton>
                                     <IconButton
                                       aria-label="whatsapp"
-                                      sx={{ color: "#008001" }}
-                                      onClick={() =>
-                                        handleAccionCuota(2, cuota)
-                                      }
+                                      sx={{ color: "green" }}
+                                      onClick={() => handleAccionesCuota(2, cuota)}
                                     >
                                       <WhatsApp />
                                     </IconButton>
                                     <IconButton
                                       aria-label="delete"
-                                      sx={{ color: "#d32f2f" }}
-                                      onClick={() =>
-                                        handleDeleteCuota(cuota.id_cuota)
-                                      }
+                                      sx={{ color: "red" }}
+                                      onClick={() => mostrarAlertaConfirmacion(
+                                        "Eliminar cuota",
+                                        "¿Estás seguro de eliminar esta cuota?",
+                                        "Eliminar",
+                                        "Cancelar"
+                                      ).then((result) => {
+                                        if (result.isConfirmed) {
+                                          eliminarCuota(cuota.id_cuota);
+                                        }
+                                      })}
                                     >
-                                      <Delete />
+                                      <DeleteForever />
                                     </IconButton>
                                   </Box>
-                                </Box>
-                              ) : (
-                                value
-                              )}
+                                ) : value}
                             </TableCell>
                           );
-                        })
-                      )}
+                        })}
                     </TableRow>
                   ))}
                 </TableBody>
@@ -674,11 +630,12 @@ const TablaCuota: React.FC = () => {
               sx={{ display: "flex", justifyContent: "center", marginTop: 3 }}
             >
               <Pagination
-                count={totalPages}
-                page={paginaActual}
-                onChange={CambioDePagina}
+                count={totalPages} // Total de páginas
+                page={paginaActual} // Página actual
+                onChange={CambioDePagina} // Manejar el cambio de página
                 color="primary"
               />
+
             </Box>
           </Paper>
         </>

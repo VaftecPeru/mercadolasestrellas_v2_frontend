@@ -1,8 +1,8 @@
 
 export const API_ROUTES = {
   servicios: {
-    fetch: (page: number, buscarTexto: string) =>
-      `/servicios?page=${page}&buscar_texto=${buscarTexto}`,
+    fetch: (page: number, buscarTexto: string, tipoServicio: string = "") =>
+      `/servicios?page=${page}&buscar_texto=${buscarTexto}&tipo_servicio=${tipoServicio}`,
     exportar: () => `/servicios/exportar`,
     registrar:()=> `/servicios`,
     editar: (id: string | undefined) => `/servicios/${id}`, 

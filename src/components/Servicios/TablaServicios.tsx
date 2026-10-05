@@ -13,6 +13,10 @@ import {
   Pagination,
   TextField,
   Typography,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
 } from "@mui/material";
 import { SaveAs, DeleteForever, Search } from "@mui/icons-material";
 import RegistrarServicio from "./RegistrarServicio";
@@ -35,6 +39,8 @@ const TablaServicios: React.FC = () => {
     setMostrarDetalles,
     buscarTexto,
     setBuscarTexto,
+    tipoServicio,
+    setTipoServicio,
     servicios,
     setServicios,
     servicioSeleccionado,
@@ -124,24 +130,47 @@ const TablaServicios: React.FC = () => {
           borderTop: "1px solid rgba(0, 0, 0, 0.25)",
           borderBottom: "1px solid rgba(0, 0, 0, 0.25)",
           display: "flex",
-          flexDirection: "row",
-          alignItems: "center",
+          flexDirection: isMobile ? "column" : "row",
+          alignItems: isMobile ? "flex-start" : "center",
+          flexWrap: "wrap",
+          gap: isMobile ? 1.5 : 2,
         }}
       >
         <Typography
           sx={{
             display: isTablet || isMobile ? "none" : "inline-block",
             fontWeight: "bold",
-            mr: 2,
           }}
         >
           Buscar por:
         </Typography>
 
+        {/* Select Tipo de servicio */}
+        <FormControl
+          sx={{
+            width: isTablet ? "35%" : isMobile ? "100%" : "230px",
+            textAlign: "left",
+          }}
+        >
+          <InputLabel id="filtro-tipo-servicio-label">Tipo de servicio</InputLabel>
+          <Select
+            labelId="filtro-tipo-servicio-label"
+            label="Tipo de servicio"
+            value={tipoServicio}
+            onChange={(e) => setTipoServicio(e.target.value as string)}
+          >
+            <MenuItem value="">Todos</MenuItem>
+            <MenuItem value="1">Ordinario (Pagos fijos)</MenuItem>
+            <MenuItem value="2">Extraordinario (Pagos extras)</MenuItem>
+            <MenuItem value="3">Por metro cuadrado</MenuItem>
+            <MenuItem value="4">Cuota Extraordinaria</MenuItem>
+          </Select>
+        </FormControl>
+
         {/* Input Nombre Servicio */}
         <TextField
           sx={{
-            width: isTablet || isMobile ? "60%" : "30%",
+            width: isTablet ? "35%" : isMobile ? "100%" : "280px",
             "& .MuiInputLabel-root": {
               fontSize: isSmallMobile ? "0.9rem" : "auto",
             },
@@ -151,10 +180,11 @@ const TablaServicios: React.FC = () => {
           }}
           label="Nombre del servicio"
           type="text"
+          value={buscarTexto}
           onChange={(e) => setBuscarTexto(e.target.value)}
         />
 
-        {/* Boton Buscar */}
+        {/* Botón Buscar */}
         <Button
           variant="contained"
           startIcon={<Search />}
@@ -164,13 +194,11 @@ const TablaServicios: React.FC = () => {
               backgroundColor: "#2c6d33",
             },
             height: "50px",
-            width: isTablet || isMobile ? "40%" : "170px",
-            marginLeft: isMobile ? "10px" : "1rem",
+            width: isMobile ? "100%" : isTablet ? "20%" : "150px",
             fontSize: isSmallMobile ? "0.8rem" : "auto",
             borderRadius: "30px",
           }}
-          // onClick={}buscarServicios
-          onClick={buscarServicios}
+          onClick={() => fetchServicios(1)}
         >
           Buscar
         </Button>
@@ -263,7 +291,9 @@ const TablaServicios: React.FC = () => {
                                 ? "Ordinario"
                                 : parseInt(servicio.tipo_servicio) === 2
                                   ? "Extraordinario"
-                                  : "Por metrado"}
+                                  : parseInt(servicio.tipo_servicio) === 4
+                                    ? "Cuota Extraordinaria"
+                                    : "Por metrado"}
                             </Typography>
                             {mostrarDetalles === servicio.id_servicio && (
                               <Box
@@ -288,7 +318,7 @@ const TablaServicios: React.FC = () => {
                                         {column.label}
                                       </Typography>
                                       {/* Mostrar los detalles del servicio */}
-                                      <Box>
+                                      <Typography>
                                         {column.id === "tipo_servicio" ? (
                                           // Si el campo es tipo_servicio, mostrar el tipo de servicio
                                           parseInt(servicio.tipo_servicio) ===
@@ -298,6 +328,10 @@ const TablaServicios: React.FC = () => {
                                             servicio.tipo_servicio
                                           ) === 2 ? (
                                             "Extraordinario (Pagos extras)"
+                                          ) : parseInt(
+                                            servicio.tipo_servicio
+                                          ) === 4 ? (
+                                            "Cuota Extraordinaria"
                                           ) : (
                                             "Por metrado (Pagos por metraje)"
                                           )
@@ -347,7 +381,7 @@ const TablaServicios: React.FC = () => {
                                         ) : (
                                           value
                                         )}
-                                      </Box>
+                                      </Typography>
                                     </Box>
                                   );
                                 })}
@@ -371,6 +405,8 @@ const TablaServicios: React.FC = () => {
                                   "Ordinario (Pagos fijos)"
                                 ) : parseInt(servicio.tipo_servicio) === 2 ? (
                                   "Extraordinario (Pagos extras)"
+                                ) : parseInt(servicio.tipo_servicio) === 4 ? (
+                                  "Cuota Extraordinaria"
                                 ) : (
                                   "Por metro cuadrado (Pagos por metraje)"
                                 )

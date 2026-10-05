@@ -1,12 +1,13 @@
 export const Api_Global_Pagos = {
   pagos: {
-    listar: (page: number = 1) => `/pagos?page=${page}`,
+    listar: (page: number = 1, search: string = "", idPuesto: number | string = "") =>
+      `/pagos?page=${page}&search=${search}&id_puesto=${idPuesto}`,
     exportar: () => `/pagos/exportar`,
     registrar: () => `/pagos`,
     registrarPorBanco: () => `/pagos/por-bancos`,
-    obtener: (id: number | string) => `/pagos/${id}`,
-    actualizar: (id: number | string) => `/pagos/${id}`,
-    eliminar: (id: number | string) => `/pagos/${id}`,
+    editar: (id_pago: string | number | undefined) => `/pagos/${id_pago}`,
+    eliminar: (id_pago: string | number | undefined) => `/pagos/${id_pago}`,
+    importar: () => `/importar-pagos-excel`,
   },
   socios: {
     listar: (perPage: number = 1000) => `/socios?per_page=${perPage}`,

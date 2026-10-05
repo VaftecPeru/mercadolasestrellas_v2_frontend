@@ -10,19 +10,20 @@ import ContenedorBotones from '../Shared/ContenedorBotones';
 import apiClient from "../../Utils/apliClient";
 import { Api_Global_Reportes } from '../../service/ReporteApi';
 import { Api_Global_Puestos } from '../../service/PuestoApi';
+import { Api_Global_Socios } from '../../service/SocioApi';
+import { ordenarPuestosPorNumero } from '../../Utils/ordenarPuestos';
+import { ordenarSociosPorNombre } from '../../Utils/ordenarSocios';
 import { handleExport } from '../../Utils/exportUtils';
-import { Column, Data, Puesto } from '../../interface/ReportePagos/pagos';
+import { Column, Data, Puesto, Socio } from '../../interface/ReportePagos/pagos';
 import { nombreMes } from '../../Utils/dateUtils';
 import { useAuth } from '../../context/AuthContext';
 import { mostrarAlerta } from '../Alerts/Registrar';
 
 const columns: readonly Column[] = [
-  { id: "anio", label: "Año", minWidth: 80, align: "center" },
-  { id: "mes", label: "Mes", minWidth: 100, align: "center" },
-  { id: "fecha", label: "Fec. Pago", minWidth: 100, align: "center" },
+  { id: "fecha", label: "Fecha Pago", minWidth: 100, align: "center" },
   { id: "servicios", label: "Servicios", minWidth: 150, align: "left" },
-  { id: "montos", label: "Monto (S/)", minWidth: 100, align: "right" },
-  { id: "total", label: "Pago (S/)", minWidth: 120, align: "right" },
+  { id: "montos", label: "Total (S/)", minWidth: 100, align: "right" },
+  { id: "total", label: "Imp. Pagado (S/)", minWidth: 120, align: "right" },
 ];
 
 const TablaReportePagos: React.FC = () => {
@@ -34,18 +35,24 @@ const TablaReportePagos: React.FC = () => {
 
   const getMesNombre = (fecha: string) => {
     const mesIndex = new Date(fecha).getUTCMonth();
-    return nombreMes(mesIndex).toUpperCase();
+    return nombreMes(mesIndex);
   };
 
   const [mostrarDetalles, setMostrarDetalles] = useState<string | null>(null);
   const [puestos, setPuestos] = useState<Puesto[]>([]);
   const [puestoSeleccionado, setPuestoSeleccionado] = useState<number | null>(null);
+  const [socios, setSocios] = useState<Socio[]>([]);
+  const [socioSeleccionado, setSocioSeleccionado] = useState<Socio | null>(null);
   const [pagos, setPagos] = useState<Data[]>([]);
   const [exportFormat, setExportFormat] = useState<string>("");
   const [searchParams] = useSearchParams();
   const idPuestoQuery = searchParams.get("puesto");
   const [isLoading, setIsLoading] = useState(false);
   const [totalGeneral, setTotalGeneral] = useState<number>(0);
+
+  const totalMonto = pagos.reduce((acc, pago) => {
+    return acc + pago.detalle_pagos.reduce((a, detalle) => a + Number(detalle.importe), 0);
+  }, 0);
 
   const { usuario } = useAuth();
 
@@ -54,15 +61,14 @@ const TablaReportePagos: React.FC = () => {
 
   const cambiarPagina = (_event: React.ChangeEvent<unknown>, value: number) => {
     setPaginaActual(value);
-    fetchPagos(value, puestoSeleccionado);
+    fetchPagos(value, puestoSeleccionado, socioSeleccionado);
   };
 
   useEffect(() => {
     const fetchPuestos = async () => {
       try {
-        const idSocioBusqueda = usuario?.rol === "Socio" ? usuario.id_usuario.toString() : "";
-        const response = await apiClient.get(Api_Global_Puestos.puestos.buscar(1, 1000, "", "", "", idSocioBusqueda));
-        setPuestos(response.data.data);
+        const response = await apiClient.get(Api_Global_Puestos.puestos.buscar(1, 1000, "", "", "", ""));
+        setPuestos(ordenarPuestosPorNumero(response.data.data));
       } catch (error) {
         console.error("Error al cargar puestos:", error);
       }
@@ -71,21 +77,113 @@ const TablaReportePagos: React.FC = () => {
   }, [usuario]);
 
   useEffect(() => {
-    if (idPuestoQuery) {
+    const fetchSocios = async () => {
+      try {
+        const response = await apiClient.get(Api_Global_Socios.socios.seleccionar());
+        const data = response.data.data.map((item: any) => ({
+          id_socio: String(item.id_socio),
+          nombre_completo: item.nombre_completo,
+        }));
+        setSocios(ordenarSociosPorNombre(data));
+      } catch (error) {
+        console.error("Error al cargar socios:", error);
+      }
+    };
+    if (usuario) fetchSocios();
+  }, [usuario]);
+
+  // Puestos disponibles filtrados por socio si hay uno seleccionado
+  const puestosDisponibles = React.useMemo(() => {
+    if (!socioSeleccionado) {
+      return puestos;
+    }
+    return puestos.filter((p) => {
+      const matchId = p.id_socio && Number(p.id_socio) === Number(socioSeleccionado.id_socio);
+      const matchNombre = p.socio && p.socio !== 'No asignado' && p.socio.trim().toLowerCase() === socioSeleccionado.nombre_completo.trim().toLowerCase();
+      return matchId || matchNombre;
+    });
+  }, [puestos, socioSeleccionado]);
+
+  // Al seleccionar un puesto -> auto-seleccionar el socio dueño
+  const handlePuestoChange = (value: Puesto | null) => {
+    if (value) {
+      const nuevoIdPuesto = Number(value.id_puesto);
+      setPuestoSeleccionado(nuevoIdPuesto);
+      const socioDueno = socios.find((s) => {
+        const matchId = value.id_socio && Number(s.id_socio) === Number(value.id_socio);
+        const matchNombre = value.socio && value.socio !== 'No asignado' && s.nombre_completo.trim().toLowerCase() === value.socio.trim().toLowerCase();
+        return matchId || matchNombre;
+      });
+      if (socioDueno) {
+        setSocioSeleccionado(socioDueno);
+      }
+    } else {
+      setPuestoSeleccionado(null);
+    }
+  };
+
+  // Al seleccionar un socio -> filtrar puestos y auto-seleccionar si tiene 1 solo
+  const handleSocioChange = (value: Socio | null) => {
+    setSocioSeleccionado(value);
+    if (value) {
+      const puestosDelSocio = puestos.filter((p) => {
+        const matchId = p.id_socio && Number(p.id_socio) === Number(value.id_socio);
+        const matchNombre = p.socio && p.socio !== 'No asignado' && p.socio.trim().toLowerCase() === value.nombre_completo.trim().toLowerCase();
+        return matchId || matchNombre;
+      });
+
+      if (puestosDelSocio.length === 1) {
+        setPuestoSeleccionado(Number(puestosDelSocio[0].id_puesto));
+      } else {
+        const puestoActualPertenece = puestosDelSocio.some((p) => Number(p.id_puesto) === puestoSeleccionado);
+        if (!puestoActualPertenece) {
+          setPuestoSeleccionado(null);
+        }
+      }
+    } else {
+      setPuestoSeleccionado(null);
+    }
+  };
+
+  useEffect(() => {
+    if (idPuestoQuery && puestos.length > 0) {
       const id = Number(idPuestoQuery);
       setPuestoSeleccionado(id);
+      const puestoEncontrado = puestos.find((p) => Number(p.id_puesto) === id);
+      if (puestoEncontrado && socios.length > 0) {
+        const socioDueno = socios.find((s) => {
+          const matchId = puestoEncontrado.id_socio && Number(s.id_socio) === Number(puestoEncontrado.id_socio);
+          const matchNombre = puestoEncontrado.socio && puestoEncontrado.socio !== 'No asignado' && s.nombre_completo.trim().toLowerCase() === puestoEncontrado.socio.trim().toLowerCase();
+          return matchId || matchNombre;
+        });
+        if (socioDueno) {
+          setSocioSeleccionado(socioDueno);
+        }
+      }
       fetchPagos(1, id);
     }
-  }, [idPuestoQuery]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [idPuestoQuery, puestos, socios]);
 
-  const fetchPagos = async (pagina: number = 1, id: number | null) => {
-    if (!id) {
-      mostrarAlerta("Atención", "Por favor seleccione un puesto para generar el reporte.", "info");
+  const fetchPagos = async (pagina: number = 1, idPuestoOverride?: number | null, socioOverride?: Socio | null) => {
+    const id = idPuestoOverride !== undefined ? idPuestoOverride : puestoSeleccionado;
+    const socio = socioOverride !== undefined ? socioOverride : socioSeleccionado;
+
+    if (!id && !socio) {
+      mostrarAlerta("Atención", "Por favor seleccione un puesto o un socio para generar el reporte.", "info");
       return;
     }
     setIsLoading(true);
     try {
-      const response = await apiClient.get(Api_Global_Reportes.reportes.pagos(pagina, 15, id));
+      const response = await apiClient.get(
+        Api_Global_Reportes.reportes.pagos(
+          pagina,
+          15,
+          id || 0,
+          socio?.nombre_completo || "",
+          socio?.id_socio || ""
+        )
+      );
       setPagos(response.data.data);
       setTotalPaginas(response.data.meta.last_page);
       setPaginaActual(response.data.meta.current_page);
@@ -101,13 +199,22 @@ const TablaReportePagos: React.FC = () => {
 
   const handleExportReportePagos = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
-    if (!puestoSeleccionado) {
-      mostrarAlerta("Error", "Seleccione un puesto para exportar el reporte.", "warning");
+    if (!puestoSeleccionado && !socioSeleccionado) {
+      mostrarAlerta("Error", "Seleccione un puesto o un socio para exportar el reporte.", "warning");
       return;
     }
     const exportUrl = Api_Global_Reportes.reportes.exportarReportePagos();
-    const fileNamePrefix = `reporte-pagos-puesto-${puestoSeleccionado}`;
-    await handleExport(exportUrl, exportFormat, fileNamePrefix, setExportFormat, `id_puesto=${puestoSeleccionado}`);
+    const fileNamePrefix = puestoSeleccionado
+      ? `reporte-pagos-puesto-${puestoSeleccionado}`
+      : `reporte-pagos-socio-${socioSeleccionado?.id_socio}`;
+
+    const params = [
+      puestoSeleccionado ? `id_puesto=${puestoSeleccionado}` : "",
+      socioSeleccionado ? `id_socio=${socioSeleccionado.id_socio}` : "",
+      socioSeleccionado ? `nombre_socio=${encodeURIComponent(socioSeleccionado.nombre_completo)}` : "",
+    ].filter(Boolean).join("&");
+
+    await handleExport(exportUrl, exportFormat, fileNamePrefix, setExportFormat, params);
   };
 
   return (
@@ -124,17 +231,18 @@ const TablaReportePagos: React.FC = () => {
             mr: isMobile ? "0px" : "auto",
           }}
         >
+          {/* Seleccionar puesto */}
           <FormControl
             fullWidth
             required
-            sx={{ width: isTablet ? "70%" : isMobile ? "100%" : "300px" }}
+            sx={{ width: isTablet ? "70%" : isMobile ? "100%" : "250px" }}
           >
             <Autocomplete
-              options={puestos}
+              options={puestosDisponibles}
               getOptionLabel={(option) => option.numero_puesto || ""}
               value={puestos.find(p => Number(p.id_puesto) === puestoSeleccionado) || null}
               onChange={(_event, value) => {
-                setPuestoSeleccionado(value ? Number(value.id_puesto) : null);
+                handlePuestoChange(value);
               }}
               renderInput={(params) => (
                 <TextField {...params} label="Seleccionar puesto" variant="outlined" />
@@ -144,14 +252,52 @@ const TablaReportePagos: React.FC = () => {
                   {option.numero_puesto}
                 </li>
               )}
+              ListboxProps={{
+                style: {
+                  maxHeight: 270,
+                  overflow: 'auto',
+                },
+              }}
               isOptionEqualToValue={(option, value) => option.id_puesto === value.id_puesto}
               noOptionsText="No se encontraron puestos"
             />
           </FormControl>
 
+          {/* Seleccionar socio */}
+          <FormControl
+            fullWidth
+            required
+            sx={{ width: isTablet ? "70%" : isMobile ? "100%" : "250px" }}
+          >
+            <Autocomplete
+              options={socios}
+              getOptionLabel={(socio) => socio.nombre_completo}
+              value={socioSeleccionado}
+              onChange={(_event, value) => {
+                handleSocioChange(value);
+              }}
+              renderInput={(params) => (
+                <TextField {...params} label="Seleccionar socio" variant="outlined" />
+              )}
+              renderOption={(props, option) => (
+                <li {...props} key={option.id_socio}>
+                  {option.nombre_completo}
+                </li>
+              )}
+              ListboxProps={{
+                style: {
+                  maxHeight: 270,
+                  overflow: 'auto',
+                },
+              }}
+              isOptionEqualToValue={(option, value) => option.id_socio === value.id_socio}
+              noOptionsText="No se encontraron socios"
+            />
+          </FormControl>
+
           <BotonAgregar
             exportar
-            handleAction={() => fetchPagos(1, puestoSeleccionado)}
+            handleAction={() => fetchPagos(1, puestoSeleccionado, socioSeleccionado)}
             texto="Generar"
           />
         </Box>
@@ -239,16 +385,6 @@ const TablaReportePagos: React.FC = () => {
                             )
                           ) : (
                             <>
-                              {/* Año */}
-                              <TableCell align="center" sx={{ borderRight: '1px solid #f0f0f0' }}>
-                                {getAnio(pago.fecha)}
-                              </TableCell>
-
-                              {/* Mes */}
-                              <TableCell align="center" sx={{ borderRight: '1px solid #f0f0f0' }}>
-                                {getMesNombre(pago.fecha)}
-                              </TableCell>
-
                               {/* Fecha */}
                               <TableCell align="center" sx={{ borderRight: '1px solid #f0f0f0' }}>
                                 {pago.fecha}
@@ -268,8 +404,8 @@ const TablaReportePagos: React.FC = () => {
                                 </Typography>
                               </TableCell>
 
-                              {/* Pago */}
-                              <TableCell align="right" sx={{ fontWeight: 'bold', borderLeft: '1px solid #f0f0f0', backgroundColor: '#fafafa' }}>
+                              {/* Imp. Pagado */}
+                              <TableCell align="right" sx={{ borderLeft: '1px solid #f0f0f0', backgroundColor: '#fafafa' }}>
                                 {detIdx === pago.detalle_pagos.length - 1 ? `S/ ${Number(pago.total).toFixed(2)}` : ""}
                               </TableCell>
                             </>
@@ -280,10 +416,9 @@ const TablaReportePagos: React.FC = () => {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={isTablet || isMobile ? 1 : columns.length} align="center" sx={{ py: 8 }}>
-                      <Typography variant="body1" color="textSecondary">
-                        No hay pagos registrados para este puesto.
-                      </Typography>
+                    <TableCell colSpan={isTablet || isMobile ? 1 : columns.length} align="center">
+                      No hay datos para mostrar. <br />
+                      Para generar el reporte, seleccione un puesto y/o un socio, y de clic en el botón "GENERAR".
                     </TableCell>
                   </TableRow>
                 )}
@@ -291,8 +426,11 @@ const TablaReportePagos: React.FC = () => {
               {!isTablet && !isMobile && pagos.length > 0 && (
                 <TableHead>
                   <TableRow>
-                    <TableCell colSpan={5} align="right" sx={{ fontWeight: "bold", backgroundColor: "#f0f0f0" }}>
-                      TOTAL A PAGAR:
+                    <TableCell colSpan={2} align="right" sx={{ fontWeight: "bold", backgroundColor: "#f0f0f0" }}>
+                      TOTAL:
+                    </TableCell>
+                    <TableCell align="right" sx={{ fontWeight: "bold", backgroundColor: "#e3f2fd", fontSize: '1rem', borderTop: '2px solid #1976d2' }}>
+                      S/ {Number(totalMonto || 0).toFixed(2)}
                     </TableCell>
                     <TableCell align="right" sx={{ fontWeight: "bold", backgroundColor: "#e3f2fd", fontSize: '1rem', borderTop: '2px solid #1976d2' }}>
                       S/ {Number(totalGeneral || 0).toFixed(2)}
@@ -303,17 +441,14 @@ const TablaReportePagos: React.FC = () => {
             </Table>
           </TableContainer>
 
-          {totalPaginas > 1 && (
-            <Box sx={{ display: "flex", justifyContent: "center", py: 3, borderTop: '1px solid #eee' }}>
-              <Pagination
-                count={totalPaginas}
-                page={paginaActual}
-                onChange={cambiarPagina}
-                color="primary"
-                size={isMobile ? "small" : "medium"}
-              />
-            </Box>
-          )}
+          <Box sx={{ display: "flex", justifyContent: "center", marginTop: 3 }}>
+            <Pagination
+              count={totalPaginas}
+              page={paginaActual}
+              onChange={cambiarPagina}
+              color="primary"
+            />
+          </Box>
         </Paper>
       )}
     </Contenedor>

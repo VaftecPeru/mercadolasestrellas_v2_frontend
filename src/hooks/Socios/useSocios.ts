@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { Api_Global_Socios } from "../../service/SocioApi";
 import useResponsive from "../Responsive/useResponsive";
 import { useNavigate } from "react-router-dom";
@@ -11,6 +11,7 @@ const useSocios = () => {
     const [mostrarDetalles, setMostrarDetalles] = useState<number | null>(null);
     const [nombreIngresado, setNombreIngresado] = useState<string>("");
     const [numeroPuesto, setNumeroPuesto] = useState<string>("");
+    const [estadoFiltro, setEstadoFiltro] = useState<string>("todos");
     const [socioSeleccionado, setSocioSeleccionado] = useState<Socio | null>(null);
     const [open, setOpen] = useState(false);
     const [exportFormat, setExportFormat] = useState<string>("");
@@ -20,10 +21,11 @@ const useSocios = () => {
     const [paginaActual, setPaginaActual] = useState(1);
     const navigate = useNavigate();
 
-    const fetchSocios = useCallback(async (page: number = 1) => {
+    const fetchSocios = async (page: number = paginaActual, estado: string = estadoFiltro) => {
         setIsLoading(true);
         try {
-            const response = await apiClient.get(Api_Global_Socios.socios.fetch(page, nombreIngresado, numeroPuesto));
+            const response = await apiClient.get(Api_Global_Socios.socios.fetch(page, nombreIngresado, numeroPuesto, estado));
+            
             const data = response.data.data.map((item: Socio) => ({
                 id_socio: item.id_socio,
                 nombre_completo: item.nombre_completo,
@@ -50,14 +52,16 @@ const useSocios = () => {
             setTotalPages(response.data.meta.last_page);
             setPaginaActual(response.data.meta.current_page);
         } catch (error) {
+            console.error("Error fetching socios:", error);
         } finally {
             setIsLoading(false);
         }
-    }, [nombreIngresado, numeroPuesto]);
+    };
 
     useEffect(() => {
-        fetchSocios();
-    }, [fetchSocios]);
+        fetchSocios(1);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // Solo se ejecuta al montar el componente
 
     return {
         isTablet,
@@ -67,7 +71,10 @@ const useSocios = () => {
         setMostrarDetalles,
         nombreIngresado,
         setNombreIngresado,
+        numeroPuesto,
         setNumeroPuesto,
+        estadoFiltro,
+        setEstadoFiltro,
         socioSeleccionado,
         setSocioSeleccionado,
         open,

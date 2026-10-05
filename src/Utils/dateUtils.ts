@@ -1,5 +1,16 @@
-export const formatDate = (fecha: string): string => {
+export const formatDate = (fecha: string | null | undefined): string => {
+  // retornar un texto por defecto
+  if (!fecha || fecha === "null" || fecha === "undefined") {
+    return "Sin registro";
+  }
+
   const fechaObj = new Date(fecha);
+  
+  // si la fecha es válida
+  if (isNaN(fechaObj.getTime())) {
+    return "Fecha inválida";
+  }
+
   const dia = fechaObj.getDate();
   const mes = fechaObj.getMonth() + 1;
   const año = fechaObj.getFullYear();

@@ -13,6 +13,10 @@ import {
   Pagination,
   Typography,
   TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from "@mui/material";
 import {
   Download,
@@ -21,8 +25,15 @@ import {
   SaveAs,
   Search,
   DeleteForever,
+  Lock,
+  LockOpen,
+  VpnKey,
+  CheckCircleOutline,
+  HighlightOff,
 } from "@mui/icons-material";
 import Agregar from "./RegistrarSocio";
+import ModalReporteSocio from "./ModalReporteSocio";
+import ModalCredenciales, { CredencialSocio } from "./ModalCredenciales";
 import LoadingSpinner from "../PogressBar/ProgressBarV1";
 import Contenedor from "../Shared/Contenedor";
 import ContenedorBotones from "../Shared/ContenedorBotones";
@@ -35,6 +46,8 @@ import { Api_Global_Socios } from "../../service/SocioApi";
 import useSocios from "../../hooks/Socios/useSocios";
 import { handleAccionesSocio } from "../../Utils/downloadDataSocio";
 import { manejarError, mostrarAlerta, mostrarAlertaConfirmacion } from "../Alerts/Registrar";
+import { useAuth } from "../../context/AuthContext";
+import { ID_ROL } from "../../Utils/roles";
 import apiClient from "../../Utils/apliClient";
 
 const TablaAsociados: React.FC = () => {
@@ -44,7 +57,9 @@ const TablaAsociados: React.FC = () => {
     isSmallMobile,
     mostrarDetalles,
     setMostrarDetalles,
+    nombreIngresado,
     setNombreIngresado,
+    numeroPuesto,
     setNumeroPuesto,
     socioSeleccionado,
     setSocioSeleccionado,
@@ -57,16 +72,30 @@ const TablaAsociados: React.FC = () => {
     totalPages,
     paginaActual,
     setPaginaActual,
-    navigate,
     fetchSocios,
+    estadoFiltro,
+    setEstadoFiltro,
   } = useSocios();
 
-  const handleVerReportePagos = (id_socio: number) => {
-    navigate(`/home/reporte-pagos?socio=${id_socio}`);
+  // Vista previa financiera del socio en un modal (sin salir de la pantalla)
+  const [socioReporte, setSocioReporte] = React.useState<Socio | null>(null);
+  const [tabReporteSocio, setTabReporteSocio] = React.useState(0);
+
+  const { usuario } = useAuth();
+
+  // Credenciales a mostrar una sola vez en el modal
+  const [credenciales, setCredenciales] = React.useState<CredencialSocio[]>([]);
+  const [resumenCredenciales, setResumenCredenciales] = React.useState<string>("");
+  const [modalCredencialesAbierto, setModalCredencialesAbierto] = React.useState<boolean>(false);
+
+  const abrirReporteDeudas = (socio: Socio) => {
+    setTabReporteSocio(0);
+    setSocioReporte(socio);
   };
 
-  const handleVerReporteDeudas = (id_puesto: number) => {
-    navigate(`/home/reporte-deudas?puesto=${id_puesto}`);
+  const abrirReportePagos = (socio: Socio) => {
+    setTabReporteSocio(1);
+    setSocioReporte(socio);
   };
 
   const handleOpen = (socio?: Socio) => {
@@ -96,14 +125,25 @@ const TablaAsociados: React.FC = () => {
     fetchSocios();
   }
 
+  // Búsqueda en tiempo real por nombre, número de puesto y estado
+  const esPrimerRender = React.useRef(true);
+  React.useEffect(() => {
+    if (esPrimerRender.current) {
+      esPrimerRender.current = false;
+      return;
+    }
+    fetchSocios(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nombreIngresado, numeroPuesto, estadoFiltro]);
+
   const CambioDePagina = (event: React.ChangeEvent<unknown>, value: number) => {
-    setPaginaActual(value);
+    // Primero hacer fetch con el nuevo valor, luego actualizar el estado
     fetchSocios(value);
   };
 
   // Eliminar socio
   const eliminarSocio = async (item: any) => {
-    
+
     try {
       const response = await apiClient.delete(Api_Global_Socios.socios.eliminar(item.id_socio));
       if (response.status === 200) {
@@ -117,6 +157,61 @@ const TablaAsociados: React.FC = () => {
       manejarError(error);
     } finally {
       // ---
+    }
+  };
+
+  // Habilitar/deshabilitar el acceso del socio
+  const toggleAccesoSocio = async (socio: Socio) => {
+    try {
+      const response = await apiClient.post(Api_Global_Socios.socios.toggleAcceso(socio.id_socio));
+      if (response.status === 200) {
+        const mensaje = response.data.message || "Acceso actualizado.";
+        mostrarAlerta("Acceso", mensaje, "success");
+        fetchSocios();
+      }
+    } catch (error) {
+      manejarError(error);
+    }
+  };
+
+  // Regenerar credenciales del socio
+  const regenerarCredencialesSocio = async (socio: Socio) => {
+    try {
+      const response = await apiClient.post(Api_Global_Socios.socios.regenerarCredenciales(socio.id_socio));
+      if (response.status === 200) {
+        setResumenCredenciales("");
+        setCredenciales([
+          { nombre_usuario: response.data.nombre_usuario, password_temporal: response.data.password_temporal },
+        ]);
+        setModalCredencialesAbierto(true);
+      }
+    } catch (error) {
+      manejarError(error);
+    }
+  };
+
+  // Activar/desactivar socio
+  const accionEstadoSocio = async (tipo: "activar" | "desactivar", socio: Socio) => {
+    const confirmacion = await mostrarAlertaConfirmacion(
+      tipo === "activar" ? "Activar socio" : "Desactivar socio",
+      tipo === "activar"
+        ? "¿Desea activar a este socio?"
+        : "¿Desea desactivar a este socio? Sus puestos permanecerán asignados.",
+      "Confirmar",
+      "Cancelar"
+    );
+    if (!confirmacion.isConfirmed) return;
+
+    try {
+      const url =
+        tipo === "activar"
+          ? Api_Global_Socios.socios.activar(socio.id_socio)
+          : Api_Global_Socios.socios.desactivar(socio.id_socio);
+      const response = await apiClient.post(url);
+      mostrarAlerta("Acción realizada", response.data.message || (tipo === "activar" ? "Socio activado." : "Socio desactivado."), "success");
+      fetchSocios(paginaActual);
+    } catch (error) {
+      manejarError(error);
     }
   };
 
@@ -152,6 +247,7 @@ const TablaAsociados: React.FC = () => {
           display: "flex",
           flexDirection: isMobile ? "column" : "row",
           alignItems: "center",
+          gap: isMobile ? 2 : 0,
         }}
       >
         <Typography
@@ -166,23 +262,46 @@ const TablaAsociados: React.FC = () => {
         {/* Input Nombre Socio */}
         <TextField
           sx={{
-            width: isTablet ? "40%" : isMobile ? "100%" : "30%"
+            width: isTablet ? "30%" : isMobile ? "100%" : "28%"
           }}
           label="Nombre del socio"
+          value={nombreIngresado}
           onChange={(e) => setNombreIngresado(e.target.value)}
         />
 
         {/* Input Numero de puesto */}
         <TextField
           sx={{
-            width: isTablet ? "40%" : isMobile ? "100%" : "200px",
-            my: isMobile ? 2 : 0,
+            width: isTablet ? "25%" : isMobile ? "100%" : "180px",
+            my: isMobile ? 0 : 0,
             ml: isMobile ? 0 : 2,
           }}
           type="text"
           label="Numero de puesto"
+          value={numeroPuesto}
           onChange={(e) => setNumeroPuesto(e.target.value)}
         />
+
+        {/* Select Estado */}
+        <FormControl
+          sx={{
+            width: isTablet ? "25%" : isMobile ? "100%" : "160px",
+            ml: isMobile ? 0 : 2,
+            textAlign: "left",
+          }}
+        >
+          <InputLabel id="filtro-estado-socio-label">Estado</InputLabel>
+          <Select
+            labelId="filtro-estado-socio-label"
+            label="Estado"
+            value={estadoFiltro}
+            onChange={(e) => setEstadoFiltro(e.target.value as string)}
+          >
+            <MenuItem value="todos">Todos</MenuItem>
+            <MenuItem value="1">Activos</MenuItem>
+            <MenuItem value="0">Inactivos</MenuItem>
+          </Select>
+        </FormControl>
 
         {/* Boton Buscar */}
         <Button
@@ -194,7 +313,7 @@ const TablaAsociados: React.FC = () => {
               backgroundColor: "#2c6d33",
             },
             height: "50px",
-            width: isTablet ? "20%" : isMobile ? "100%" : "170px",
+            width: isTablet ? "20%" : isMobile ? "100%" : "150px",
             marginLeft: isMobile ? "0" : "1rem",
             fontSize: isSmallMobile ? "0.8rem" : "auto",
             borderRadius: "30px",
@@ -216,18 +335,20 @@ const TablaAsociados: React.FC = () => {
                 <TableHead>
                   <TableRow>
                     {isTablet || isMobile
-                      ? <Typography
-                        sx={{
-                          mt: 2,
-                          mb: 1,
-                          fontSize: "1.5rem",
-                          fontWeight: "bold",
-                          textTransform: "uppercase",
-                          textAlign: "center",
-                        }}
-                      >
-                        Lista de socios
-                      </Typography>
+                      ? <TableCell colSpan={columns.length}>
+                        <Typography
+                          sx={{
+                            mt: 2,
+                            mb: 1,
+                            fontSize: "1.5rem",
+                            fontWeight: "bold",
+                            textTransform: "uppercase",
+                            textAlign: "center",
+                          }}
+                        >
+                          Lista de socios
+                        </Typography>
+                      </TableCell>
                       : columns.map((column) => (
                         <TableCell
                           key={column.id}
@@ -248,7 +369,17 @@ const TablaAsociados: React.FC = () => {
                 </TableHead>
                 <TableBody>
                   {socios.map((socio) => (
-                    <TableRow hover role="checkbox" tabIndex={-1}>
+                    <TableRow
+                      key={socio.id_socio}
+                      hover
+                      role="checkbox"
+                      tabIndex={-1}
+                      sx={{
+                        backgroundColor:
+                          socio.estado === "0" ? "rgba(0, 0, 0, 0.04)" : "inherit",
+                        opacity: socio.estado === "0" ? 0.78 : 1,
+                      }}
+                    >
                       {isTablet || isMobile
                         ? <TableCell padding="checkbox" colSpan={columns.length}>
                           <Box sx={{ display: "flex", flexDirection: "column" }}>
@@ -281,16 +412,16 @@ const TablaAsociados: React.FC = () => {
                                 {columns.map((column) => {
                                   const value = column.id === "accion" ? "" : (socio as any)[column.id];
                                   return (
-                                    <Box>
+                                    <Box key={column.id}>
                                       {/* Mostrar titulo del campo */}
-                                        {
-                                          column.id === "bloque" ? "" : 
+                                      {
+                                        column.id === "bloque" ? "" :
                                           column.id === "inquilino" ? "" :
-                                          column.id === "giro_negocio" ? "" :
-                                          <Typography sx={{ fontWeight: "bold", mb: 1 }}>
-                                            {column.id === "numero_puesto" ? "Puestos" : column.label}
-                                          </Typography>
-                                        }
+                                            column.id === "giro_negocio" ? "" :
+                                              <Typography sx={{ fontWeight: "bold", mb: 1 }}>
+                                                {column.id === "numero_puesto" ? "Puestos" : column.label}
+                                              </Typography>
+                                      }
                                       {/* Mostrar los detalles del socio */}
                                       <Typography>
                                         {
@@ -307,6 +438,8 @@ const TablaAsociados: React.FC = () => {
                                                 </Box>
                                               ))}
                                             </Box>
+                                          ) : column.id === "estado" ? (
+                                            socio.estado === "0" ? "Inactivo" : "Activo"
                                           ) : column.id === "deuda" ? (
                                             <Box sx={{ display: "flex", alignItems: "center" }}>
                                               <Typography
@@ -326,7 +459,7 @@ const TablaAsociados: React.FC = () => {
                                                   backgroundColor: "crimson",
                                                   color: "white"
                                                 }}
-                                                onClick={() => handleVerReporteDeudas(socio.id_socio)}
+                                                onClick={() => abrirReporteDeudas(socio)}
                                               >
                                                 <Payments sx={{ mr: 1 }} />
                                                 Deudas
@@ -339,7 +472,7 @@ const TablaAsociados: React.FC = () => {
                                                   backgroundColor: "green",
                                                   color: "white"
                                                 }}
-                                                onClick={() => handleVerReportePagos(socio.id_socio)}
+                                                onClick={() => abrirReportePagos(socio)}
                                               >
                                                 <Payments sx={{ mr: 1 }} />
                                                 Pagos
@@ -398,6 +531,73 @@ const TablaAsociados: React.FC = () => {
                                                 <WhatsApp sx={{ mr: 1 }} />
                                                 Enviar
                                               </Button>
+                                              {socio.estado === "0" ? (
+                                                <Button
+                                                  variant="contained"
+                                                  sx={{
+                                                    width: isTablet ? "33%" : "100%",
+                                                    mt: isTablet ? 0 : 1,
+                                                    mb: isTablet ? 1 : 0,
+                                                    padding: "0.5rem 1.5rem",
+                                                    backgroundColor: "#008001",
+                                                    color: "white"
+                                                  }}
+                                                  onClick={() => accionEstadoSocio("activar", socio)}
+                                                >
+                                                  <CheckCircleOutline sx={{ mr: 1 }} />
+                                                  Activar
+                                                </Button>
+                                              ) : (
+                                                <Button
+                                                  variant="contained"
+                                                  sx={{
+                                                    width: isTablet ? "33%" : "100%",
+                                                    mt: isTablet ? 0 : 1,
+                                                    mb: isTablet ? 1 : 0,
+                                                    padding: "0.5rem 1.5rem",
+                                                    backgroundColor: "#d32f2f",
+                                                    color: "white"
+                                                  }}
+                                                  onClick={() => accionEstadoSocio("desactivar", socio)}
+                                                >
+                                                  <HighlightOff sx={{ mr: 1 }} />
+                                                  Desactivar
+                                                </Button>
+                                              )}
+                                              {usuario?.id_rol === ID_ROL.ADMINISTRADOR && socio.id_usuario && (
+                                                <>
+                                                  <Button
+                                                    variant="contained"
+                                                    sx={{
+                                                      width: isTablet ? "33%" : "100%",
+                                                      mt: isTablet ? 0 : 1,
+                                                      mb: isTablet ? 1 : 0,
+                                                      padding: "0.5rem 1.5rem",
+                                                      backgroundColor: "#6c757d",
+                                                      color: "white"
+                                                    }}
+                                                    onClick={() => toggleAccesoSocio(socio)}
+                                                  >
+                                                    {socio.usuario?.estado === "1" ? <LockOpen sx={{ mr: 1 }} /> : <Lock sx={{ mr: 1 }} />}
+                                                    {socio.usuario?.estado === "1" ? "Deshabilitar acceso" : "Habilitar acceso"}
+                                                  </Button>
+                                                  <Button
+                                                    variant="contained"
+                                                    sx={{
+                                                      width: isTablet ? "33%" : "100%",
+                                                      mt: isTablet ? 0 : 1,
+                                                      mb: isTablet ? 1 : 0,
+                                                      padding: "0.5rem 1.5rem",
+                                                      backgroundColor: "#ff9800",
+                                                      color: "white"
+                                                    }}
+                                                    onClick={() => regenerarCredencialesSocio(socio)}
+                                                  >
+                                                    <VpnKey sx={{ mr: 1 }} />
+                                                    Regenerar credenciales
+                                                  </Button>
+                                                </>
+                                              )}
                                             </Box>
                                           ) : (
                                             value
@@ -421,111 +621,148 @@ const TablaAsociados: React.FC = () => {
                                 height: "100%",
                                 verticalAlign: "middle",
                                 backgroundColor:
-                                  column.id === "deuda" && value === 0 
-                                  ? "#B5F598" : column.id === "deuda" 
-                                  ? "#f8d7da" : undefined,
+                                  column.id === "deuda" && value === 0
+                                    ? "#B5F598" : column.id === "deuda"
+                                      ? "#f8d7da" : undefined,
                                 color:
-                                  column.id === "deuda" && value === 0 
-                                  ? "green" : column.id === "deuda" 
-                                  ? "#721c24" : undefined,
+                                  column.id === "deuda" && value === 0
+                                    ? "green" : column.id === "deuda"
+                                      ? "#721c24" : undefined,
                               }}
                             >
-                              {column.id === "bloque" 
-                                ? (socio.puestos.length > 0 ? socio.puestos.map((puesto, index) => 
+                              {column.id === "bloque"
+                                ? (socio.puestos.length > 0 ? socio.puestos.map((puesto, index) =>
                                   <Box
                                     key={index}
                                     sx={{ height: "45px", display: "block", alignContent: "center", justifyContent: "center" }}
                                   >
                                     {puesto?.block?.nombre}
                                   </Box>
+                                ) : "No asignado")
+                                : column.id === "numero_puesto"
+                                  ? (socio.puestos.length > 0 ? socio.puestos.map((puesto, index) =>
+                                    <Box
+                                      key={index}
+                                      sx={{ height: "45px", display: "block", alignContent: "center", justifyContent: "center" }}
+                                    >
+                                      {puesto.numero_puesto}
+                                    </Box>
                                   ) : "No asignado")
-                                : column.id === "numero_puesto" 
-                                ? (socio.puestos.length > 0 ? socio.puestos.map((puesto, index) =>
-                                  <Box
-                                    key={index}
-                                    sx={{ height: "45px", display: "block", alignContent: "center", justifyContent: "center" }}
-                                  >
-                                    {puesto.numero_puesto}
-                                  </Box>
-                                  ) : "No asignado")
-                                : column.id === "giro_negocio" 
-                                ? (socio.puestos.length > 0 ? socio.puestos.map((puesto, index) => 
-                                  <Box
-                                    key={index}
-                                    sx={{ height: "45px", display: "block", alignContent: "center", justifyContent: "center" }}
-                                  >
-                                    {puesto?.gironegocio?.nombre}
-                                  </Box>
-                                  ) : "No asignado")
-                                : column.id === "inquilino" 
-                                ? (socio.puestos.length > 0 ? socio.puestos.map((puesto, index) => 
-                                  <Box
-                                    key={index}
-                                    sx={{ height: "45px", display: "block", alignContent: "center", justifyContent: "center" }}
-                                  >
-                                    {puesto.nombre_inquilino}
-                                  </Box>
-                                  ) : "No asignado")
-                                : column.id === "deuda" 
-                                ? value === 0 ? "No existen deudas" : `S/ ${value}`
-                                : column.id === "ver_reporte" ? (
-                                  <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                    <IconButton
-                                      aria-label="payment"
-                                      sx={{ color: "crimson" }}
-                                      onClick={() => handleVerReporteDeudas(socio.id_socio)}
-                                    >
-                                      <Payments />
-                                    </IconButton>
-                                    <IconButton
-                                      aria-label="payment"
-                                      sx={{ color: "green" }}
-                                      onClick={() => handleVerReportePagos(socio.id_socio)}
-                                    >
-                                      <Payments />
-                                    </IconButton>
-                                  </Box>
-                                ) : column.id === "accion" ? (
-                                  <Box sx={{ display: "flex" }}>
-                                    <IconButton
-                                      aria-label="edit"
-                                      sx={{ color: "#0478E3" }}
-                                      onClick={() => handleOpen(socio)}
-                                    >
-                                      <SaveAs />
-                                    </IconButton>
-                                    <IconButton
-                                      aria-label="download"
-                                      sx={{ color: "black" }}
-                                      onClick={() => downloadDataSocios(1, "", socio)}
-                                    >
-                                      <Download />
-                                    </IconButton>
-                                    <IconButton
-                                      aria-label="whatsapp"
-                                      sx={{ color: "green" }}
-                                      onClick={() => downloadDataSocios(2, socio.telefono, socio)}
-                                    >
-                                      <WhatsApp />
-                                    </IconButton>
-                                    <IconButton
-                                      aria-label="delete"
-                                      sx={{ color: "red" }}
-                                      onClick={() => mostrarAlertaConfirmacion(
-                                          "Eliminar socio", "¿Estás seguro de eliminar este socio?", "Eliminar", "Cancelar"
-                                        ).then((result) => {
-                                          if (result.isConfirmed) {
-                                            eliminarSocio(socio);
-                                          }
-                                        }
-                                      )}
-                                    >
-                                      <DeleteForever />
-                                    </IconButton>
-                                  </Box>
-                                ) : (
-                                  value
-                                )}
+                                  : column.id === "giro_negocio"
+                                    ? (socio.puestos.length > 0 ? socio.puestos.map((puesto, index) =>
+                                      <Box
+                                        key={index}
+                                        sx={{ height: "45px", display: "block", alignContent: "center", justifyContent: "center" }}
+                                      >
+                                        {puesto?.gironegocio?.nombre}
+                                      </Box>
+                                    ) : "No asignado")
+                                    : column.id === "inquilino"
+                                      ? (socio.puestos.length > 0 ? socio.puestos.map((puesto, index) =>
+                                        <Box
+                                          key={index}
+                                          sx={{ height: "45px", display: "block", alignContent: "center", justifyContent: "center" }}
+                                        >
+                                          {puesto.nombre_inquilino}
+                                        </Box>
+                                      ) : "No asignado")
+                                      : column.id === "deuda"
+                                        ? value === 0 ? "No existen deudas" : `S/ ${value}`
+                                        : column.id === "estado" ? (
+                                          socio.estado === "0" ? "Inactivo" : "Activo"
+                                        ) : column.id === "ver_reporte" ? (
+                                          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                            <IconButton
+                                              aria-label="payment"
+                                              sx={{ color: "crimson" }}
+                                              onClick={() => abrirReporteDeudas(socio)}
+                                            >
+                                              <Payments />
+                                            </IconButton>
+                                            <IconButton
+                                              aria-label="payment"
+                                              sx={{ color: "green" }}
+                                              onClick={() => abrirReportePagos(socio)}
+                                            >
+                                              <Payments />
+                                            </IconButton>
+                                          </Box>
+                                        ) : column.id === "accion" ? (
+                                          <Box sx={{ display: "flex" }}>
+                                            <IconButton
+                                              aria-label="edit"
+                                              sx={{ color: "#0478E3" }}
+                                              onClick={() => handleOpen(socio)}
+                                            >
+                                              <SaveAs />
+                                            </IconButton>
+                                            <IconButton
+                                              aria-label="download"
+                                              sx={{ color: "black" }}
+                                              onClick={() => downloadDataSocios(1, "", socio)}
+                                            >
+                                              <Download />
+                                            </IconButton>
+                                            <IconButton
+                                              aria-label="whatsapp"
+                                              sx={{ color: "green" }}
+                                              onClick={() => downloadDataSocios(2, socio.telefono, socio)}
+                                            >
+                                              <WhatsApp />
+                                            </IconButton>
+                                            {socio.estado === "0" ? (
+                                              <IconButton
+                                                aria-label="activar"
+                                                sx={{ color: "#008001" }}
+                                                onClick={() => accionEstadoSocio("activar", socio)}
+                                              >
+                                                <CheckCircleOutline />
+                                              </IconButton>
+                                            ) : (
+                                              <IconButton
+                                                aria-label="desactivar"
+                                                sx={{ color: "red" }}
+                                                onClick={() => accionEstadoSocio("desactivar", socio)}
+                                              >
+                                                <HighlightOff />
+                                              </IconButton>
+                                            )}
+                                            {usuario?.id_rol === ID_ROL.ADMINISTRADOR && socio.id_usuario && (
+                                              <IconButton
+                                                aria-label="toggle-acceso"
+                                                sx={{ color: "#6c757d" }}
+                                                onClick={() => toggleAccesoSocio(socio)}
+                                              >
+                                                {socio.usuario?.estado === "1" ? <LockOpen /> : <Lock />}
+                                              </IconButton>
+                                            )}
+                                            {usuario?.id_rol === ID_ROL.ADMINISTRADOR && socio.id_usuario && (
+                                              <IconButton
+                                                aria-label="regenerar-credenciales"
+                                                sx={{ color: "#ff9800" }}
+                                                onClick={() => regenerarCredencialesSocio(socio)}
+                                              >
+                                                <VpnKey />
+                                              </IconButton>
+                                            )}
+                                            <IconButton
+                                              aria-label="delete"
+                                              sx={{ color: "red" }}
+                                              onClick={() => mostrarAlertaConfirmacion(
+                                                "Eliminar socio", "¿Estás seguro de eliminar este socio?", "Eliminar", "Cancelar"
+                                              ).then((result) => {
+                                                if (result.isConfirmed) {
+                                                  eliminarSocio(socio);
+                                                }
+                                              }
+                                              )}
+                                            >
+                                              <DeleteForever />
+                                            </IconButton>
+                                          </Box>
+                                        ) : (
+                                          value
+                                        )}
                             </TableCell>
                           );
                         })}
@@ -548,6 +785,22 @@ const TablaAsociados: React.FC = () => {
           </Paper>
         </>
       )}
+
+      <ModalReporteSocio
+        open={socioReporte !== null}
+        socio={socioReporte}
+        tabInicial={tabReporteSocio}
+        onClose={() => setSocioReporte(null)}
+      />
+
+      <ModalCredenciales
+        open={modalCredencialesAbierto}
+        onClose={() => setModalCredencialesAbierto(false)}
+        titulo="Credenciales de acceso"
+        credenciales={credenciales}
+        resumen={resumenCredenciales}
+        telefono={socioSeleccionado?.telefono}
+      />
     </Contenedor>
   );
 };
