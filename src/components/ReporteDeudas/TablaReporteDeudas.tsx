@@ -209,8 +209,9 @@ const TablaReporteDeudas: React.FC = () => {
     try {
       const idPuestoFinal = idPuestoOverride ?? puestoSeleccionado;
       const nombreSocioFinal = nombreSocioOverride ?? (socioSeleccionado?.nombre_completo ?? "");
+      const idSocioFinal = socioSeleccionado?.id_socio ?? "";
       const response = await apiClient.get(
-        Api_Global_Reportes.reportes.pagos(pagina, 15, idPuestoFinal, nombreSocioFinal.trim())
+        Api_Global_Reportes.reportes.pagos(pagina, 15, idPuestoFinal, nombreSocioFinal.trim(), idSocioFinal)
       );
       setPagos(response.data.data);
       setTotalPaginasPagos(response.data.meta.last_page);
@@ -242,8 +243,10 @@ const TablaReporteDeudas: React.FC = () => {
       return;
     }
     const nombreSocio = socioSeleccionado?.nombre_completo.trim() || "";
+    const idSocio = socioSeleccionado?.id_socio || "";
     const params = [
       puestoSeleccionado ? `id_puesto=${puestoSeleccionado}` : "",
+      idSocio ? `id_socio=${idSocio}` : "",
       nombreSocio ? `nombre_socio=${encodeURIComponent(nombreSocio)}` : "",
       tab === 1 ? "modo=detalle" : "",
     ].filter(Boolean).join("&");

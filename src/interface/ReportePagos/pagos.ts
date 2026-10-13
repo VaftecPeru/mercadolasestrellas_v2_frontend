@@ -12,7 +12,7 @@ export interface Puesto {
 
 export interface Column {
   // Ajustado para coincidir con los IDs reales de la tabla
-  id: "id_pago" | "serie_numero" | "fecha" | "aporte" | "total" | "detalle_pagos" | "accion" | "anio" | "mes" | "servicios" | "montos" | "periodo";
+  id: "id_pago" | "serie_numero" | "fecha" | "aporte" | "total" | "detalle_pagos" | "accion" | "anio" | "mes" | "servicios" | "montos" | "periodo" | "tipo_servicio";
   label: string;
   minWidth?: number;
   align?: "center" | "left" | "right";
@@ -20,6 +20,7 @@ export interface Column {
 
 export interface DetallePago {
   descripcion: string;
+  tipo_servicio?: string | number;
   importe: string;
   puesto?: string;
 }

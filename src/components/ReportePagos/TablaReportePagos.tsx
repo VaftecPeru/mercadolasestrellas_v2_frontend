@@ -16,12 +16,14 @@ import { ordenarSociosPorNombre } from '../../Utils/ordenarSocios';
 import { handleExport } from '../../Utils/exportUtils';
 import { Column, Data, Puesto, Socio } from '../../interface/ReportePagos/pagos';
 import { nombreMes } from '../../Utils/dateUtils';
+import { getNombreTipoServicio } from '../../Utils/tipoServicio';
 import { useAuth } from '../../context/AuthContext';
 import { mostrarAlerta } from '../Alerts/Registrar';
 
 const columns: readonly Column[] = [
   { id: "fecha", label: "Fecha Pago", minWidth: 100, align: "center" },
   { id: "servicios", label: "Servicios", minWidth: 150, align: "left" },
+  { id: "tipo_servicio", label: "Tipo de Servicio", minWidth: 130, align: "center" },
   { id: "montos", label: "Total (S/)", minWidth: 100, align: "right" },
   { id: "total", label: "Imp. Pagado (S/)", minWidth: 120, align: "right" },
 ];
@@ -370,7 +372,7 @@ const TablaReportePagos: React.FC = () => {
                                       <Typography variant="caption" sx={{ fontWeight: 'bold' }}>Servicios:</Typography>
                                       {pago.detalle_pagos.map((det, i) => (
                                         <Box key={i} sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                                          <Typography variant="caption">• {det.descripcion}</Typography>
+                                          <Typography variant="caption">• {det.descripcion} ({getNombreTipoServicio(det.tipo_servicio)})</Typography>
                                           <Typography variant="caption" sx={{ fontWeight: 'bold' }}>S/ {det.importe}</Typography>
                                         </Box>
                                       ))}
@@ -394,6 +396,13 @@ const TablaReportePagos: React.FC = () => {
                               <TableCell>
                                 <Typography sx={{ fontSize: '0.85rem' }}>
                                   {detalle.descripcion}
+                                </Typography>
+                              </TableCell>
+
+                              {/* Columna Tipo de Servicio */}
+                              <TableCell align="center">
+                                <Typography sx={{ fontSize: '0.85rem' }}>
+                                  {getNombreTipoServicio(detalle.tipo_servicio)}
                                 </Typography>
                               </TableCell>
 
@@ -426,7 +435,7 @@ const TablaReportePagos: React.FC = () => {
               {!isTablet && !isMobile && pagos.length > 0 && (
                 <TableHead>
                   <TableRow>
-                    <TableCell colSpan={2} align="right" sx={{ fontWeight: "bold", backgroundColor: "#f0f0f0" }}>
+                    <TableCell colSpan={3} align="right" sx={{ fontWeight: "bold", backgroundColor: "#f0f0f0" }}>
                       TOTAL:
                     </TableCell>
                     <TableCell align="right" sx={{ fontWeight: "bold", backgroundColor: "#e3f2fd", fontSize: '1rem', borderTop: '2px solid #1976d2' }}>

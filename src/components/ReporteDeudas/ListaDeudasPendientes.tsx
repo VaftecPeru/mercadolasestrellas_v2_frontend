@@ -2,6 +2,7 @@ import { Box, Paper, Table, TableBody, TableCell, TableContainer, TableHead, Tab
 import React, { useState } from 'react';
 import useResponsive from '../../hooks/Responsive/useResponsive';
 import { Column, DeudaPendiente } from '../../interface/ReporteDeudas/deudas';
+import { getNombreTipoServicio } from '../../Utils/tipoServicio';
 
 const soloFecha = (fecha: string) => (fecha ? String(fecha).split(" ")[0] : "");
 
@@ -29,6 +30,7 @@ const ListaDeudasPendientes: React.FC<ListaDeudasPendientesProps> = ({
     columns.push({ id: "numero_puesto", label: "Puesto", minWidth: 70, align: "center" });
   }
   columns.push({ id: "nombre_servicio", label: "Servicios", minWidth: 200, align: "left" });
+  columns.push({ id: "tipo_servicio", label: "Tipo de Servicio", minWidth: 130, align: "center" });
   if (mostrarColumnasCompletas) {
     columns.push({ id: "total", label: "Total (S/)", minWidth: 100, align: "right" });
     columns.push({ id: "a_cuenta", label: "Imp. Pagado (S/)", minWidth: 110, align: "right" });
@@ -105,7 +107,11 @@ const ListaDeudasPendientes: React.FC<ListaDeudasPendientesProps> = ({
                               {columns.map((column) => (
                                 <Box key={column.id}>
                                   <Typography sx={{ fontWeight: "bold", mb: 1 }}>{column.label}</Typography>
-                                  <Typography>{(deuda as any)[column.id]}</Typography>
+                                  <Typography>
+                                    {column.id === "tipo_servicio"
+                                      ? getNombreTipoServicio(deuda.tipo_servicio)
+                                      : (deuda as any)[column.id]}
+                                  </Typography>
                                 </Box>
                               ))}
                             </Box>
@@ -114,7 +120,9 @@ const ListaDeudasPendientes: React.FC<ListaDeudasPendientesProps> = ({
                       </TableCell>
                       : columns.map((column) => (
                         <TableCell key={column.id} align={column.align}>
-                          {(deuda as any)[column.id]}
+                          {column.id === "tipo_servicio"
+                            ? getNombreTipoServicio(deuda.tipo_servicio)
+                            : (deuda as any)[column.id]}
                         </TableCell>
                       ))}
                   </TableRow>

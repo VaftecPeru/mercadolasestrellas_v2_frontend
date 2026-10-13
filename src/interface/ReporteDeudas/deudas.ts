@@ -11,7 +11,7 @@ export interface Socio {
 }
 
 export interface Column {
-  id: keyof Data | keyof DeudaPendiente | "accion";
+  id: keyof Data | keyof DeudaPendiente | "tipo_servicio" | "accion";
   label: string;
   minWidth?: number;
   align?: "center" | "left" | "right";
@@ -23,6 +23,7 @@ export interface Data {
   mes: string;
   fecha: string;
   servicio_descripcion: string;
+  tipo_servicio?: string | number;
   total: string;
   importe_pagado: string;
   importe_por_pagar: string;
@@ -32,6 +33,7 @@ export interface DeudaPendiente {
   id_deuda: number;
   id_deuda_cuota: number;
   nombre_servicio: string;
+  tipo_servicio?: string | number;
   fecha: string;
   anio: string;
   mes: string;
