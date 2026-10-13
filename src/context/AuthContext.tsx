@@ -10,13 +10,8 @@ import apiClient from "../Utils/apliClient";
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [autenticado, setAutenticado] = useState<boolean>(
-    () => JSON.parse(localStorage.getItem("autenticado") || "false")
-  );
-  const [usuario, setUsuario] = useState<Usuario | null>(() => {
-    const usuarioGuardado = localStorage.getItem("usuario");
-    return usuarioGuardado ? JSON.parse(usuarioGuardado) : null;
-  });
+  const [autenticado, setAutenticado] = useState<boolean>(false);
+  const [usuario, setUsuario] = useState<Usuario | null>(null);
 
   const login = (user: Usuario) => {
     localStorage.setItem("usuario", JSON.stringify(user));
@@ -55,6 +50,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const getDataSesion = useCallback(async () => {
     const token = Cookies.get("token");
     if (!token) {
+      limpiarSesion();
       return undefined;
     }
 
@@ -77,24 +73,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [limpiarSesion]);
 
   useEffect(() => {
-    const cargarSesion = async () => {
-      const usuarioGuardado = localStorage.getItem("usuario");
-      const autenticacion = JSON.parse(localStorage.getItem("autenticado") || "false");
-
-      if (usuarioGuardado && autenticacion && Cookies.get("token")) {
-        setUsuario(JSON.parse(usuarioGuardado));
-        setAutenticado(true);
-        return;
-      }
-
-      try {
-        await getDataSesion();
-      } catch {
-        // getDataSesion ya limpia la sesión y reporta el error cuando corresponde.
-      }
-    };
-
-    cargarSesion();
+    // El almacenamiento local es solo una caché: validar el token con el backend
+    // al cargar para no reactivar una cuenta bloqueada o una sesión revocada.
+    getDataSesion().catch(() => {
+      // El método ya gestiona la limpieza y notificación de errores.
+    });
   }, [getDataSesion]);
 
   return (
