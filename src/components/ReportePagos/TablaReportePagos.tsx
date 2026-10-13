@@ -13,6 +13,7 @@ import { Api_Global_Puestos } from '../../service/PuestoApi';
 import { Api_Global_Socios } from '../../service/SocioApi';
 import { ordenarPuestosPorNumero } from '../../Utils/ordenarPuestos';
 import { ordenarSociosPorNombre } from '../../Utils/ordenarSocios';
+import { buscarSocioDelPuesto, puestoPerteneceASocio } from '../../Utils/puestoSocio';
 import { handleExport } from '../../Utils/exportUtils';
 import { Column, Data, Puesto, Socio } from '../../interface/ReportePagos/pagos';
 import { nombreMes } from '../../Utils/dateUtils';
@@ -99,11 +100,7 @@ const TablaReportePagos: React.FC = () => {
     if (!socioSeleccionado) {
       return puestos;
     }
-    return puestos.filter((p) => {
-      const matchId = p.id_socio && Number(p.id_socio) === Number(socioSeleccionado.id_socio);
-      const matchNombre = p.socio && p.socio !== 'No asignado' && p.socio.trim().toLowerCase() === socioSeleccionado.nombre_completo.trim().toLowerCase();
-      return matchId || matchNombre;
-    });
+    return puestos.filter((p) => puestoPerteneceASocio(p, socioSeleccionado.id_socio));
   }, [puestos, socioSeleccionado]);
 
   // Al seleccionar un puesto -> auto-seleccionar el socio dueño
@@ -111,11 +108,7 @@ const TablaReportePagos: React.FC = () => {
     if (value) {
       const nuevoIdPuesto = Number(value.id_puesto);
       setPuestoSeleccionado(nuevoIdPuesto);
-      const socioDueno = socios.find((s) => {
-        const matchId = value.id_socio && Number(s.id_socio) === Number(value.id_socio);
-        const matchNombre = value.socio && value.socio !== 'No asignado' && s.nombre_completo.trim().toLowerCase() === value.socio.trim().toLowerCase();
-        return matchId || matchNombre;
-      });
+      const socioDueno = buscarSocioDelPuesto(socios, value);
       if (socioDueno) {
         setSocioSeleccionado(socioDueno);
       }
@@ -128,11 +121,7 @@ const TablaReportePagos: React.FC = () => {
   const handleSocioChange = (value: Socio | null) => {
     setSocioSeleccionado(value);
     if (value) {
-      const puestosDelSocio = puestos.filter((p) => {
-        const matchId = p.id_socio && Number(p.id_socio) === Number(value.id_socio);
-        const matchNombre = p.socio && p.socio !== 'No asignado' && p.socio.trim().toLowerCase() === value.nombre_completo.trim().toLowerCase();
-        return matchId || matchNombre;
-      });
+      const puestosDelSocio = puestos.filter((p) => puestoPerteneceASocio(p, value.id_socio));
 
       if (puestosDelSocio.length === 1) {
         setPuestoSeleccionado(Number(puestosDelSocio[0].id_puesto));
@@ -153,11 +142,7 @@ const TablaReportePagos: React.FC = () => {
       setPuestoSeleccionado(id);
       const puestoEncontrado = puestos.find((p) => Number(p.id_puesto) === id);
       if (puestoEncontrado && socios.length > 0) {
-        const socioDueno = socios.find((s) => {
-          const matchId = puestoEncontrado.id_socio && Number(s.id_socio) === Number(puestoEncontrado.id_socio);
-          const matchNombre = puestoEncontrado.socio && puestoEncontrado.socio !== 'No asignado' && s.nombre_completo.trim().toLowerCase() === puestoEncontrado.socio.trim().toLowerCase();
-          return matchId || matchNombre;
-        });
+        const socioDueno = buscarSocioDelPuesto(socios, puestoEncontrado);
         if (socioDueno) {
           setSocioSeleccionado(socioDueno);
         }
@@ -182,7 +167,6 @@ const TablaReportePagos: React.FC = () => {
           pagina,
           15,
           id || 0,
-          socio?.nombre_completo || "",
           socio?.id_socio || ""
         )
       );
@@ -213,7 +197,6 @@ const TablaReportePagos: React.FC = () => {
     const params = [
       puestoSeleccionado ? `id_puesto=${puestoSeleccionado}` : "",
       socioSeleccionado ? `id_socio=${socioSeleccionado.id_socio}` : "",
-      socioSeleccionado ? `nombre_socio=${encodeURIComponent(socioSeleccionado.nombre_completo)}` : "",
     ].filter(Boolean).join("&");
 
     await handleExport(exportUrl, exportFormat, fileNamePrefix, setExportFormat, params);
