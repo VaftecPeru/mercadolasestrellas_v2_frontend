@@ -71,16 +71,29 @@ export const useFiltroPuestoSocio = ({
 
         if (!isMounted) return;
 
+        let puestosCargados: Puesto[] = [];
         if (resPuestos.data?.data) {
-          setPuestos(ordenarPuestosPorNumero(resPuestos.data.data));
+          puestosCargados = ordenarPuestosPorNumero(resPuestos.data.data);
+          setPuestos(puestosCargados);
         }
 
+        let sociosCargados: Socio[] = [];
         if (resSocios.data?.data) {
           const dataSocios = resSocios.data.data.map((item: any) => ({
             id_socio: String(item.id_socio),
             nombre_completo: item.nombre_completo,
           }));
-          setSocios(ordenarSociosPorNombre(dataSocios));
+          sociosCargados = ordenarSociosPorNombre(dataSocios);
+          setSocios(sociosCargados);
+        }
+
+        // Auto-selección para rol Socio (id_rol === 2)
+        const esRolSocio = usuario && Number(usuario.id_rol) === 2;
+        if (esRolSocio && sociosCargados.length === 1) {
+          setSocioSeleccionado(sociosCargados[0]);
+          if (puestosCargados.length === 1) {
+            setPuestoSeleccionado(Number(puestosCargados[0].id_puesto));
+          }
         }
       } catch (error) {
         console.error('Error al cargar filtros de puestos y socios:', error);
@@ -159,10 +172,12 @@ export const useFiltroPuestoSocio = ({
   // Selección de socio -> filtra puestos y auto-selecciona si tiene exactamente 1
   const handleSocioChange = useCallback(
     (value: Socio | null) => {
-      setSocioSeleccionado(value);
+      const esRolSocio = usuario && Number(usuario.id_rol) === 2;
+      const nuevoSocio = esRolSocio && !value && socios.length === 1 ? socios[0] : value;
+      setSocioSeleccionado(nuevoSocio);
 
-      if (value) {
-        const puestosDelSocio = puestos.filter((p) => puestoPerteneceASocio(p, value.id_socio));
+      if (nuevoSocio) {
+        const puestosDelSocio = puestos.filter((p) => puestoPerteneceASocio(p, nuevoSocio.id_socio));
 
         if (puestosDelSocio.length === 1) {
           setPuestoSeleccionado(Number(puestosDelSocio[0].id_puesto));
@@ -186,19 +201,25 @@ export const useFiltroPuestoSocio = ({
       }
       onFiltrosChangeRef.current?.();
     },
-    [puestos, puestoSeleccionado, searchParams, setSearchParams]
+    [usuario, socios, puestos, puestoSeleccionado, searchParams, setSearchParams]
   );
 
   // Limpiar todos los filtros y parámetros de búsqueda
   const limpiarFiltros = useCallback(() => {
-    setPuestoSeleccionado(0);
-    setSocioSeleccionado(null);
+    const esRolSocio = usuario && Number(usuario.id_rol) === 2;
+    if (esRolSocio && socios.length === 1) {
+      setPuestoSeleccionado(puestos.length === 1 ? Number(puestos[0].id_puesto) : 0);
+      setSocioSeleccionado(socios[0]);
+    } else {
+      setPuestoSeleccionado(0);
+      setSocioSeleccionado(null);
+    }
     urlProcesadaRef.current = null;
     if (searchParams.get('puesto')) {
       setSearchParams({}, { replace: true });
     }
     onFiltrosChangeRef.current?.();
-  }, [searchParams, setSearchParams]);
+  }, [usuario, socios, puestos, searchParams, setSearchParams]);
 
   const tieneFiltrosActivos = Boolean(puestoSeleccionado !== 0 || socioSeleccionado !== null);
 

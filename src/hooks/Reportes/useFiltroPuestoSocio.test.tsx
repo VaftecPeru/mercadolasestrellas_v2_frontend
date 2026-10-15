@@ -12,9 +12,11 @@ jest.mock('../../Utils/apliClient', () => ({
   },
 }));
 
+let mockUsuario: any = { id_usuario: 1, id_rol: 1, nombre_usuario: 'admin' };
+
 jest.mock('../../context/AuthContext', () => ({
   useAuth: () => ({
-    usuario: { id_usuario: 1, nombre_usuario: 'admin' },
+    usuario: mockUsuario,
   }),
 }));
 
@@ -39,6 +41,7 @@ const wrapper = ({ children }: { children: React.ReactNode }) => (
 describe('useFiltroPuestoSocio', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockUsuario = { id_usuario: 1, id_rol: 1, nombre_usuario: 'admin' };
     (apiClient.get as jest.Mock).mockImplementation((url: string) => {
       if (url.includes('/puestos')) {
         return Promise.resolve({ data: { data: mockPuestos } });
@@ -246,5 +249,94 @@ describe('useFiltroPuestoSocio', () => {
     expect(result.current.socioSeleccionado).toBeNull();
     expect(result.current.tieneFiltrosActivos).toBe(false);
     expect(onFiltrosChange).toHaveBeenCalled();
+  });
+
+  describe('Rol Socio (id_rol === 2)', () => {
+    test('Auto-selecciona socio y puesto cuando el usuario socio tiene un solo puesto', async () => {
+      mockUsuario = { id_usuario: 5, id_rol: 2, nombre_usuario: 'socio_user' };
+      (apiClient.get as jest.Mock).mockImplementation((url: string) => {
+        if (url.includes('/puestos')) {
+          return Promise.resolve({ data: { data: [{ id_puesto: '1', numero_puesto: 'P-01', id_socio: '10' }] } });
+        }
+        if (url.includes('/socios')) {
+          return Promise.resolve({ data: { data: [{ id_socio: '10', nombre_completo: 'Socio Unico' }] } });
+        }
+        return Promise.resolve({ data: { data: [] } });
+      });
+
+      const { result } = renderHook(() => useFiltroPuestoSocio(), { wrapper });
+
+      await waitFor(() => {
+        expect(result.current.socioSeleccionado?.id_socio).toBe('10');
+        expect(result.current.puestoSeleccionado).toBe(1);
+      });
+    });
+
+    test('Auto-selecciona socio pero no puesto cuando el usuario socio tiene múltiples puestos', async () => {
+      mockUsuario = { id_usuario: 5, id_rol: 2, nombre_usuario: 'socio_user' };
+      (apiClient.get as jest.Mock).mockImplementation((url: string) => {
+        if (url.includes('/puestos')) {
+          return Promise.resolve({
+            data: {
+              data: [
+                { id_puesto: '2', numero_puesto: 'P-02', id_socio: '20' },
+                { id_puesto: '3', numero_puesto: 'P-03', id_socio: '20' },
+              ],
+            },
+          });
+        }
+        if (url.includes('/socios')) {
+          return Promise.resolve({ data: { data: [{ id_socio: '20', nombre_completo: 'Socio Multi' }] } });
+        }
+        return Promise.resolve({ data: { data: [] } });
+      });
+
+      const { result } = renderHook(() => useFiltroPuestoSocio(), { wrapper });
+
+      await waitFor(() => {
+        expect(result.current.socioSeleccionado?.id_socio).toBe('20');
+        expect(result.current.puestoSeleccionado).toBe(0);
+        expect(result.current.puestosDisponibles.length).toBe(2);
+      });
+    });
+
+    test('limpiarFiltros en rol Socio preserva la identidad del socio', async () => {
+      mockUsuario = { id_usuario: 5, id_rol: 2, nombre_usuario: 'socio_user' };
+      (apiClient.get as jest.Mock).mockImplementation((url: string) => {
+        if (url.includes('/puestos')) {
+          return Promise.resolve({
+            data: {
+              data: [
+                { id_puesto: '2', numero_puesto: 'P-02', id_socio: '20' },
+                { id_puesto: '3', numero_puesto: 'P-03', id_socio: '20' },
+              ],
+            },
+          });
+        }
+        if (url.includes('/socios')) {
+          return Promise.resolve({ data: { data: [{ id_socio: '20', nombre_completo: 'Socio Multi' }] } });
+        }
+        return Promise.resolve({ data: { data: [] } });
+      });
+
+      const { result } = renderHook(() => useFiltroPuestoSocio(), { wrapper });
+
+      await waitFor(() => {
+        expect(result.current.socioSeleccionado?.id_socio).toBe('20');
+      });
+
+      // El socio selecciona uno de sus puestos
+      act(() => {
+        result.current.handlePuestoChange({ id_puesto: '2', numero_puesto: 'P-02', id_socio: '20' });
+      });
+      expect(result.current.puestoSeleccionado).toBe(2);
+
+      // Limpia filtros: debe mantener su socio y resetear puesto a 0
+      act(() => {
+        result.current.limpiarFiltros();
+      });
+      expect(result.current.socioSeleccionado?.id_socio).toBe('20');
+      expect(result.current.puestoSeleccionado).toBe(0);
+    });
   });
 });
