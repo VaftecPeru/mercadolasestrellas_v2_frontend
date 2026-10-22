@@ -19,6 +19,7 @@ import { AvisoFormulario, SeparadorBloque, TxtFormulario } from "../Shared/Eleme
 import apiClient from "../../Utils/apliClient";
 import { Api_Global_Usuarios } from "../../service/UsuarioApi";
 import { UsuarioAdmin } from "../../interface/Usuarios";
+import useConsultaDocumento from "../../hooks/ConsultaDocumento/useConsultaDocumento";
 
 export interface CredencialUsuario {
   nombre_usuario: string;
@@ -54,6 +55,7 @@ const formInicial = {
 const RegistrarUsuario: React.FC<RegistrarUsuarioProps> = ({ open, usuario, handleClose, onCreado }) => {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState(formInicial);
+  const { consultando, consultarDni } = useConsultaDocumento();
 
   useEffect(() => {
     if (usuario) {
@@ -85,7 +87,21 @@ const RegistrarUsuario: React.FC<RegistrarUsuarioProps> = ({ open, usuario, hand
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | SelectChangeEvent<string>
   ) => {
     const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  // Al completar el DNI se consultan y autocompletan nombre y apellidos
+  const manejarCambioDni = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    manejarCambio(e);
+    const persona = await consultarDni(e.target.value);
+    if (persona) {
+      setFormData((prev) => ({
+        ...prev,
+        nombre: persona.nombres,
+        apellido_paterno: persona.apellido_paterno,
+        apellido_materno: persona.apellido_materno,
+      }));
+    }
   };
 
   const registrarUsuario = async (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -162,6 +178,15 @@ const RegistrarUsuario: React.FC<RegistrarUsuarioProps> = ({ open, usuario, hand
           <SeparadorBloque nombre="Datos personales" />
 
           <TxtFormulario
+            label="DNI (*)"
+            name="dni"
+            value={formData.dni}
+            onChange={manejarCambioDni}
+            icono={<Badge sx={{ mr: 1, color: "gray" }} />}
+            cargando={consultando}
+            inputProps={{ maxLength: 8 }}
+          />
+          <TxtFormulario
             label="Nombre (*)"
             name="nombre"
             value={formData.nombre}
@@ -200,13 +225,6 @@ const RegistrarUsuario: React.FC<RegistrarUsuarioProps> = ({ open, usuario, hand
             </Select>
           </FormControl>
 
-          <TxtFormulario
-            label="DNI (*)"
-            name="dni"
-            value={formData.dni}
-            onChange={manejarCambio}
-            icono={<Badge sx={{ mr: 1, color: "gray" }} />}
-          />
           <TxtFormulario
             label="Dirección (*)"
             name="direccion"

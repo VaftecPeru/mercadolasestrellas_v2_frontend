@@ -1,4 +1,4 @@
-import { TextField, Typography } from "@mui/material";
+import { CircularProgress, InputAdornment, TextField, Typography } from "@mui/material";
 import React from "react";
 
 interface SeparadorBloqueProps {
@@ -13,6 +13,8 @@ interface TxtFormularioProps {
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   noMargin?: boolean;
   icono: React.ReactNode;
+  cargando?: boolean;
+  inputProps?: React.InputHTMLAttributes<HTMLInputElement>;
 }
 
 export const AvisoFormulario = () => {
@@ -62,7 +64,17 @@ export const SeparadorBloque: React.FC<SeparadorBloqueProps> = ({ nombre }) => {
   );
 };
 
-export const TxtFormulario: React.FC<TxtFormularioProps> = ({ type, label, name, value, onChange, noMargin, icono }) => {
+export const TxtFormulario: React.FC<TxtFormularioProps> = ({
+  type,
+  label,
+  name,
+  value,
+  onChange,
+  noMargin,
+  icono,
+  cargando,
+  inputProps,
+}) => {
   return (
     <TextField
       fullWidth
@@ -71,9 +83,15 @@ export const TxtFormulario: React.FC<TxtFormularioProps> = ({ type, label, name,
       name={name}
       value={value}
       onChange={onChange}
+      inputProps={inputProps}
       sx={{ mb: noMargin ? 0 : 2 }}
       InputProps={{
         startAdornment: icono,
+        endAdornment: cargando ? (
+          <InputAdornment position="end">
+            <CircularProgress size={20} />
+          </InputAdornment>
+        ) : undefined,
       }}
     />
   );
