@@ -16,9 +16,10 @@ export const Api_Global_Reportes = {
   
     deudas: (page: number, per_page: number, idPuesto: number) =>
       `/reportes/deudas?page=${page}&per_page=${per_page}&id_puesto=${idPuesto}`,
-    deudasExportar: () => `/reporte-deudas/exportar`,
-    deudasPendientes: (page: number, per_page: number, idPuesto: number, idSocio: number | string = "") => {
-      let url = `/deudas/pendientes?page=${page}&per_page=${per_page}`;
+    deudasExportar: (formato: "xlsx" | "pdf" = "xlsx") =>
+      formato === "pdf" ? `/reportes/deudas/exportar-pdf` : `/reportes/deudas/exportar`,
+    deudasPendientes: (page: number, per_page: number, idPuesto: number, nombreSocio: string) => {
+      let url = `/deudas/pendientes?page=${page}&per_page=${per_page}&nombre_socio=${encodeURIComponent(nombreSocio)}`;
       if (idPuesto) {
         url += `&id_puesto=${idPuesto}`;
       }

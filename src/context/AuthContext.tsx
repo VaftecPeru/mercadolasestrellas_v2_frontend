@@ -7,13 +7,12 @@ import { AuthContextType } from "../interface/AuthContext/AuthContext";
 import { Usuario } from "../interface/AuthContext/Usuario";
 import apiClient from "../Utils/apliClient";
 
-// Creamos el contexto de autenticación
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Creamos el proveedor de autenticación para envolver la aplicación
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-
-  const [autenticado, setAutenticado] = useState<boolean>(() => JSON.parse(localStorage.getItem("autenticado") || "false"));
+  const [autenticado, setAutenticado] = useState<boolean>(
+    () => JSON.parse(localStorage.getItem("autenticado") || "false")
+  );
   const [usuario, setUsuario] = useState<Usuario | null>(() => {
     const usuarioGuardado = localStorage.getItem("usuario");
     return usuarioGuardado ? JSON.parse(usuarioGuardado) : null;
@@ -26,68 +25,72 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setAutenticado(true);
   };
 
-  const logout = useCallback(async () => {
-    const token = Cookies.get("token");
-    const nombreUsu = usuario?.nombre_usuario;
-
-    
-    const usuarioNombre = usuario?.nombre_usuario || "Usuario";
-
-    limpiarSesion();
-
-    if (!token || !usuario) {
-
-      return;
-    }
-
-
-    apiClient.post("/logout", { usuario: nombreUsu })
-      .then((response) => {
-        mostrarAlerta("Cierre de sesión", response.data.message || "Sesión cerrada correctamente", "info");
-      })
-      .catch((error) => {
-        console.error("Error al cerrar sesión en el servidor:", error);
-      });
-  }, [usuario]);
-
-  const getDataSesion = useCallback(async () => {
-    const token = Cookies.get("token");
-    if (!token) {
-      return;
-    }
-    return apiClient.get(`/validaciones`)
-      .then((response) => {
-        const user = response.data;
-        setUsuario(user);
-        setAutenticado(true);
-        localStorage.setItem("usuario", JSON.stringify(user));
-        localStorage.setItem("autenticado", JSON.stringify(true));
-        return user;
-      })
-      .catch((error) => {
-        manejarError(error.response.data);
-        throw error;
-      });
-  }, []);
-
-  const limpiarSesion = () => {
+  const limpiarSesion = useCallback(() => {
     Cookies.remove("token", { path: "/" });
     localStorage.removeItem("usuario");
     localStorage.removeItem("autenticado");
     setUsuario(null);
     setAutenticado(false);
-  };
+  }, []);
+
+  const logout = useCallback(async () => {
+    const token = Cookies.get("token");
+
+    try {
+      if (token) {
+        const response = await apiClient.post("/logout");
+        mostrarAlerta(
+          "Cierre de sesión",
+          response.data.message || "Sesión cerrada correctamente",
+          "info"
+        );
+      }
+    } catch (error) {
+      console.error("Error al cerrar sesión en el servidor:", error);
+    } finally {
+      limpiarSesion();
+    }
+  }, [limpiarSesion]);
+
+  const getDataSesion = useCallback(async () => {
+    const token = Cookies.get("token");
+    if (!token) {
+      return undefined;
+    }
+
+    try {
+      const response = await apiClient.get("/validaciones");
+      const user = response.data;
+      setUsuario(user);
+      setAutenticado(true);
+      localStorage.setItem("usuario", JSON.stringify(user));
+      localStorage.setItem("autenticado", JSON.stringify(true));
+      return user;
+    } catch (error: any) {
+      const payload = error?.response?.data;
+      if (payload) {
+        manejarError(payload);
+      }
+      limpiarSesion();
+      throw error;
+    }
+  }, [limpiarSesion]);
 
   useEffect(() => {
     const cargarSesion = async () => {
       const usuarioGuardado = localStorage.getItem("usuario");
       const autenticacion = JSON.parse(localStorage.getItem("autenticado") || "false");
 
-      if (usuarioGuardado && autenticacion) {
+      if (usuarioGuardado && autenticacion && Cookies.get("token")) {
         setUsuario(JSON.parse(usuarioGuardado));
         setAutenticado(true);
-      } else {
-        await getDataSesion(); 
+        return;
+      }
+
+      try {
+        await getDataSesion();
+      } catch {
+        // getDataSesion ya limpia la sesión y reporta el error cuando corresponde.
       }
     };
 
@@ -104,9 +107,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error(
-      "Error: Debe iniciar sesión para navegar en la aplicación."
-    );
+    throw new Error("Error: Debe iniciar sesión para navegar en la aplicación.");
   }
   return context;
 };

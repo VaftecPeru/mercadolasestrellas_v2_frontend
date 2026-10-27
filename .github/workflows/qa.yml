@@ -1,0 +1,50 @@
+name: QA Frontend
+
+on:
+  push:
+    branches:
+      - main
+      - release/qa-main-2026-10-05
+      - integration/main-candidate-2026-10-05
+  pull_request:
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+
+    env:
+      REACT_APP_API_URL: https://intranet.mercadolasestrellas.org/api/v1
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Verify dependency tree
+        run: npm ls --depth=0
+
+      - name: Report lockfile drift
+        run: |
+          if ! git diff --quiet -- package-lock.json; then
+            echo "::warning::package-lock.json está desincronizado con package.json; regenerarlo y versionarlo en mantenimiento."
+          fi
+
+      - name: ESLint advisory
+        run: npx eslint src --ext .ts,.tsx || true
+
+      - name: Build
+        env:
+          CI: false
+        run: npm run build
+
+      - name: Run tests
+        env:
+          CI: true
+        run: npm test -- --watchAll=false

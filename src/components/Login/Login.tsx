@@ -25,7 +25,11 @@ const Login: React.FC = () => {
         if (response?.data) {
           const { token, usuario: userResponse } = response.data;
 
-          Cookies.set('token', token, { path: '/' });
+          Cookies.set('token', token, {
+            path: '/',
+            sameSite: 'strict',
+            secure: window.location.protocol === 'https:',
+          });
           login(userResponse);
 
           if (userResponse.debe_cambiar_password) {

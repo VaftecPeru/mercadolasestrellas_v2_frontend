@@ -1,9 +1,8 @@
-import React, { ReactNode, useEffect, useState } from 'react'
-import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import React, { ReactNode, useEffect, useState } from "react";
+import { Navigate } from "react-router-dom";
 import Cookies from "js-cookie";
+import { useAuth } from "../context/AuthContext";
 import { ID_ROL } from "../Utils/roles";
-
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -11,55 +10,55 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRoles }) => {
-  const navigate = useNavigate();
- 
   const { autenticado, usuario, getDataSesion } = useAuth();
-  const [loading, setLoading] = useState(true);
-
-  const validar = () => {
-    if (!autenticado) {
-      navigate("/");
-    }
-
-    if (requiredRoles && !requiredRoles.includes(usuario ? usuario.id_rol : -1)) {
-      if (usuario?.id_rol === ID_ROL.SOCIO) {
-        navigate("/home/reporte-deudas");
-        return;
-      }
-      navigate("/home");
-    }
-  };
+  const [loading, setLoading] = useState<boolean>(
+    () => Boolean(Cookies.get("token") && !usuario)
+  );
 
   useEffect(() => {
+    let activo = true;
+
     const cargarDatosSesion = async () => {
       const token = Cookies.get("token");
+
       if (token && !usuario) {
-        await getDataSesion();
+        try {
+          await getDataSesion();
+        } catch {
+          // El contexto limpia la sesión si el token ya no es válido.
+        }
       }
-      setLoading(false);
-      validar();
+
+      if (activo) {
+        setLoading(false);
+      }
     };
+
     cargarDatosSesion();
+
+    return () => {
+      activo = false;
+    };
   }, [getDataSesion, usuario]);
 
   if (loading) {
     return <div>Cargando...</div>;
   }
 
-  // Si el usuario está autenticado, mostramos el contenido
-  // if (!autenticado) {
-  //   return <Navigate to="/" />;
-  // }
+  if (!autenticado || !usuario || !Cookies.get("token")) {
+    return <Navigate to="/" replace />;
+  }
 
-  // if (requiredRoles && !requiredRoles.includes(usuario ? usuario.id_rol : -1)) {
-  //   if (usuario?.id_rol === ID_ROL.SOCIO) {
-  //     return <Navigate to="/home/reporte-deudas" />;
-  //   }
-  //   return <Navigate to="/home" />;
-  // }
+  if (requiredRoles && !requiredRoles.includes(usuario.id_rol)) {
+    return (
+      <Navigate
+        to={usuario.id_rol === ID_ROL.SOCIO ? "/home/reporte-deudas" : "/home"}
+        replace
+      />
+    );
+  }
 
   return <>{children}</>;
-
 };
 
 export default ProtectedRoute;

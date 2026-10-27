@@ -98,19 +98,41 @@ const BusquedaRapida = () => {
     e.preventDefault();
 
     if (!puestoSeleccionado) {
-      mostrarAlerta("Seleccione un puesto", "Debe seleccionar un puesto antes de exportar.", "warning");
+      alert("Seleccione un puesto antes de exportar.");
       return;
     }
 
-    const exportUrl = Api_Global_Reportes.reportes.deudasExportar();
-    const fileNamePrefix = `reporte-deudas-puesto-${puestoSeleccionado}`;
-    await handleExport(
-      exportUrl,
-      exportFormat,
-      fileNamePrefix,
-      setExportFormat,
-      `id_puesto=${puestoSeleccionado}`
-    );
+    if (exportFormat !== "1" && exportFormat !== "2") {
+      alert("Seleccione un formato de exportación.");
+      return;
+    }
+
+    const formato = exportFormat === "1" ? "pdf" : "xlsx";
+
+    try {
+      const response = await apiClient.get(
+        Api_Global_Reportes.reportes.deudasExportar(formato),
+        {
+          params: { id_puesto: puestoSeleccionado },
+          responseType: "blob",
+        }
+      );
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      const fecha = new Date().toISOString().split("T")[0];
+
+      link.href = url;
+      link.setAttribute("download", `reporte-deudas-${fecha}.${formato}`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      setExportFormat("");
+    } catch (error) {
+      console.error("Error al exportar reporte de deudas:", error);
+      alert("Ocurrió un error al exportar. Inténtelo nuevamente.");
+    }
   };
 
   return (
