@@ -1,5 +1,4 @@
 import { useCallback, useRef, useState } from "react";
-import axios from "axios";
 import apiClient from "../../Utils/apliClient";
 import { Api_Global_ConsultaDocumento } from "../../service/ConsultaDocumentoApi";
 import { mostrarAlerta } from "../../components/Alerts/Registrar";
@@ -15,8 +14,20 @@ const REGEX_RUC = /^\d{11}$/;
 const MENSAJE_DNI_POR_DEFECTO = "No se pudo consultar el DNI. Ingrese los datos manualmente.";
 const MENSAJE_RUC_POR_DEFECTO = "No se pudo consultar el RUC. Ingrese los datos manualmente.";
 
+interface AxiosLikeError {
+  isAxiosError?: boolean;
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+}
+
+const esAxiosError = (error: unknown): error is AxiosLikeError =>
+  typeof error === "object" && error !== null && (error as AxiosLikeError).isAxiosError === true;
+
 const obtenerMensaje = (error: unknown, fallback: string): string =>
-  (axios.isAxiosError(error) && error.response?.data?.message) || fallback;
+  (esAxiosError(error) && error.response?.data?.message) || fallback;
 
 export interface UseConsultaDocumentoReturn {
   consultando: boolean;
