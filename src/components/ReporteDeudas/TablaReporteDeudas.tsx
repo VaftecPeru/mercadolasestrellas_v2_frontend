@@ -1,25 +1,21 @@
 import { Autocomplete, Box, FormControl, Pagination, Tabs, Tab, TextField } from '@mui/material';
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react';
 import useResponsive from '../../hooks/Responsive/useResponsive';
-import { useSearchParams } from 'react-router-dom';
 import LoadingSpinner from '../PogressBar/ProgressBarV1';
 import Contenedor from '../Shared/Contenedor';
 import BotonExportar from '../Shared/BotonExportar';
 import BotonAgregar from '../Shared/BotonAgregar';
+import BotonLimpiar from '../Shared/BotonLimpiar';
 import ContenedorBotones from '../Shared/ContenedorBotones';
 import ListaDeudasPendientes from './ListaDeudasPendientes';
 import ListaPagosRealizados from './ListaPagosRealizados';
-import { Puesto, Socio, DeudaPendiente } from '../../interface/ReporteDeudas/deudas';
+import { Socio, DeudaPendiente } from '../../interface/ReporteDeudas/deudas';
 import { Data as DataPago } from '../../interface/ReportePagos/pagos';
-import apiClient from "../../Utils/apliClient";
+import apiClient from '../../Utils/apliClient';
 import { Api_Global_Reportes } from '../../service/ReporteApi';
-import { Api_Global_Puestos } from '../../service/PuestoApi';
-import { Api_Global_Socios } from '../../service/SocioApi';
-import { ordenarPuestosPorNumero } from '../../Utils/ordenarPuestos';
-import { ordenarSociosPorNombre } from '../../Utils/ordenarSocios';
 import { handleExport } from '../../Utils/exportUtils';
-import { useAuth } from '../../context/AuthContext';
 import { mostrarAlerta } from '../Alerts/Registrar';
+import useFiltroPuestoSocio from '../../hooks/Reportes/useFiltroPuestoSocio';
 
 const MENSAJE_VACIO_DEUDAS = (
   <>
@@ -38,17 +34,9 @@ const MENSAJE_VACIO_PAGOS = (
 const TablaReporteDeudas: React.FC = () => {
   const { isTablet, isMobile } = useResponsive();
   const [tab, setTab] = useState(0);
-  const [puestos, setPuestos] = useState<Puesto[]>([]);
-  const [puestoSeleccionado, setPuestoSeleccionado] = useState<number>(0);
-  const [socios, setSocios] = useState<Socio[]>([]);
-  const [socioSeleccionado, setSocioSeleccionado] = useState<Socio | null>(null);
   const [deudas, setDeudas] = useState<DeudaPendiente[]>([]);
   const [pagos, setPagos] = useState<DataPago[]>([]);
-  const [searchParams, setSearchParams] = useSearchParams();
-  const idPuesto = searchParams.get("puesto");
   const [isLoading, setIsLoading] = useState(false);
-
-  const { usuario } = useAuth();
 
   // Paginación por pestaña
   const [paginaDeudas, setPaginaDeudas] = useState(1);
@@ -70,127 +58,43 @@ const TablaReporteDeudas: React.FC = () => {
     setTab(nuevoTab);
   };
 
-  // Si el parametro puesto existe, obtener las deudas del puesto y auto-seleccionar su socio
-  useEffect(() => {
-    if (idPuesto && puestos.length > 0) {
-      const idNum = Number(idPuesto);
-      setPuestoSeleccionado(idNum);
-      const puestoEncontrado = puestos.find((p) => Number(p.id_puesto) === idNum);
-      if (puestoEncontrado && socios.length > 0) {
-        const socioDueno = socios.find((s) => {
-          const matchId = puestoEncontrado.id_socio && Number(s.id_socio) === Number(puestoEncontrado.id_socio);
-          const matchNombre = puestoEncontrado.socio && puestoEncontrado.socio !== 'No asignado' && s.nombre_completo.trim().toLowerCase() === puestoEncontrado.socio.trim().toLowerCase();
-          return matchId || matchNombre;
-        });
-        if (socioDueno) {
-          setSocioSeleccionado(socioDueno);
-        }
-      }
-      fetchDeudas(1, idNum, "");
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [idPuesto, puestos, socios]);
+  // Los resultados mostrados dejan de ser válidos cuando el usuario cambia o limpia los filtros
+  const limpiarResultados = () => {
+    setDeudas([]);
+    setPagos([]);
+    setPaginaDeudas(1);
+    setTotalPaginasDeudas(1);
+    setPaginaPagos(1);
+    setTotalPaginasPagos(1);
+  };
+
+  const {
+    puestos,
+    puestosDisponibles,
+    socios,
+    puestoSeleccionado,
+    socioSeleccionado,
+    handlePuestoChange,
+    handleSocioChange,
+    limpiarFiltros,
+  } = useFiltroPuestoSocio({
+    onFiltrosChange: limpiarResultados,
+    // Si llega el parametro puesto, obtener las deudas del puesto (sin filtrar por socio)
+    onPuestoDesdeUrl: (idPuesto) => fetchDeudas(1, idPuesto, null),
+  });
 
   // Para exportar
   const [exportFormat, setExportFormat] = useState<string>("");
 
-  // Metodo para obtener los puestos
-  useEffect(() => {
-    const fetchPuestos = async () => {
-      try {
-        const response = await apiClient.get(Api_Global_Puestos.puestos.buscar(1, 1000, "", "", "", ""));
-        setPuestos(ordenarPuestosPorNumero(response.data.data));
-      } catch (error) {
-        console.log("Error:", error);
-      }
-    }
-    fetchPuestos();
-  }, [usuario]);
-
-  // Metodo para obtener los socios
-  useEffect(() => {
-    const fetchSocios = async () => {
-      try {
-        const response = await apiClient.get(Api_Global_Socios.socios.seleccionar());
-        const data = response.data.data.map((item: any) => ({
-          id_socio: String(item.id_socio),
-          nombre_completo: item.nombre_completo,
-        }));
-        setSocios(ordenarSociosPorNombre(data));
-      } catch (error) {
-        console.log("Error al cargar socios:", error);
-      }
-    }
-    fetchSocios();
-  }, []);
-
-  // Puestos disponibles filtrados por socio si hay uno seleccionado
-  const puestosDisponibles = React.useMemo(() => {
-    if (!socioSeleccionado) {
-      return puestos;
-    }
-    return puestos.filter((p) => {
-      const matchId = p.id_socio && Number(p.id_socio) === Number(socioSeleccionado.id_socio);
-      const matchNombre = p.socio && p.socio !== 'No asignado' && p.socio.trim().toLowerCase() === socioSeleccionado.nombre_completo.trim().toLowerCase();
-      return matchId || matchNombre;
-    });
-  }, [puestos, socioSeleccionado]);
-
-  // Al seleccionar un puesto -> auto-seleccionar el socio dueño
-  const handlePuestoChange = (value: Puesto | null) => {
-    if (value) {
-      const nuevoIdPuesto = Number(value.id_puesto);
-      setPuestoSeleccionado(nuevoIdPuesto);
-      const socioDueno = socios.find((s) => {
-        const matchId = value.id_socio && Number(s.id_socio) === Number(value.id_socio);
-        const matchNombre = value.socio && value.socio !== 'No asignado' && s.nombre_completo.trim().toLowerCase() === value.socio.trim().toLowerCase();
-        return matchId || matchNombre;
-      });
-      if (socioDueno) {
-        setSocioSeleccionado(socioDueno);
-      }
-    } else {
-      setPuestoSeleccionado(0);
-      if (idPuesto) {
-        setSearchParams({}, { replace: true });
-      }
-    }
-  };
-
-  // Al seleccionar un socio -> filtrar puestos y auto-seleccionar si tiene 1 solo
-  const handleSocioChange = (value: Socio | null) => {
-    setSocioSeleccionado(value);
-    if (value) {
-      const puestosDelSocio = puestos.filter((p) => {
-        const matchId = p.id_socio && Number(p.id_socio) === Number(value.id_socio);
-        const matchNombre = p.socio && p.socio !== 'No asignado' && p.socio.trim().toLowerCase() === value.nombre_completo.trim().toLowerCase();
-        return matchId || matchNombre;
-      });
-
-      if (puestosDelSocio.length === 1) {
-        setPuestoSeleccionado(Number(puestosDelSocio[0].id_puesto));
-      } else {
-        const puestoActualPertenece = puestosDelSocio.some((p) => Number(p.id_puesto) === puestoSeleccionado);
-        if (!puestoActualPertenece) {
-          setPuestoSeleccionado(0);
-        }
-      }
-    } else {
-      setPuestoSeleccionado(0);
-      if (idPuesto) {
-        setSearchParams({}, { replace: true });
-      }
-    }
-  };
-
   // Metodo para obtener las deudas pendientes de la pestaña actual
-  const fetchDeudas = async (pagina: number = 1, idPuestoOverride?: number, nombreSocioOverride?: string) => {
+  // socioOverride: null fuerza consultar sin socio (p. ej. al llegar con ?puesto= desde la URL)
+  const fetchDeudas = async (pagina: number = 1, idPuestoOverride?: number, socioOverride?: Socio | null) => {
     setIsLoading(true)
     try {
       const idPuestoFinal = idPuestoOverride ?? puestoSeleccionado;
-      const nombreSocioFinal = nombreSocioOverride ?? (socioSeleccionado?.nombre_completo ?? "");
+      const socioFinal = socioOverride !== undefined ? socioOverride : socioSeleccionado;
       const response = await apiClient.get(
-        Api_Global_Reportes.reportes.deudasPendientes(pagina, 15, idPuestoFinal, nombreSocioFinal.trim())
+        Api_Global_Reportes.reportes.deudasPendientes(pagina, 15, idPuestoFinal, socioFinal?.id_socio ?? "")
       );
       setDeudas(response.data.data);
       setTotalPaginasDeudas(response.data.meta.last_page);
@@ -204,13 +108,13 @@ const TablaReporteDeudas: React.FC = () => {
   }
 
   // Metodo para obtener los pagos realizados de la pestaña actual
-  const fetchPagos = async (pagina: number = 1, idPuestoOverride?: number, nombreSocioOverride?: string) => {
+  const fetchPagos = async (pagina: number = 1, idPuestoOverride?: number, socioOverride?: Socio | null) => {
     setIsLoading(true)
     try {
       const idPuestoFinal = idPuestoOverride ?? puestoSeleccionado;
-      const nombreSocioFinal = nombreSocioOverride ?? (socioSeleccionado?.nombre_completo ?? "");
+      const socioFinal = socioOverride !== undefined ? socioOverride : socioSeleccionado;
       const response = await apiClient.get(
-        Api_Global_Reportes.reportes.pagos(pagina, 15, idPuestoFinal, nombreSocioFinal.trim())
+        Api_Global_Reportes.reportes.pagos(pagina, 15, idPuestoFinal, socioFinal?.id_socio ?? "")
       );
       setPagos(response.data.data);
       setTotalPaginasPagos(response.data.meta.last_page);
@@ -241,10 +145,10 @@ const TablaReporteDeudas: React.FC = () => {
       mostrarAlerta("Error", "Seleccione un puesto o un socio para exportar el reporte.", "warning");
       return;
     }
-    const nombreSocio = socioSeleccionado?.nombre_completo.trim() || "";
+    const idSocio = socioSeleccionado?.id_socio || "";
     const params = [
       puestoSeleccionado ? `id_puesto=${puestoSeleccionado}` : "",
-      nombreSocio ? `nombre_socio=${encodeURIComponent(nombreSocio)}` : "",
+      idSocio ? `id_socio=${idSocio}` : "",
       tab === 1 ? "modo=detalle" : "",
     ].filter(Boolean).join("&");
 
@@ -391,6 +295,8 @@ const TablaReporteDeudas: React.FC = () => {
             handleAction={generar}
             texto="Generar"
           />
+          {/* Botón "Limpiar Filtros" */}
+          <BotonLimpiar handleAction={limpiarFiltros} />
         </Box>
 
         <BotonExportar

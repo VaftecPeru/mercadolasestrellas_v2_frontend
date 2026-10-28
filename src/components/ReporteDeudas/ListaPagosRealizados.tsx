@@ -2,6 +2,7 @@ import { Box, Paper, Table, TableBody, TableCell, TableContainer, TableHead, Tab
 import React, { useState } from 'react';
 import useResponsive from '../../hooks/Responsive/useResponsive';
 import { Data as DataPago } from '../../interface/ReportePagos/pagos';
+import { getNombreTipoServicio } from '../../Utils/tipoServicio';
 
 const soloFecha = (fecha: string) => (fecha ? String(fecha).split(" ")[0] : "");
 
@@ -22,10 +23,10 @@ const ListaPagosRealizados: React.FC<ListaPagosRealizadosProps> = ({
   const [mostrarDetalles, setMostrarDetalles] = useState<string | null>(null);
 
   const columnasPagos = mostrarPuesto
-    ? ["Fecha Pago", "Puesto", "Comprobante", "Concepto", "Monto (S/)"]
-    : ["Fecha Pago", "Comprobante", "Concepto", "Monto (S/)"];
+    ? ["Fecha Pago", "Puesto", "Comprobante", "Concepto", "Tipo de Servicio", "Monto (S/)"]
+    : ["Fecha Pago", "Comprobante", "Concepto", "Tipo de Servicio", "Monto (S/)"];
 
-  const indiceConcepto = columnasPagos.length - 2;
+  const indiceConcepto = columnasPagos.indexOf("Concepto");
   const indiceMonto = columnasPagos.length - 1;
 
   const totalMonto = pagos.reduce((acc, pago) =>
@@ -92,7 +93,7 @@ const ListaPagosRealizados: React.FC<ListaPagosRealizadosProps> = ({
                             <Typography variant="caption" sx={{ fontWeight: 'bold' }}>Conceptos:</Typography>
                             {pago.detalle_pagos.map((detalle, i) => (
                               <Box key={i} sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                                <Typography variant="caption">• {detalle.descripcion}</Typography>
+                                <Typography variant="caption">• {detalle.descripcion} ({getNombreTipoServicio(detalle.tipo_servicio)})</Typography>
                                 <Typography variant="caption" sx={{ fontWeight: 'bold' }}>S/ {Number(detalle.importe).toFixed(2)}</Typography>
                               </Box>
                             ))}
@@ -110,6 +111,7 @@ const ListaPagosRealizados: React.FC<ListaPagosRealizadosProps> = ({
                         {mostrarPuesto && <TableCell align="center">{detIdx === 0 ? (detalle.puesto ?? "") : ""}</TableCell>}
                         <TableCell align="center">{detIdx === 0 ? pago.serie_numero : ""}</TableCell>
                         <TableCell>{detalle.descripcion}</TableCell>
+                        <TableCell align="center">{getNombreTipoServicio(detalle.tipo_servicio)}</TableCell>
                         <TableCell align="right">{detIdx === pago.detalle_pagos.length - 1 ? `S/ ${Number(pago.total).toFixed(2)}` : Number(detalle.importe).toFixed(2)}</TableCell>
                       </TableRow>
                     ))}

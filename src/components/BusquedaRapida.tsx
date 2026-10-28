@@ -11,6 +11,8 @@ import apiClient from "../Utils/apliClient";
 import { Api_Global_Puestos } from "../service/PuestoApi";
 import { ordenarPuestosPorNumero } from "../Utils/ordenarPuestos";
 import { Api_Global_Reportes } from "../service/ReporteApi";
+import { handleExport } from "../Utils/exportUtils";
+import { mostrarAlerta } from "./Alerts/Registrar";
 
 interface Puesto {
   id_puesto: string;

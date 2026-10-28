@@ -33,6 +33,7 @@ import { ordenarPuestosPorNumero } from "../../Utils/ordenarPuestos";
 import { Api_Global_Socios } from "../../service/SocioApi";
 import { Bloque, Puesto } from "../../interface/Puestos";
 import { AgregarProps } from "../../interface/Socios";
+import useConsultaDocumento from "../../hooks/ConsultaDocumento/useConsultaDocumento";
 
 const Agregar: React.FC<AgregarProps> = ({ open, handleClose, socio }) => {
 
@@ -44,6 +45,8 @@ const Agregar: React.FC<AgregarProps> = ({ open, handleClose, socio }) => {
   const [activeTab] = useState(0)
 
   const [loading, setLoading] = useState(false); // Estado de loading
+
+  const { consultando, consultarDni } = useConsultaDocumento();
 
   // Credenciales generadas al registrar un nuevo socio (mostradas una sola vez)
   const [credenciales, setCredenciales] = useState<CredencialSocio[]>([]);
@@ -132,10 +135,24 @@ const Agregar: React.FC<AgregarProps> = ({ open, handleClose, socio }) => {
       | SelectChangeEvent<string>
   ) => {
     const { name, value } = e.target;
-    setFormData({
-      ...formData,
+    setFormData((prev) => ({
+      ...prev,
       [name]: value,
-    });
+    }));
+  };
+
+  // Al completar el DNI se consultan y autocompletan nombre y apellidos
+  const manejarCambioDni = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    manejarCambio(e);
+    const persona = await consultarDni(e.target.value);
+    if (persona) {
+      setFormData((prev) => ({
+        ...prev,
+        nombre: persona.nombres,
+        apellido_paterno: persona.apellido_paterno,
+        apellido_materno: persona.apellido_materno,
+      }));
+    }
   };
 
   // Registrar socio
@@ -217,6 +234,16 @@ const Agregar: React.FC<AgregarProps> = ({ open, handleClose, socio }) => {
                 <SeparadorBloque nombre="Datos personales" />
 
                 <TxtFormulario
+                  label="DNI (*)"
+                  name="dni"
+                  value={formData.dni}
+                  onChange={manejarCambioDni}
+                  icono={<Badge sx={{ mr: 1, color: "gray" }} />}
+                  cargando={consultando}
+                  inputProps={{ maxLength: 8 }}
+                />
+
+                <TxtFormulario
                   label="Nombre (*)"
                   name="nombre"
                   value={formData.nombre}
@@ -257,14 +284,6 @@ const Agregar: React.FC<AgregarProps> = ({ open, handleClose, socio }) => {
                     <MenuItem value="Femenino">Femenino</MenuItem>
                   </Select>
                 </FormControl>
-
-                <TxtFormulario
-                  label="DNI (*)"
-                  name="dni"
-                  value={formData.dni}
-                  onChange={manejarCambio}
-                  icono={<Badge sx={{ mr: 1, color: "gray" }} />}
-                />
 
                 <TxtFormulario
                   label="Dirección (*)"

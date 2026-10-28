@@ -88,7 +88,15 @@ const TablaPago: React.FC = () => {
     e.preventDefault();
     const exportUrl = Api_Global_Pagos.pagos.exportar();
     const fileNamePrefix = "lista-pagos";
-    await handleExport(exportUrl, exportFormat, fileNamePrefix, setExportFormat);
+    const queryParams = new URLSearchParams();
+    if (puestoSeleccionado?.id_puesto) {
+      queryParams.append("id_puesto", String(puestoSeleccionado.id_puesto));
+    }
+    if (searchTerm) {
+      queryParams.append("search", searchTerm);
+    }
+    const params = queryParams.toString();
+    await handleExport(exportUrl, exportFormat, fileNamePrefix, setExportFormat, params || undefined);
   };
 
   const handleAccionesPago = async (accion: number, telefono: string, pago: Pagos) => {

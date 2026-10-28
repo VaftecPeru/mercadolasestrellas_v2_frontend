@@ -28,6 +28,7 @@ import ContenedorModal from '../Shared/ContenedorModal';
 import { AvisoFormulario, SeparadorBloque, TxtFormulario } from '../Shared/ElementosFormulario';
 import { reFormatDate } from '../../Utils/dateUtils';
 import apiClient from '../../Utils/apliClient';
+import useConsultaDocumento from '../../hooks/ConsultaDocumento/useConsultaDocumento';
 import { ordenarPuestosPorNumero } from '../../Utils/ordenarPuestos';
 import { ordenarSociosPorNombre } from '../../Utils/ordenarSocios';
 import { Api_Global_Puestos } from '../../service/PuestoApi';
@@ -134,16 +135,32 @@ const RegistrarPuesto: React.FC<AgregarProps> = ({ open, handleClose, puesto }) 
     }
   }, [puesto]);
 
+  const { consultando, consultarDni } = useConsultaDocumento();
+
   const manejarCambioInquilino = (
     e:
       | React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
       | SelectChangeEvent<string>
   ) => {
     const { name, value } = e.target;
-    setformDataInquilino({
-      ...formDataInquilino,
+    setformDataInquilino((prev) => ({
+      ...prev,
       [name]: value,
-    });
+    }));
+  };
+
+  // Al completar el DNI se consultan y autocompletan nombre y apellidos del inquilino
+  const manejarCambioDniInquilino = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    manejarCambioInquilino(e);
+    const persona = await consultarDni(e.target.value);
+    if (persona) {
+      setformDataInquilino((prev) => ({
+        ...prev,
+        nombre: persona.nombres,
+        apellido_paterno: persona.apellido_paterno,
+        apellido_materno: persona.apellido_materno,
+      }));
+    }
   };
 
   // Obtener bloques
@@ -804,6 +821,17 @@ const RegistrarPuesto: React.FC<AgregarProps> = ({ open, handleClose, puesto }) 
               <Grid item xs={12} sm={6}>
                 <SeparadorBloque nombre="Datos personales" />
 
+                {/* DNI */}
+                <TxtFormulario
+                  label="DNI"
+                  name="dni"
+                  value={formDataInquilino.dni}
+                  onChange={manejarCambioDniInquilino}
+                  icono={<Badge sx={{ mr: 1, color: "gray" }} />}
+                  cargando={consultando}
+                  inputProps={{ maxLength: 8 }}
+                />
+
                 {/* Nombre */}
                 <TxtFormulario
                   label="Nombre"
@@ -829,15 +857,6 @@ const RegistrarPuesto: React.FC<AgregarProps> = ({ open, handleClose, puesto }) 
                   value={formDataInquilino.apellido_materno}
                   onChange={manejarCambioInquilino}
                   icono={<AccountCircle sx={{ mr: 1, color: "gray" }} />}
-                />
-
-                {/* DNI */}
-                <TxtFormulario
-                  label="DNI"
-                  name="dni"
-                  value={formDataInquilino.dni}
-                  onChange={manejarCambioInquilino}
-                  icono={<Badge sx={{ mr: 1, color: "gray" }} />}
                 />
               </Grid>
 

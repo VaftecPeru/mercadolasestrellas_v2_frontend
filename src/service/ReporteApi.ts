@@ -18,10 +18,13 @@ export const Api_Global_Reportes = {
       `/reportes/deudas?page=${page}&per_page=${per_page}&id_puesto=${idPuesto}`,
     deudasExportar: (formato: "xlsx" | "pdf" = "xlsx") =>
       formato === "pdf" ? `/reportes/deudas/exportar-pdf` : `/reportes/deudas/exportar`,
-    deudasPendientes: (page: number, per_page: number, idPuesto: number, nombreSocio: string) => {
-      let url = `/deudas/pendientes?page=${page}&per_page=${per_page}&nombre_socio=${encodeURIComponent(nombreSocio)}`;
+    deudasPendientes: (page: number, per_page: number, idPuesto: number, idSocio: number | string = "") => {
+      let url = `/deudas/pendientes?page=${page}&per_page=${per_page}`;
       if (idPuesto) {
         url += `&id_puesto=${idPuesto}`;
+      }
+      if (idSocio) {
+        url += `&id_socio=${idSocio}`;
       }
       return url;
     },
@@ -32,16 +35,13 @@ export const Api_Global_Reportes = {
       `/reportes/cuota-por-puestos?page=${page}&per_page=${per_page}&id_puesto=${idPuesto}`,
 
     
-    pagos: (page: number, per_page: number, idPuesto: number, nombreSocio: string = "", idSocio: number | string = "") => {
+    pagos: (page: number, per_page: number, idPuesto: number, idSocio: number | string = "") => {
       let url = `/reportes/pagos?page=${page}&per_page=${per_page}`;
       if (idPuesto) {
         url += `&id_puesto=${idPuesto}`;
       }
       if (idSocio) {
         url += `&id_socio=${idSocio}`;
-      }
-      if (nombreSocio) {
-        url += `&nombre_socio=${encodeURIComponent(nombreSocio)}`;
       }
       return url;
     },

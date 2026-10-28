@@ -80,20 +80,11 @@ const RegistrarPagoBanco: React.FC<AgregarProps & RegistroPagoCompartido> = ({
   const [idBancoCuentaSeleccionado, setIdBancoCuentaSeleccionado] = useState("");
 
   // Campos propios del pago por banco (no compartidos entre pestañas)
-  const [formDataBanco, setFormDataBanco] = useState<FormRegistroBanco>({
-    id_socio: "",
-    nombre_socio: "",
-    nombre_block: "",
-    numero_puesto: "",
+  const [formDataBanco, setFormDataBanco] = useState({
     id_banco: "",
     id_bancocuenta: "",
     numero_operacion: "",
     fecha_operacion: "",
-    deudas: [{
-      id_deuda_cuota: 0,
-      importe: 0,
-      servicio: "",
-    }]
   });
 
   // Obtener Lista Bancos
@@ -149,6 +140,22 @@ const RegistrarPagoBanco: React.FC<AgregarProps & RegistroPagoCompartido> = ({
       mostrarAlerta("Atención", "Seleccione un puesto.", "warning");
       return false;
     }
+    if (!formDataBanco.id_banco) {
+      mostrarAlerta("Atención", "Seleccione un banco.", "warning");
+      return false;
+    }
+    if (!formDataBanco.id_bancocuenta) {
+      mostrarAlerta("Atención", "Seleccione un número de cuenta.", "warning");
+      return false;
+    }
+    if (!formDataBanco.numero_operacion || !formDataBanco.numero_operacion.trim()) {
+      mostrarAlerta("Atención", "Ingrese el número de operación.", "warning");
+      return false;
+    }
+    if (!formDataBanco.fecha_operacion) {
+      mostrarAlerta("Atención", "Ingrese la fecha de operación.", "warning");
+      return false;
+    }
     if (formData.deudas.length === 0) {
       mostrarAlerta("Atención", "Seleccione al menos una deuda a pagar.", "warning");
       return false;
@@ -191,12 +198,16 @@ const RegistrarPagoBanco: React.FC<AgregarProps & RegistroPagoCompartido> = ({
     setLoading(true);
 
     // Extraemos los datos necesarios para enviar
-    const { nombre_socio, nombre_block, numero_puesto, deudas, ...rest } = formData;
-    const filteredDeudas = deudas.map(({ servicio, ...deudaRest }) => deudaRest); // Filtramos el servicio de las deudas
-    const dataToSend: {
-      id_socio: string;
-      deudas: { id_deuda_cuota: number; importe: number; }[] // Solo enviamos el id_deuda y el importe
-    } = { ...rest, ...formDataBanco, deudas: filteredDeudas }; // Retornamos el id_socio, datos de banco y las deudas sin el servicio
+    const idSocioFinal = String(idSocioSeleccionado || formData.id_socio);
+    const filteredDeudas = formData.deudas.map(({ servicio, ...deudaRest }) => deudaRest); // Filtramos el servicio de las deudas
+    const dataToSend = {
+      id_socio: idSocioFinal,
+      id_banco: formDataBanco.id_banco,
+      id_bancocuenta: formDataBanco.id_bancocuenta,
+      numero_operacion: formDataBanco.numero_operacion,
+      fecha_operacion: formDataBanco.fecha_operacion,
+      deudas: filteredDeudas,
+    };
 
     try {
       let response;
@@ -216,7 +227,14 @@ const RegistrarPagoBanco: React.FC<AgregarProps & RegistroPagoCompartido> = ({
       if (response.status === 200) {
         const mensaje = response.data.message || (pago ? "El pago fue actualizado correctamente" : "El pago fue registrado correctamente");
         if (!pago) {
-          generarTicketPDF({ ...formData, ...formDataBanco }, response.data.data);
+          generarTicketPDF({
+            ...formData,
+            id_socio: idSocioFinal,
+            id_banco: formDataBanco.id_banco,
+            id_bancocuenta: formDataBanco.id_bancocuenta,
+            numero_operacion: formDataBanco.numero_operacion,
+            fecha_operacion: formDataBanco.fecha_operacion,
+          }, response.data.data);
         }
         mostrarAlerta(pago ? "Actualización exitosa" : "Registro exitoso", mensaje, "success").then(() => {
           handleCloseModal();
