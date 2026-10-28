@@ -3,7 +3,9 @@ import Cookies from "js-cookie";
 
 const API_URL = (
   process.env.REACT_APP_API_URL ||
-  "https://intranet.mercadolasestrellas.org/api/v1"
+  (process.env.NODE_ENV === "development"
+    ? "http://127.0.0.1:8000/api/v1"
+    : "https://intranet.mercadolasestrellas.org/api/v1")
 ).replace(/\/+$/, "");
 
 const apiClient = axios.create({
